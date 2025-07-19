@@ -1,0 +1,463 @@
+﻿using BlobsetIO;
+using PackageIO;
+using System.ComponentModel;
+
+namespace Blobset_Tools
+{
+    /// <summary>
+    /// Modify different blobset version's.
+    /// </summary>
+    /// <remarks>
+    ///   Blobset Tools. Written by Wouldubeinta
+    ///   Copyright (C) 2025 Wouldy Mods.
+    ///   
+    ///   This program is free software; you can redistribute it and/or
+    ///   modify it under the terms of the GNU General Public License
+    ///   as published by the Free Software Foundation; either version 2
+    ///   of the License, or (at your option) any later version.
+    ///   
+    ///   This program is distributed in the hope that it will be useful,
+    ///   but WITHOUT ANY WARRANTY; without even the implied warranty of
+    ///   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    ///   GNU General Public License for more details.
+    ///   
+    ///   You should have received a copy of the GNU General Public License
+    ///   along with this program; if not, write to the Free Software
+    ///   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+    /// 
+    ///   The author may be contacted at:
+    ///   Discord: Wouldubeinta
+    /// </remarks>
+    /// <history>
+    /// [Wouldubeinta]	   15/07/2025	Created
+    /// </history>
+    public class Modify
+    {
+        #region Modify Blobset Version 1
+        /// <summary>
+        /// Read Filemapping and than create file's for the blobset - version 1.
+        /// </summary>
+        /// <param name="blobsetfile">File path to blobset file</param>
+        /// <param name="Modify_bgw">The modify Background Worker</param>
+        /// <history>
+        /// [Wouldubeinta]		05/07/2025	Created
+        /// </history>
+        public static void BlobsetV1(string blobsetfile, BackgroundWorker Modify_bgw)
+        {
+
+        }
+        #endregion
+
+        #region Modify Blobset Version 2
+        /// <summary>
+        /// Read Filemapping and than create file's for the blobset - version 2.
+        /// </summary>
+        /// <param name="blobsetfile">File path to blobset file</param>
+        /// <param name="Modify_bgw">The modify Background Worker</param>
+        /// <history>
+        /// [Wouldubeinta]		05/07/2025	Created
+        /// </history>
+        public static void BlobsetV2(string blobsetfile, BackgroundWorker Modify_bgw)
+        {
+
+        }
+        #endregion
+
+        #region Modify Blobset Version 3
+        /// <summary>
+        /// Read Filemapping and than create file's for the blobset - version 3.
+        /// </summary>
+        /// <param name="blobsetfile">File path to blobset file</param>
+        /// <param name="Modify_bgw">The modify Background Worker</param>
+        /// <history>
+        /// [Wouldubeinta]		05/07/2025	Created
+        /// </history>
+        public static void BlobsetV3(string blobsetfile, BackgroundWorker Modify_bgw)
+        {
+
+        }
+        #endregion
+
+        #region Modify Blobset Version 4
+        /// <summary>
+        /// Read Filemapping and than create file's for the blobset - version 4. BigAnts newer games.
+        /// </summary>
+        /// <param name="blobsetfile">File path to blobset file</param>
+        /// <param name="Modify_bgw">The modify Background Worker</param>
+        /// <history>
+        /// [Wouldubeinta]		15/07/2025	Created
+        /// </history>
+        public static bool BlobsetV4(string blobsetFile, BackgroundWorker Modify_bgw)
+        {
+            Writer? blobsetHeader_bw = null;
+            FileStream? writer = null;
+
+            string progress = string.Empty;
+            string _filePath = string.Empty;
+            bool error = false;
+
+            try
+            {
+                if (Global.blobsetHeaderData == null)
+                {
+                    error = true;
+                    MessageBox.Show("Blobset header data is null", "Blobset Header Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return error;
+                }
+
+                int blobsetFileCount = (int)Global.blobsetHeaderData.FilesCount;
+
+                string[] ddsfileList = Utilities.DirectoryInfo(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\mods", "*.dds");
+                string[] txpkfileList = Utilities.DirectoryInfo(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\mods", "*.txpk");
+                string[] m3mpfileList = Utilities.DirectoryInfo(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\mods", "*.m3mp");
+                string[] wemfileList = Utilities.DirectoryInfo(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\mods", "*.wem");
+                string[] bnkfileList = Utilities.DirectoryInfo(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\mods", "*.bnk");
+                //string[] datfileList = Utilities.DirectoryInfo(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\mods", "*.dat");
+
+                int ddsListLength = ddsfileList.Length;
+                int txpkListLength = txpkfileList.Length;
+                int m3mpListLength = m3mpfileList.Length;
+                int wemListLength = wemfileList.Length;
+                int bnkListLength = bnkfileList.Length;
+                //int datListLength = datfileList.Length;
+                //int fullListLength = ddsListLength + txpkListLength + m3mpListLength + wemListLength + bnkListLength + datListLength;
+                int fullListLength = ddsListLength + txpkListLength + m3mpListLength + wemListLength + bnkListLength;
+
+                if (fullListLength == 0)
+                {
+                    error = true;
+                    MessageBox.Show("No files to modify blobset", "No Supported Files Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return error;
+                }
+
+                Reader fileMapping_br = new(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\data\BlobsetFileMapping.bin");
+
+                FileMapping fileMapping = new();
+                fileMapping.Read(fileMapping_br);
+
+                List<int> mainCompressedSize = [];
+                List<int> mainUncompressedSize = [];
+                List<int> vramCompressedSize = [];
+                List<int> vramUncompressedSize = [];
+                List<int> headerIndex = [];
+
+                int pathRemoveLength = Global.currentPath.Length + @"\games\".Length + Properties.Settings.Default.GameName.Length + @"\mods\".Length;
+
+                string gameLocation = Path.GetDirectoryName(blobsetFile) + @"\";
+
+                for (int i = 0; i < ddsListLength; i++)
+                {
+                    FileMapping fm = Utilities.GetFileMappingIndex(ddsfileList[i].Remove(0, pathRemoveLength), fileMapping);
+
+                    if (fm == null)
+                    {
+                        error = true;
+                        MessageBox.Show(Path.GetFileName(ddsfileList[i]) + " - fileIndex can't be found, make sure the dds filename or location is correct", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return error;
+                    }
+
+                    string folderName = fm.Entries[0].FolderHash;
+                    string fileName = fm.Entries[0].FileNameHash;
+                    string filePath = gameLocation + folderName + @"\" + fileName;
+                    _filePath = filePath;
+
+                    if (File.Exists(filePath))
+                        File.Delete(filePath);
+
+                    writer = new (filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+
+                    Mini_TXPK mini_TXPK = new();
+                    mini_TXPK.Serialize(ddsfileList[i], ddsfileList[i].Remove(0, pathRemoveLength), writer);
+
+                    int mainSize = (int)Utilities.FileInfo(filePath);
+                    int vramUncompSize = (int)Utilities.FileInfo(ddsfileList[i]);
+
+                    mainCompressedSize.Add(mainSize);
+                    mainUncompressedSize.Add(mainSize);
+
+                    int chunkCount = Utilities.ChunkAmount(vramUncompSize);
+                    long[] chunkSizes = Utilities.ChunkSizes(vramUncompSize, chunkCount);
+
+                    Reader? br = new (ddsfileList[i]);
+
+                    for (int j = 0; j < chunkCount; j++) 
+                    {
+                        byte[] ddsChunkData = br.ReadBytes((int)chunkSizes[j]);
+                        ZSTD_IO.CompressAndWrite(ddsChunkData, writer, (int)chunkSizes[j]);
+                    }
+
+                    vramCompressedSize.Add((int)Utilities.FileInfo(filePath) - mainSize);
+                    vramUncompressedSize.Add(vramUncompSize);
+
+                    headerIndex.Add(Convert.ToInt32(fm.Entries[0].Index));
+
+                    progress = ddsfileList[i].Remove(0, pathRemoveLength);
+                    int percentProgress = 100 * i / ddsListLength;
+                    Modify_bgw.ReportProgress(percentProgress, progress);
+
+                    if (br != null) { br.Close(); br = null; }
+                    if (writer != null) { writer.Dispose(); writer = null; }
+                }
+
+                for (int i = 0; i < txpkListLength; i++)
+                {
+                    if (!File.Exists(txpkfileList[i].Replace(".txpk", ".xml"))) 
+                    {
+                        error = false;
+                        MessageBox.Show("Can't find TXPK xml info - " + txpkfileList[i].Replace(".txpk", ".xml"), "XML File Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return error;
+                    }
+
+                    ModifyFileInfo txpkXmlInfo = IO.XmlDeserialize<ModifyFileInfo>(txpkfileList[i].Replace(".txpk", ".xml"));
+                    FileMapping fmIndex = Utilities.GetFileMappingIndex(txpkXmlInfo.Index, fileMapping);
+
+                    string folderName = fmIndex.Entries[0].FolderHash;
+                    string fileName = fmIndex.Entries[0].FileNameHash;
+                    string filePath = gameLocation + folderName + @"\" + fileName;
+                    _filePath = filePath;
+
+                    if (File.Exists(filePath))
+                        File.Delete(filePath);
+
+                    Reader? mainBr = new (txpkfileList[i]);
+
+                    TXPK txpk = new ();
+                    txpk.Deserialize(mainBr);
+
+                    writer = new (filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+
+                    txpk.Serialize(writer);
+
+                    int mainChunkCount = Utilities.ChunkAmount(txpkXmlInfo.MainUnCompressedSize);
+                    long[] mainChunkSizes = Utilities.ChunkSizes(txpkXmlInfo.MainUnCompressedSize, mainChunkCount);
+
+                    int vramChunkCount = Utilities.ChunkAmount(txpkXmlInfo.VramUnCompressedSize);
+                    long[] vramChunkSizes = Utilities.ChunkSizes(txpkXmlInfo.VramUnCompressedSize, vramChunkCount);
+
+                    Reader? txpkHeaderBr = new (filePath);
+
+                    writer.Position = 0;
+
+                    int _mainCompressedSize = 0;
+
+                    for (int j = 0; j < mainChunkCount; j++) 
+                    {
+                        byte[] txpkMainChunkData = txpkHeaderBr.ReadBytes((int)mainChunkSizes[j]);
+                        _mainCompressedSize += ZSTD_IO.CompressAndWrite(txpkMainChunkData, writer, (int)mainChunkSizes[j]);
+                    }
+
+                    mainCompressedSize.Add(_mainCompressedSize);
+                    mainUncompressedSize.Add(txpkXmlInfo.MainUnCompressedSize);
+
+                    if (txpkHeaderBr != null) { txpkHeaderBr.Close(); txpkHeaderBr = null; }
+
+                    for (int j = 0; j < vramChunkCount; j++)
+                    {
+                        byte[] txpkVramChunkData = mainBr.ReadBytes((int)vramChunkSizes[j]);
+                        ZSTD_IO.CompressAndWrite(txpkVramChunkData, writer, (int)vramChunkSizes[j]);
+                    }
+
+                    int _vramCompressedSize = (int)Utilities.FileInfo(filePath) - _mainCompressedSize;
+
+                    vramCompressedSize.Add(_vramCompressedSize);
+                    vramUncompressedSize.Add(txpkXmlInfo.VramUnCompressedSize);
+
+                    progress = txpkfileList[i].Remove(0, pathRemoveLength);
+
+                    headerIndex.Add(txpkXmlInfo.Index);
+
+                    int percentProgress = 100 * i / txpkListLength;
+                    Modify_bgw.ReportProgress(percentProgress, progress);
+
+                    if (mainBr != null) { mainBr.Close(); mainBr = null; }
+                    if (writer != null) { writer.Dispose(); writer = null; }
+                }
+
+                for (int i = 0; i < m3mpListLength; i++)
+                {
+                    Reader? br = new(m3mpfileList[i]);
+
+                    ModifyFileInfo m3mpFileInfo = IO.XmlDeserialize<ModifyFileInfo>(m3mpfileList[i].Replace(".m3mp", ".xml"));
+
+                    int mainSize = (int)Utilities.FileInfo(m3mpfileList[i]);
+
+                    FileMapping fmIndex = Utilities.GetFileMappingIndex(m3mpFileInfo.Index, fileMapping);
+
+                    if (fmIndex == null)
+                    {
+                        error = true;
+                        MessageBox.Show(Path.GetFileName(m3mpfileList[i]) + " - fileIndex can't be found, make sure it's correct ", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return error;
+                    }
+
+                    string folderName = fmIndex.Entries[0].FolderHash;
+                    string fileName = fmIndex.Entries[0].FileNameHash;
+                    string filePath = gameLocation + folderName + @"\" + fileName;
+                    _filePath = filePath;
+
+                    int mainChunkCount = Utilities.ChunkAmount(mainSize);
+                    long[] mainChunkSizes = Utilities.ChunkSizes(mainSize, mainChunkCount);
+
+                    writer = new (filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+
+                    if (!m3mpFileInfo.IsCompressed)
+                    {
+                        for (int j = 0; j < mainChunkCount; j++) 
+                        {
+                            byte[] tmpChunkData = br.ReadBytes((int)mainChunkSizes[j]);
+                            IO.ReadWriteData(tmpChunkData, writer, (int)mainChunkSizes[j]);
+                        }
+
+                        mainCompressedSize.Add(mainSize);
+                    }
+                    else
+                    {
+                        for (int j = 0; j < mainChunkCount; j++) 
+                        {
+                            byte[] m3mpChunkData = br.ReadBytes((int)mainChunkSizes[j]);
+                            ZSTD_IO.CompressAndWrite(m3mpChunkData, writer, (int)mainChunkSizes[j]);
+                        }
+
+                        mainCompressedSize.Add((int)Utilities.FileInfo(filePath));
+                    }
+
+                    mainUncompressedSize.Add(mainSize);
+                    vramCompressedSize.Add(0);
+                    vramUncompressedSize.Add(0);
+
+                    progress = m3mpfileList[i].Remove(0, pathRemoveLength);
+
+                    headerIndex.Add(m3mpFileInfo.Index);
+
+                    int percentProgress = 100 * i / m3mpListLength;
+                    Modify_bgw.ReportProgress(percentProgress, progress);
+
+                    if (br != null) { br.Close(); br = null; }
+                    if (writer != null) { writer.Dispose(); writer = null; }
+                }
+
+                for (int i = 0; i < wemListLength; i++)
+                {
+                    FileMapping fmIndex = Utilities.GetFileMappingIndex(wemfileList[i].Remove(0, pathRemoveLength), fileMapping);
+
+                    if (fmIndex == null)
+                    {
+                        error = true;
+                        MessageBox.Show(Path.GetFileName(wemfileList[i]) + " - fileIndex can't be found, make sure it's correct ", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return error;
+                    }
+
+                    string folderName = fmIndex.Entries[0].FolderHash;
+                    string fileName = fmIndex.Entries[0].FileNameHash;
+                    string filePath = gameLocation + folderName + @"\" + fileName;
+                    _filePath = filePath;
+
+                    int mainSize = (int)Utilities.FileInfo(wemfileList[i]);
+
+                    mainCompressedSize.Add(mainSize);
+                    mainUncompressedSize.Add(mainSize);
+                    vramCompressedSize.Add(0);
+                    vramUncompressedSize.Add(0);
+
+                    int mainChunkCount = Utilities.ChunkAmount(mainSize);
+                    long[] mainChunkSizes = Utilities.ChunkSizes(mainSize, mainChunkCount);
+
+                    Reader? br = new(wemfileList[i]);
+                    writer = new(filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+
+                    for (int j = 0; j < mainChunkCount; j++) 
+                    {
+                        byte[] tmpChunkData = br.ReadBytes((int)mainChunkSizes[j]);
+                        IO.ReadWriteData(tmpChunkData, writer, (int)mainChunkSizes[j]);
+                    }
+
+                    headerIndex.Add(fmIndex.Entries[0].Index);
+
+                    progress = wemfileList[i].Remove(0, pathRemoveLength);
+
+                    int percentProgress = 100 * i / wemListLength;
+                    Modify_bgw.ReportProgress(percentProgress, progress);
+
+                    if (br != null) { br.Close(); br = null; }
+                    if (writer != null) { writer.Dispose(); writer = null; }
+                }
+
+                for (int i = 0; i < bnkListLength; i++)
+                {
+                    FileMapping fmIndex = Utilities.GetFileMappingIndex(bnkfileList[i].Remove(0, pathRemoveLength), fileMapping);
+
+                    if (fmIndex == null)
+                    {
+                        error = true;
+                        MessageBox.Show(Path.GetFileName(bnkfileList[i]) + " - fileIndex can't be found, make sure it's correct ", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return error;
+                    }
+
+                    string folderName = fmIndex.Entries[0].FolderHash;
+                    string fileName = fmIndex.Entries[0].FileNameHash;
+                    string filePath = gameLocation + folderName + @"\" + fileName;
+                    _filePath = filePath;
+
+                    int mainSize = (int)Utilities.FileInfo(bnkfileList[i]);
+
+                    mainCompressedSize.Add(mainSize);
+                    mainUncompressedSize.Add(mainSize);
+                    vramCompressedSize.Add(0);
+                    vramUncompressedSize.Add(0);
+
+                    int mainChunkCount = Utilities.ChunkAmount(mainSize);
+                    long[] mainChunkSizes = Utilities.ChunkSizes(mainSize, mainChunkCount);
+
+                    Reader? br = new(bnkfileList[i]);
+                    writer = new(filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+
+                    for (int j = 0; j < mainChunkCount; j++)
+                    {
+                        byte[] tmpChunkData = br.ReadBytes((int)mainChunkSizes[j]);
+                        IO.ReadWriteData(tmpChunkData, writer, (int)mainChunkSizes[j]);
+                    }
+
+                    headerIndex.Add(fmIndex.Entries[0].Index);
+
+                    progress = bnkfileList[i].Remove(0, pathRemoveLength);
+
+                    int percentProgress = 100 * i / bnkListLength;
+                    Modify_bgw.ReportProgress(percentProgress, progress);
+
+                    if (br != null) { br.Close(); br = null; }
+                    if (writer != null) { writer.Dispose(); writer = null; }
+                }
+
+                blobsetHeader_bw = new Writer(blobsetFile);
+
+                int HeaderSize = 16;
+                int DataOffset = 8 + (blobsetFileCount * 8);
+
+                for (int i = 0; i < fullListLength; i++)
+                {
+                    if (headerIndex[i] == 0)
+                        blobsetHeader_bw.Position = DataOffset;
+                    else
+                        blobsetHeader_bw.Position = (HeaderSize * headerIndex[i]) + DataOffset;
+
+                    blobsetHeader_bw.WriteInt32(mainCompressedSize[i]); // mainCompressedSize
+                    blobsetHeader_bw.WriteInt32(mainUncompressedSize[i]); // mainUncompressedSize
+                    blobsetHeader_bw.WriteInt32(vramCompressedSize[i]); // vramCompressedSize
+                    blobsetHeader_bw.WriteInt32(vramUncompressedSize[i]); // vramUncompressedSize
+                }
+            }
+            catch (Exception arg)
+            {
+                error = true;
+                MessageBox.Show("Error occurred, report it to Wouldy : \n\nFile: " + _filePath + "\n\n" + arg, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (blobsetHeader_bw != null) { blobsetHeader_bw.Close(); blobsetHeader_bw = null; }
+                UI.BlobsetHeaderData();
+            }
+            return error;
+        }
+        #endregion
+    }
+}
