@@ -49,7 +49,6 @@ namespace Blobset_Tools
                 if (isCompressed)
                 {
                     decompressor = new();
-                    decompressor.SetParameter(ZstdSharp.Unsafe.ZSTD_dParameter.ZSTD_d_windowLogMax, Environment.ProcessorCount);
                     buffer = decompressor.Unwrap(input).ToArray();
                 }
                 else
@@ -112,7 +111,6 @@ namespace Blobset_Tools
                 if (isCompressed)
                 {
                     decompressor = new();
-                    decompressor.SetParameter(ZstdSharp.Unsafe.ZSTD_dParameter.ZSTD_d_windowLogMax, Environment.ProcessorCount);
                     byte[] buffer = decompressor.Unwrap(input).ToArray();
                     writer.Write(buffer, 0, buffer.Length);
                     writer.Flush();
@@ -235,8 +233,7 @@ namespace Blobset_Tools
             {
                 if (isCompressed)
                 {
-                    decompressor = new Decompressor();
-                    decompressor.SetParameter(ZstdSharp.Unsafe.ZSTD_dParameter.ZSTD_d_windowLogMax, Environment.ProcessorCount);
+                    decompressor = new();
                     buffer = decompressor.Unwrap(input).ToArray();
 
                     if (buffer[20] == 99 && buffer[21] == 111 && buffer[22] == 110 && buffer[23] == 118)  // checking for "conv" string

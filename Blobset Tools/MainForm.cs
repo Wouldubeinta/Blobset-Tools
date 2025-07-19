@@ -440,97 +440,100 @@ namespace Blobset_Tools
 
         private void files_listView_MouseDoubleClick(object sender, MouseEventArgs e)
         {
-            List<Structs.FileIndexInfo> list = (List<Structs.FileIndexInfo>)folder_treeView.SelectedNode.Tag;
-            string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash;
-
-            if (list == null)
-                return;
-
-            string ext = Path.GetExtension(list[Global.fileIndex].FilePath);
-
-            if (ext == ".txpk")
+            if (Global.fileIndex != -1) 
             {
-                TXPK txpk = ZSTD_IO.ReadTXPKInfo(filePath);
+                List<Structs.FileIndexInfo> list = (List<Structs.FileIndexInfo>)folder_treeView.SelectedNode.Tag;
+                string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash;
 
-                TXPK_Viewer form = new(list[Global.fileIndex].FilePath, txpk, list);
-                bool IsOpen = false;
+                if (list == null)
+                    return;
 
-                foreach (Form f in Application.OpenForms)
+                string ext = Path.GetExtension(list[Global.fileIndex].FilePath);
+
+                if (ext == ".txpk")
                 {
-                    if (f.Text == "TXPK Viewer - " + list[Global.fileIndex].FilePath)
+                    TXPK txpk = ZSTD_IO.ReadTXPKInfo(filePath);
+
+                    TXPK_Viewer form = new(list[Global.fileIndex].FilePath, txpk, list);
+                    bool IsOpen = false;
+
+                    foreach (Form f in Application.OpenForms)
                     {
-                        IsOpen = true;
-                        f.Focus();
-                        break;
+                        if (f.Text == "TXPK Viewer - " + list[Global.fileIndex].FilePath)
+                        {
+                            IsOpen = true;
+                            f.Focus();
+                            break;
+                        }
                     }
+
+                    if (!IsOpen)
+                        form.Show();
                 }
-
-                if (!IsOpen)
-                    form.Show();
-            }
-            if (ext == ".m3mp")
-            {
-                uint MainCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
-                uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
-
-                bool isCompressed = false;
-
-                if (MainCompressedSize != MainUnCompressedSize)
-                    isCompressed = true;
-
-                M3MP? m3mp = ZSTD_IO.ReadM3MPInfo(filePath, isCompressed);
-
-                M3MP_Viewer form = new(list[Global.fileIndex].FilePath, m3mp, list);
-                bool IsOpen = false;
-
-                foreach (Form f in Application.OpenForms)
+                if (ext == ".m3mp")
                 {
-                    if (f.Text == "M3MP Viewer - " + list[Global.fileIndex].FilePath)
+                    uint MainCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                    uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+
+                    bool isCompressed = false;
+
+                    if (MainCompressedSize != MainUnCompressedSize)
+                        isCompressed = true;
+
+                    M3MP? m3mp = ZSTD_IO.ReadM3MPInfo(filePath, isCompressed);
+
+                    M3MP_Viewer form = new(list[Global.fileIndex].FilePath, m3mp, list);
+                    bool IsOpen = false;
+
+                    foreach (Form f in Application.OpenForms)
                     {
-                        IsOpen = true;
-                        f.Focus();
-                        break;
+                        if (f.Text == "M3MP Viewer - " + list[Global.fileIndex].FilePath)
+                        {
+                            IsOpen = true;
+                            f.Focus();
+                            break;
+                        }
                     }
+
+                    if (!IsOpen)
+                        form.Show();
                 }
-
-                if (!IsOpen)
-                    form.Show();
-            }
-            else if (ext == ".dds")
-            {
-                DDS_Viewer form = new(list[Global.fileIndex].FilePath, list);
-                bool IsOpen = false;
-
-                foreach (Form f in Application.OpenForms)
+                else if (ext == ".dds")
                 {
-                    if (f.Text == "DDS Viewer - " + list[Global.fileIndex].FilePath)
+                    DDS_Viewer form = new(list[Global.fileIndex].FilePath, list);
+                    bool IsOpen = false;
+
+                    foreach (Form f in Application.OpenForms)
                     {
-                        IsOpen = true;
-                        f.Focus();
-                        break;
+                        if (f.Text == "DDS Viewer - " + list[Global.fileIndex].FilePath)
+                        {
+                            IsOpen = true;
+                            f.Focus();
+                            break;
+                        }
                     }
+
+                    if (!IsOpen)
+                        form.Show();
                 }
-
-                if (!IsOpen)
-                    form.Show();
-            }
-            else if (ext == ".dat")
-            {
-                Hex_Viewer form = new(list[Global.fileIndex].FilePath, list);
-                bool IsOpen = false;
-
-                foreach (Form f in Application.OpenForms)
+                else if (ext == ".dat")
                 {
-                    if (f.Text == "Hex Viewer - " + list[Global.fileIndex].FilePath)
-                    {
-                        IsOpen = true;
-                        f.Focus();
-                        break;
-                    }
-                }
+                    Hex_Viewer form = new(list[Global.fileIndex].FilePath, list);
+                    bool IsOpen = false;
 
-                if (!IsOpen)
-                    form.Show();
+                    foreach (Form f in Application.OpenForms)
+                    {
+                        if (f.Text == "Hex Viewer - " + list[Global.fileIndex].FilePath)
+                        {
+                            IsOpen = true;
+                            f.Focus();
+                            break;
+                        }
+                    }
+
+                    if (!IsOpen)
+                        form.Show();
+                }
             }
         }
 
