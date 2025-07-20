@@ -102,17 +102,17 @@ namespace Blobset_Tools
 
             files_listView.SmallImageList = myImageList;
 
-            List<Structs.FileIndexInfo> list = (List<Structs.FileIndexInfo>)folder_treeView.SelectedNode.Tag;
+            Global.filelist = (List<Structs.FileIndexInfo>)folder_treeView.SelectedNode.Tag;
 
-            if (list == null)
+            if (Global.filelist == null)
                 return;
 
-            ListViewItem[] lvi = new ListViewItem[list.Count];
+            ListViewItem[] lvi = new ListViewItem[Global.filelist.Count];
 
-            for (int i = 0; i < list.Count; i++)
+            for (int i = 0; i < Global.filelist.Count; i++)
             {
                 int icon = 0;
-                string ext = Path.GetExtension(list[i].FileName);
+                string ext = Path.GetExtension(Global.filelist[i].FileName);
 
                 if (ext == ".txpk")
                     icon = 1;
@@ -125,12 +125,12 @@ namespace Blobset_Tools
                 else if (ext == ".dat")
                     icon = 5;
 
-                lvi[i] = new ListViewItem { ImageIndex = icon, Text = list[i].FileName };
-                lvi[i].Tag = list[i].MappingIndex;
+                lvi[i] = new ListViewItem { ImageIndex = icon, Text = Global.filelist[i].FileName };
+                lvi[i].Tag = Global.filelist[i].MappingIndex;
             }
 
             AddItems(lvi);
-            status_Label.Text = list.Count + " items in " + folder_treeView.SelectedNode.Text + " folder";
+            status_Label.Text = Global.filelist.Count + " items in " + folder_treeView.SelectedNode.Text + " folder";
         }
 
         private void AddItems(ListViewItem[] lvi)
@@ -149,12 +149,10 @@ namespace Blobset_Tools
             {
                 if (e.Button == MouseButtons.Right)
                 {
-                    List<Structs.FileIndexInfo> list = (List<Structs.FileIndexInfo>)folder_treeView.SelectedNode.Tag;
-
-                    if (list == null)
+                    if (Global.filelist == null)
                         return;
 
-                    string ext = Path.GetExtension(list[Global.fileIndex].FilePath);
+                    string ext = Path.GetExtension(Global.filelist[Global.fileIndex].FilePath);
 
                     if (ext == ".dds")
                         extractImage_contextMenuStrip.Show(Cursor.Position);
@@ -172,36 +170,36 @@ namespace Blobset_Tools
         {
             try
             {
-                List<Structs.FileIndexInfo> list = (List<Structs.FileIndexInfo>)folder_treeView.SelectedNode.Tag;
+                
                 Global.fileIndex = UI.getLVSelectedIndex(files_listView);
                 fileInfo_richTextBox.Clear();
 
                 if (Global.fileIndex == -1)
                     return;
 
-                uint MainCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
-                uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
-                uint VramCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramCompressedSize;
-                uint VramUnCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
+                uint MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+                uint VramCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramCompressedSize;
+                uint VramUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
 
-                string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash;
+                string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + Global.filelist[Global.fileIndex].FolderHash + @"\" + Global.filelist[Global.fileIndex].FileHash;
 
-                string type = Path.GetExtension(list[Global.fileIndex].FilePath);
+                string type = Path.GetExtension(Global.filelist[Global.fileIndex].FilePath);
 
                 if (type == ".dds")
                 {
                     Structs.DDSInfo ddsInfo = new();
-                    Bitmap bitmap = UI.DDStoBitmap(UI.GetDDSData(list), ref ddsInfo);
+                    Bitmap bitmap = UI.DDStoBitmap(UI.GetDDSData(Global.filelist), ref ddsInfo);
 
                     fileInfo_richTextBox.AppendText("*** DDS Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText(list[Global.fileIndex].FilePath);
+                    fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
 
                     fileInfo_richTextBox.AppendText("*** Blobset Info ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("FileIndex: " + list[Global.fileIndex].BlobsetIndex);
+                    fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText("FileName: " + filePath);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
@@ -240,13 +238,13 @@ namespace Blobset_Tools
 
                     fileInfo_richTextBox.AppendText("*** TXPK Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText(list[Global.fileIndex].FilePath);
+                    fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
 
                     fileInfo_richTextBox.AppendText("*** Blobset Info ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("FileIndex: " + list[Global.fileIndex].BlobsetIndex);
+                    fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText("FileName: " + filePath);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
@@ -292,13 +290,13 @@ namespace Blobset_Tools
 
                     fileInfo_richTextBox.AppendText("*** M3MP Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText(list[Global.fileIndex].FilePath);
+                    fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
 
                     fileInfo_richTextBox.AppendText("*** Blobset Info ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("FileIndex: " + list[Global.fileIndex].BlobsetIndex);
+                    fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText("FileName: " + filePath);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
@@ -347,13 +345,13 @@ namespace Blobset_Tools
 
                     fileInfo_richTextBox.AppendText("*** Wise Audio WEM Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText(list[Global.fileIndex].FilePath);
+                    fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
 
                     fileInfo_richTextBox.AppendText("*** Blobset Info ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("FileIndex: " + list[Global.fileIndex].BlobsetIndex);
+                    fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText("FileName: " + filePath);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
@@ -377,13 +375,13 @@ namespace Blobset_Tools
 
                     fileInfo_richTextBox.AppendText("*** Wise Audio BNK Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText(list[Global.fileIndex].FilePath);
+                    fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
 
                     fileInfo_richTextBox.AppendText("*** Blobset Info ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("FileIndex: " + list[Global.fileIndex].BlobsetIndex);
+                    fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText("FileName: " + filePath);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
@@ -407,13 +405,13 @@ namespace Blobset_Tools
 
                     fileInfo_richTextBox.AppendText("*** Unknown File DAT Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText(list[Global.fileIndex].FilePath);
+                    fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
 
                     fileInfo_richTextBox.AppendText("*** Blobset Info ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("FileIndex: " + list[Global.fileIndex].BlobsetIndex);
+                    fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText("FileName: " + filePath);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
@@ -442,24 +440,23 @@ namespace Blobset_Tools
         {
             if (Global.fileIndex != -1) 
             {
-                List<Structs.FileIndexInfo> list = (List<Structs.FileIndexInfo>)folder_treeView.SelectedNode.Tag;
-                string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash;
+                string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + Global.filelist[Global.fileIndex].FolderHash + @"\" + Global.filelist[Global.fileIndex].FileHash;
 
-                if (list == null)
+                if (Global.filelist == null)
                     return;
 
-                string ext = Path.GetExtension(list[Global.fileIndex].FilePath);
+                string ext = Path.GetExtension(Global.filelist[Global.fileIndex].FilePath);
 
                 if (ext == ".txpk")
                 {
                     TXPK txpk = ZSTD_IO.ReadTXPKInfo(filePath);
 
-                    TXPK_Viewer form = new(list[Global.fileIndex].FilePath, txpk, list);
+                    TXPK_Viewer form = new(Global.filelist[Global.fileIndex].FilePath, txpk, Global.filelist);
                     bool IsOpen = false;
 
                     foreach (Form f in Application.OpenForms)
                     {
-                        if (f.Text == "TXPK Viewer - " + list[Global.fileIndex].FilePath)
+                        if (f.Text == "TXPK Viewer - " + Global.filelist[Global.fileIndex].FilePath)
                         {
                             IsOpen = true;
                             f.Focus();
@@ -472,8 +469,8 @@ namespace Blobset_Tools
                 }
                 if (ext == ".m3mp")
                 {
-                    uint MainCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
-                    uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+                    uint MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                    uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
 
                     bool isCompressed = false;
 
@@ -482,12 +479,12 @@ namespace Blobset_Tools
 
                     M3MP? m3mp = ZSTD_IO.ReadM3MPInfo(filePath, isCompressed);
 
-                    M3MP_Viewer form = new(list[Global.fileIndex].FilePath, m3mp, list);
+                    M3MP_Viewer form = new(Global.filelist[Global.fileIndex].FilePath, m3mp, Global.filelist);
                     bool IsOpen = false;
 
                     foreach (Form f in Application.OpenForms)
                     {
-                        if (f.Text == "M3MP Viewer - " + list[Global.fileIndex].FilePath)
+                        if (f.Text == "M3MP Viewer - " + Global.filelist[Global.fileIndex].FilePath)
                         {
                             IsOpen = true;
                             f.Focus();
@@ -500,12 +497,12 @@ namespace Blobset_Tools
                 }
                 else if (ext == ".dds")
                 {
-                    DDS_Viewer form = new(list[Global.fileIndex].FilePath, list);
+                    DDS_Viewer form = new(Global.filelist[Global.fileIndex].FilePath, Global.filelist);
                     bool IsOpen = false;
 
                     foreach (Form f in Application.OpenForms)
                     {
-                        if (f.Text == "DDS Viewer - " + list[Global.fileIndex].FilePath)
+                        if (f.Text == "DDS Viewer - " + Global.filelist[Global.fileIndex].FilePath)
                         {
                             IsOpen = true;
                             f.Focus();
@@ -518,12 +515,12 @@ namespace Blobset_Tools
                 }
                 else if (ext == ".dat")
                 {
-                    Hex_Viewer form = new(list[Global.fileIndex].FilePath, list);
+                    Hex_Viewer form = new(Global.filelist[Global.fileIndex].FilePath, Global.filelist);
                     bool IsOpen = false;
 
                     foreach (Form f in Application.OpenForms)
                     {
-                        if (f.Text == "Hex Viewer - " + list[Global.fileIndex].FilePath)
+                        if (f.Text == "Hex Viewer - " + Global.filelist[Global.fileIndex].FilePath)
                         {
                             IsOpen = true;
                             f.Focus();

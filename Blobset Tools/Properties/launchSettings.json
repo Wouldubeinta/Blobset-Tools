@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Blobset Tools": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}

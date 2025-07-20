@@ -31,6 +31,7 @@ namespace Blobset_Tools
         private static string? _currentPath = string.Empty;
         private static int _fileIndex = 0;
         private static BlobsetFile? _blobsetHeaderData = null;
+        private static List<Structs.FileIndexInfo>? _filelist = null;
 
         public static string? version
         {
@@ -54,6 +55,12 @@ namespace Blobset_Tools
         {
             get { return _blobsetHeaderData; }
             set { _blobsetHeaderData = value; }
+        }
+
+        public static List<Structs.FileIndexInfo>? filelist
+        {
+            get { return _filelist; }
+            set { _filelist = value; }
         }
     }
 }
