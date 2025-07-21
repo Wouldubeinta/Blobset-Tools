@@ -161,5 +161,25 @@ namespace BlobsetIO
             }
             return fm;
         }
+
+        /// <summary>
+        /// Resize image size and return it;
+        /// </summary>
+        /// <param name="width">Image width.</param>
+        /// <param name="height">Image height.</param>
+        /// <param name="maxWidth">Max Width.</param>
+        /// <param name="maxHeight">Max Height.</param>
+        /// <returns>Return new size.</returns>
+        public static Size ResizeImageSize(int width, int height, int maxWidth, int maxHeight)
+        {
+            var ratioX = (double)maxWidth / width;
+            var ratioY = (double)maxHeight / height;
+            var ratio = Math.Min(ratioX, ratioY);
+
+            var newWidth = (int)(width * ratio);
+            var newHeight = (int)(height * ratio);
+
+            return new Size(newWidth, newHeight);
+        }
     }
 }

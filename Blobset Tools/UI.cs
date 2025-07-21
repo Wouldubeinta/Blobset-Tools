@@ -112,10 +112,9 @@ namespace Blobset_Tools
             return Index;
         }
 
-        public static Bitmap DDStoBitmap(byte[] ddsData, ref DDSInfo ddsInfo)
+        public static Bitmap DDStoBitmap(byte[] ddsData, ref DDSInfo ddsInfo, bool isUI)
         {
             MemoryStream? ms = null;
-            IImage? image = null;
             Bitmap? bitmap = null;
             ddsInfo.MipMap = 1;
             ddsInfo.IFormat = ImageFormat.Rgba32;
@@ -135,67 +134,65 @@ namespace Blobset_Tools
 
                     ms.Position = 0;
 
-                    switch (ddsInfo.PFormat)
+                    using (var image = Pfimage.FromStream(ms))
                     {
-                        case PixelFormat.A16B16G16R16:
-                        case PixelFormat.A16B16G16R16F:
-                        case PixelFormat.A32B32G32R32F:
-                        case PixelFormat.R16F:
-                        case PixelFormat.R32F:
-                        case PixelFormat.G16R16F:
-                        case PixelFormat.G32R32F:
-                            break;
-                        default:
-                            image = Pfimage.FromStream(ms);
+                        System.Drawing.Imaging.PixelFormat format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
+                        ddsInfo.Width = image.Width;
+                        ddsInfo.Height = image.Height;
+                        ddsInfo.IFormat = image.Format;
+                        ddsInfo.MipMap = image.MipMaps.Length + 1;
 
-                            System.Drawing.Imaging.PixelFormat format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
-                            ddsInfo.IFormat = image.Format;
-                            ddsInfo.MipMap = image.MipMaps.Length + 1;
+                        // Convert from Pfim's backend agnostic image format into GDI+'s image format
+                        switch (image.Format)
+                        {
+                            case ImageFormat.Rgb24:
+                                format = System.Drawing.Imaging.PixelFormat.Format24bppRgb;
+                                break;
 
-                            // Convert from Pfim's backend agnostic image format into GDI+'s image format
-                            switch (image.Format)
+                            case ImageFormat.Rgba32:
+                                format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
+                                break;
+
+                            case ImageFormat.R5g5b5:
+                                format = System.Drawing.Imaging.PixelFormat.Format16bppRgb555;
+                                break;
+
+                            case ImageFormat.R5g6b5:
+                                format = System.Drawing.Imaging.PixelFormat.Format16bppRgb565;
+                                break;
+
+                            case ImageFormat.R5g5b5a1:
+                                format = System.Drawing.Imaging.PixelFormat.Format16bppArgb1555;
+                                break;
+
+                            case ImageFormat.Rgb8:
+                                format = System.Drawing.Imaging.PixelFormat.Format8bppIndexed;
+                                break;
+                        }
+
+                        // Pin pfim's data array so that it doesn't get reaped by GC, unnecessary
+                        // in this snippet but useful technique if the data was going to be used in
+                        // control like a picture box
+                        var handle = GCHandle.Alloc(image.Data, GCHandleType.Normal);
+                        try
+                        {
+                            var data = Marshal.UnsafeAddrOfPinnedArrayElement(image.Data, 0);
+                            Bitmap bm = new Bitmap(image.Width, image.Height, image.Stride, format, data);
+
+                            if (isUI) 
                             {
-                                case ImageFormat.Rgb24:
-                                    format = System.Drawing.Imaging.PixelFormat.Format24bppRgb;
-                                    break;
+                                var thumbSize = Utilities.ResizeImageSize(bm.Width, bm.Height, 450, 450);
 
-                                case ImageFormat.Rgba32:
-                                    format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
-                                    break;
-
-                                case ImageFormat.R5g5b5:
-                                    format = System.Drawing.Imaging.PixelFormat.Format16bppRgb555;
-                                    break;
-
-                                case ImageFormat.R5g6b5:
-                                    format = System.Drawing.Imaging.PixelFormat.Format16bppRgb565;
-                                    break;
-
-                                case ImageFormat.R5g5b5a1:
-                                    format = System.Drawing.Imaging.PixelFormat.Format16bppArgb1555;
-                                    break;
-
-                                case ImageFormat.Rgb8:
-                                    format = System.Drawing.Imaging.PixelFormat.Format8bppIndexed;
-                                    break;
+                                Image Thumbnail = bm.GetThumbnailImage(thumbSize.Width, thumbSize.Height, null, IntPtr.Zero);
+                                bitmap = new Bitmap(Thumbnail);
                             }
-
-                            // Pin pfim's data array so that it doesn't get reaped by GC, unnecessary
-                            // in this snippet but useful technique if the data was going to be used in
-                            // control like a picture box
-                            var handle = GCHandle.Alloc(image.Data, GCHandleType.Pinned);
-                            try
-                            {
-                                var data = Marshal.UnsafeAddrOfPinnedArrayElement(image.Data, 0);
-                                bitmap = new Bitmap(image.Width, image.Height, image.Stride, format, data);
-                                if (ms != null) { ms.Close(); ms = null; }
-                                if (image != null) { image.Dispose(); image = null; }
-                            }
-                            finally
-                            {
-                                handle.Free();
-                            }
-                            break;
+                            else
+                                bitmap = bm;
+                        }
+                        finally
+                        {
+                            handle.Free();
+                        }
                     }
                 }
             }
@@ -205,9 +202,7 @@ namespace Blobset_Tools
             }
             finally
             {
-                if (ms != null) { ms.Close(); ms = null; }
-                if (image != null) { image.Dispose(); image = null; }
-                GC.Collect();
+                if (ms != null) { ms.Dispose(); ms = null; }
             }
             return bitmap;
         }

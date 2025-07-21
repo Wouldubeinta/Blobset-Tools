@@ -121,7 +121,7 @@ namespace Blobset_Tools
                 ddsFormat = ddsInfo.PFormat;
                 mipmapCount = ddsInfo.MipMap + 1;
 
-                Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo);
+                Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo, false);
 
                 if (bitmap != null)
                 {

@@ -50,6 +50,8 @@
             validateSteamGameFilesToolStripMenuItem = new ToolStripMenuItem();
             skipUnknownFilesToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
+            searchToolStripTextBox = new ToolStripTextBox();
+            searchToolStripMenuItem = new ToolStripMenuItem();
             ofd = new OpenFileDialog();
             splitContainer1 = new SplitContainer();
             splitContainer2 = new SplitContainer();
@@ -61,7 +63,6 @@
             extractImage_contextMenuStrip = new ContextMenuStrip(components);
             extractToolStripMenuItem = new ToolStripMenuItem();
             dDSFileToolStripMenuItem = new ToolStripMenuItem();
-            pNGFileToolStripMenuItem = new ToolStripMenuItem();
             saveFileDialog = new SaveFileDialog();
             extractFile_contextMenuStrip = new ContextMenuStrip(components);
             extractToolStripMenuItem1 = new ToolStripMenuItem();
@@ -120,10 +121,10 @@
             // menuStrip1
             // 
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, extractBlobsetToolStripMenuItem, createBlobsetToolStripMenuItem, gameName_toolStripTextBox, toolsToolStripMenuItem, optionsToolStripMenuItem, aboutToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, extractBlobsetToolStripMenuItem, createBlobsetToolStripMenuItem, gameName_toolStripTextBox, toolsToolStripMenuItem, optionsToolStripMenuItem, aboutToolStripMenuItem, searchToolStripTextBox, searchToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Size = new Size(1271, 25);
+            menuStrip1.Size = new Size(1271, 27);
             menuStrip1.TabIndex = 2;
             menuStrip1.Text = "menuStrip1";
             // 
@@ -131,7 +132,7 @@
             // 
             fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { exitToolStripMenuItem });
             fileToolStripMenuItem.Name = "fileToolStripMenuItem";
-            fileToolStripMenuItem.Size = new Size(37, 21);
+            fileToolStripMenuItem.Size = new Size(37, 23);
             fileToolStripMenuItem.Text = "File";
             // 
             // exitToolStripMenuItem
@@ -145,7 +146,7 @@
             // extractBlobsetToolStripMenuItem
             // 
             extractBlobsetToolStripMenuItem.Name = "extractBlobsetToolStripMenuItem";
-            extractBlobsetToolStripMenuItem.Size = new Size(96, 21);
+            extractBlobsetToolStripMenuItem.Size = new Size(96, 23);
             extractBlobsetToolStripMenuItem.Text = "Extract Blobset";
             extractBlobsetToolStripMenuItem.ToolTipText = "Extract all blobset files.";
             extractBlobsetToolStripMenuItem.Click += extractBlobsetToolStripMenuItem_Click;
@@ -153,7 +154,7 @@
             // createBlobsetToolStripMenuItem
             // 
             createBlobsetToolStripMenuItem.Name = "createBlobsetToolStripMenuItem";
-            createBlobsetToolStripMenuItem.Size = new Size(99, 21);
+            createBlobsetToolStripMenuItem.Size = new Size(99, 23);
             createBlobsetToolStripMenuItem.Text = "Modify Blobset";
             createBlobsetToolStripMenuItem.ToolTipText = "Modify blobset with mods.";
             createBlobsetToolStripMenuItem.Click += createBlobsetToolStripMenuItem_Click;
@@ -167,7 +168,7 @@
             gameName_toolStripTextBox.Name = "gameName_toolStripTextBox";
             gameName_toolStripTextBox.ReadOnly = true;
             gameName_toolStripTextBox.ShortcutsEnabled = false;
-            gameName_toolStripTextBox.Size = new Size(391, 21);
+            gameName_toolStripTextBox.Size = new Size(391, 23);
             gameName_toolStripTextBox.Text = "* Rugby League 26 *";
             gameName_toolStripTextBox.TextBoxTextAlign = HorizontalAlignment.Center;
             // 
@@ -175,14 +176,14 @@
             // 
             toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { tXPKCreatorToolStripMenuItem, m3MPCreatorToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
-            toolsToolStripMenuItem.Size = new Size(47, 21);
+            toolsToolStripMenuItem.Size = new Size(47, 23);
             toolsToolStripMenuItem.Text = "Tools";
             // 
             // tXPKCreatorToolStripMenuItem
             // 
             tXPKCreatorToolStripMenuItem.Image = (Image)resources.GetObject("tXPKCreatorToolStripMenuItem.Image");
             tXPKCreatorToolStripMenuItem.Name = "tXPKCreatorToolStripMenuItem";
-            tXPKCreatorToolStripMenuItem.Size = new Size(151, 22);
+            tXPKCreatorToolStripMenuItem.Size = new Size(184, 26);
             tXPKCreatorToolStripMenuItem.Text = "TXPK Creator";
             tXPKCreatorToolStripMenuItem.ToolTipText = "To create DDS TXPK files.";
             tXPKCreatorToolStripMenuItem.Click += txpkCreatorToolStripMenuItem_Click;
@@ -191,7 +192,7 @@
             // 
             m3MPCreatorToolStripMenuItem.Image = (Image)resources.GetObject("m3MPCreatorToolStripMenuItem.Image");
             m3MPCreatorToolStripMenuItem.Name = "m3MPCreatorToolStripMenuItem";
-            m3MPCreatorToolStripMenuItem.Size = new Size(151, 22);
+            m3MPCreatorToolStripMenuItem.Size = new Size(184, 26);
             m3MPCreatorToolStripMenuItem.Text = "M3MP Creator";
             m3MPCreatorToolStripMenuItem.ToolTipText = "To Create M3MP files.";
             m3MPCreatorToolStripMenuItem.Click += m3mpCreatorToolStripMenuItem_Click;
@@ -200,7 +201,7 @@
             // 
             optionsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { blobsetCompressionToolStripMenuItem, updateFileMappingDataToolStripMenuItem, loadGameToolStripMenuItem, validateSteamGameFilesToolStripMenuItem, skipUnknownFilesToolStripMenuItem });
             optionsToolStripMenuItem.Name = "optionsToolStripMenuItem";
-            optionsToolStripMenuItem.Size = new Size(61, 21);
+            optionsToolStripMenuItem.Size = new Size(61, 23);
             optionsToolStripMenuItem.Text = "Options";
             // 
             // blobsetCompressionToolStripMenuItem
@@ -256,9 +257,25 @@
             // aboutToolStripMenuItem
             // 
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            aboutToolStripMenuItem.Size = new Size(52, 21);
+            aboutToolStripMenuItem.Size = new Size(52, 23);
             aboutToolStripMenuItem.Text = "About";
             aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
+            // 
+            // searchToolStripTextBox
+            // 
+            searchToolStripTextBox.Alignment = ToolStripItemAlignment.Right;
+            searchToolStripTextBox.Name = "searchToolStripTextBox";
+            searchToolStripTextBox.Size = new Size(250, 23);
+            searchToolStripTextBox.KeyDown += searchToolStripTextBox_KeyDown;
+            // 
+            // searchToolStripMenuItem
+            // 
+            searchToolStripMenuItem.Alignment = ToolStripItemAlignment.Right;
+            searchToolStripMenuItem.Name = "searchToolStripMenuItem";
+            searchToolStripMenuItem.Size = new Size(54, 23);
+            searchToolStripMenuItem.Text = "Search";
+            searchToolStripMenuItem.ToolTipText = "Searches the selected folder.";
+            searchToolStripMenuItem.Click += searchToolStripMenuItem_Click;
             // 
             // ofd
             // 
@@ -269,7 +286,7 @@
             // splitContainer1
             // 
             splitContainer1.Dock = DockStyle.Fill;
-            splitContainer1.Location = new Point(0, 25);
+            splitContainer1.Location = new Point(0, 27);
             splitContainer1.Name = "splitContainer1";
             // 
             // splitContainer1.Panel1
@@ -279,7 +296,7 @@
             // splitContainer1.Panel2
             // 
             splitContainer1.Panel2.Controls.Add(splitContainer3);
-            splitContainer1.Size = new Size(1271, 677);
+            splitContainer1.Size = new Size(1271, 675);
             splitContainer1.SplitterDistance = 744;
             splitContainer1.TabIndex = 3;
             // 
@@ -296,7 +313,7 @@
             // splitContainer2.Panel2
             // 
             splitContainer2.Panel2.Controls.Add(files_listView);
-            splitContainer2.Size = new Size(744, 677);
+            splitContainer2.Size = new Size(744, 675);
             splitContainer2.SplitterDistance = 233;
             splitContainer2.TabIndex = 0;
             // 
@@ -308,7 +325,7 @@
             folder_treeView.ItemHeight = 22;
             folder_treeView.Location = new Point(0, 0);
             folder_treeView.Name = "folder_treeView";
-            folder_treeView.Size = new Size(233, 677);
+            folder_treeView.Size = new Size(233, 675);
             folder_treeView.TabIndex = 0;
             folder_treeView.AfterSelect += folder_treeView_AfterSelect;
             // 
@@ -324,7 +341,7 @@
             files_listView.MultiSelect = false;
             files_listView.Name = "files_listView";
             files_listView.ShowGroups = false;
-            files_listView.Size = new Size(507, 677);
+            files_listView.Size = new Size(507, 675);
             files_listView.TabIndex = 0;
             files_listView.UseCompatibleStateImageBehavior = false;
             files_listView.View = View.List;
@@ -346,8 +363,8 @@
             // splitContainer3.Panel2
             // 
             splitContainer3.Panel2.Controls.Add(dds_pictureBox);
-            splitContainer3.Size = new Size(523, 677);
-            splitContainer3.SplitterDistance = 281;
+            splitContainer3.Size = new Size(523, 675);
+            splitContainer3.SplitterDistance = 280;
             splitContainer3.TabIndex = 0;
             // 
             // fileInfo_richTextBox
@@ -359,7 +376,7 @@
             fileInfo_richTextBox.Location = new Point(0, 0);
             fileInfo_richTextBox.Name = "fileInfo_richTextBox";
             fileInfo_richTextBox.ReadOnly = true;
-            fileInfo_richTextBox.Size = new Size(523, 281);
+            fileInfo_richTextBox.Size = new Size(523, 280);
             fileInfo_richTextBox.TabIndex = 0;
             fileInfo_richTextBox.Text = "";
             fileInfo_richTextBox.MouseClick += fileInfo_richTextBox_MouseClick;
@@ -369,8 +386,9 @@
             // 
             dds_pictureBox.Dock = DockStyle.Fill;
             dds_pictureBox.Location = new Point(0, 0);
+            dds_pictureBox.MaximumSize = new Size(800, 800);
             dds_pictureBox.Name = "dds_pictureBox";
-            dds_pictureBox.Size = new Size(523, 392);
+            dds_pictureBox.Size = new Size(523, 391);
             dds_pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             dds_pictureBox.TabIndex = 0;
             dds_pictureBox.TabStop = false;
@@ -384,7 +402,7 @@
             // 
             // extractToolStripMenuItem
             // 
-            extractToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { dDSFileToolStripMenuItem, pNGFileToolStripMenuItem });
+            extractToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { dDSFileToolStripMenuItem });
             extractToolStripMenuItem.Image = Properties.Resources.extract_32;
             extractToolStripMenuItem.Name = "extractToolStripMenuItem";
             extractToolStripMenuItem.Size = new Size(109, 22);
@@ -394,17 +412,9 @@
             // 
             dDSFileToolStripMenuItem.Image = Properties.Resources.dds_32;
             dDSFileToolStripMenuItem.Name = "dDSFileToolStripMenuItem";
-            dDSFileToolStripMenuItem.Size = new Size(119, 22);
+            dDSFileToolStripMenuItem.Size = new Size(117, 22);
             dDSFileToolStripMenuItem.Text = "DDS File";
             dDSFileToolStripMenuItem.Click += ddsFileToolStripMenuItem_Click;
-            // 
-            // pNGFileToolStripMenuItem
-            // 
-            pNGFileToolStripMenuItem.Image = Properties.Resources.png_32;
-            pNGFileToolStripMenuItem.Name = "pNGFileToolStripMenuItem";
-            pNGFileToolStripMenuItem.Size = new Size(119, 22);
-            pNGFileToolStripMenuItem.Text = "PNG File";
-            pNGFileToolStripMenuItem.Click += pngFileToolStripMenuItem_Click;
             // 
             // extractFile_contextMenuStrip
             // 
@@ -418,7 +428,7 @@
             extractToolStripMenuItem1.Name = "extractToolStripMenuItem1";
             extractToolStripMenuItem1.Size = new Size(109, 22);
             extractToolStripMenuItem1.Text = "Extract";
-            extractToolStripMenuItem1.Click += extractToolStripMenuItem1_Click;
+            extractToolStripMenuItem1.Click += extractToolStripMenuItem_Click;
             // 
             // SaveLog_contextMenuStrip
             // 
@@ -456,6 +466,7 @@
             Controls.Add(splitContainer1);
             Controls.Add(statusStrip1);
             Controls.Add(menuStrip1);
+            DoubleBuffered = true;
             Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
             Name = "MainForm";
@@ -515,7 +526,6 @@
         private ContextMenuStrip extractImage_contextMenuStrip;
         private ToolStripMenuItem extractToolStripMenuItem;
         private ToolStripMenuItem dDSFileToolStripMenuItem;
-        private ToolStripMenuItem pNGFileToolStripMenuItem;
         private SaveFileDialog saveFileDialog;
         private ContextMenuStrip extractFile_contextMenuStrip;
         private ToolStripMenuItem extractToolStripMenuItem1;
@@ -527,5 +537,7 @@
         private ToolStripMenuItem toolsToolStripMenuItem;
         private ToolStripMenuItem tXPKCreatorToolStripMenuItem;
         private ToolStripMenuItem m3MPCreatorToolStripMenuItem;
+        private ToolStripMenuItem searchToolStripMenuItem;
+        private ToolStripTextBox searchToolStripTextBox;
     }
 }

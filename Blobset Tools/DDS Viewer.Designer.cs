@@ -28,18 +28,23 @@
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(DDS_Viewer));
             statusStrip1 = new StatusStrip();
             toolStripStatusLabel1 = new ToolStripStatusLabel();
             pictureBox1 = new PictureBox();
             menuStrip1 = new MenuStrip();
-            optionsToolStripMenuItem = new ToolStripMenuItem();
+            gridToolStripMenuItem = new ToolStripMenuItem();
+            toolStripComboBox = new ToolStripComboBox();
+            contextMenuStrip1 = new ContextMenuStrip(components);
             flipImageToolStripMenuItem = new ToolStripMenuItem();
-            gridLightDarkToolStripMenuItem = new ToolStripMenuItem();
-            toolStripComboBox1 = new ToolStripComboBox();
+            extractToolStripMenuItem = new ToolStripMenuItem();
+            pngFileToolStripMenuItem = new ToolStripMenuItem();
+            saveFileDialog = new SaveFileDialog();
             statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             menuStrip1.SuspendLayout();
+            contextMenuStrip1.SuspendLayout();
             SuspendLayout();
             // 
             // statusStrip1
@@ -63,58 +68,73 @@
             // 
             pictureBox1.BackgroundImage = Properties.Resources.grid_light;
             pictureBox1.Dock = DockStyle.Fill;
-            pictureBox1.Location = new Point(0, 27);
+            pictureBox1.Location = new Point(0, 28);
             pictureBox1.Margin = new Padding(4);
             pictureBox1.Name = "pictureBox1";
-            pictureBox1.Size = new Size(676, 418);
+            pictureBox1.Size = new Size(676, 417);
             pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox1.TabIndex = 1;
             pictureBox1.TabStop = false;
+            pictureBox1.MouseClick += pictureBox1_MouseClick;
             // 
             // menuStrip1
             // 
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { optionsToolStripMenuItem, toolStripComboBox1 });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { gridToolStripMenuItem, toolStripComboBox });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Padding = new Padding(7, 2, 0, 2);
-            menuStrip1.Size = new Size(676, 27);
+            menuStrip1.Size = new Size(676, 28);
             menuStrip1.TabIndex = 2;
             menuStrip1.Text = "menuStrip1";
             // 
-            // optionsToolStripMenuItem
+            // gridToolStripMenuItem
             // 
-            optionsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { flipImageToolStripMenuItem, gridLightDarkToolStripMenuItem });
-            optionsToolStripMenuItem.Name = "optionsToolStripMenuItem";
-            optionsToolStripMenuItem.Size = new Size(61, 23);
-            optionsToolStripMenuItem.Text = "Options";
+            gridToolStripMenuItem.CheckOnClick = true;
+            gridToolStripMenuItem.Image = Properties.Resources.grid_light;
+            gridToolStripMenuItem.Name = "gridToolStripMenuItem";
+            gridToolStripMenuItem.Size = new Size(124, 24);
+            gridToolStripMenuItem.Text = "Grid (Light/Dark";
+            gridToolStripMenuItem.Click += gridToolStripMenuItem_Click;
+            // 
+            // toolStripComboBox
+            // 
+            toolStripComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            toolStripComboBox.DropDownWidth = 100;
+            toolStripComboBox.Items.AddRange(new object[] { "Normal", "StretchImage", "AutoSize", "CenterImage", "Zoom" });
+            toolStripComboBox.Name = "toolStripComboBox";
+            toolStripComboBox.Size = new Size(116, 24);
+            toolStripComboBox.SelectedIndexChanged += toolStripComboBox_SelectedIndexChanged;
+            // 
+            // contextMenuStrip1
+            // 
+            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { flipImageToolStripMenuItem, extractToolStripMenuItem });
+            contextMenuStrip1.Name = "contextMenuStrip1";
+            contextMenuStrip1.Size = new Size(130, 48);
             // 
             // flipImageToolStripMenuItem
             // 
-            flipImageToolStripMenuItem.CheckOnClick = true;
             flipImageToolStripMenuItem.Image = Properties.Resources.flip_image_32;
             flipImageToolStripMenuItem.Name = "flipImageToolStripMenuItem";
-            flipImageToolStripMenuItem.Size = new Size(184, 26);
+            flipImageToolStripMenuItem.Size = new Size(129, 22);
             flipImageToolStripMenuItem.Text = "Flip Image";
             flipImageToolStripMenuItem.Click += flipImageToolStripMenuItem_Click;
             // 
-            // gridLightDarkToolStripMenuItem
+            // extractToolStripMenuItem
             // 
-            gridLightDarkToolStripMenuItem.CheckOnClick = true;
-            gridLightDarkToolStripMenuItem.Image = Properties.Resources.grid_light;
-            gridLightDarkToolStripMenuItem.Name = "gridLightDarkToolStripMenuItem";
-            gridLightDarkToolStripMenuItem.Size = new Size(184, 26);
-            gridLightDarkToolStripMenuItem.Text = "Grid (Light/Dark)";
-            gridLightDarkToolStripMenuItem.Click += gridLightDarkToolStripMenuItem_Click;
+            extractToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { pngFileToolStripMenuItem });
+            extractToolStripMenuItem.Image = Properties.Resources.extract_32;
+            extractToolStripMenuItem.Name = "extractToolStripMenuItem";
+            extractToolStripMenuItem.Size = new Size(129, 22);
+            extractToolStripMenuItem.Text = "Extract";
             // 
-            // toolStripComboBox1
+            // pngFileToolStripMenuItem
             // 
-            toolStripComboBox1.DropDownStyle = ComboBoxStyle.DropDownList;
-            toolStripComboBox1.DropDownWidth = 100;
-            toolStripComboBox1.Items.AddRange(new object[] { "Normal", "StretchImage", "AutoSize", "CenterImage", "Zoom" });
-            toolStripComboBox1.Name = "toolStripComboBox1";
-            toolStripComboBox1.Size = new Size(116, 23);
-            toolStripComboBox1.SelectedIndexChanged += toolStripComboBox1_SelectedIndexChanged;
+            pngFileToolStripMenuItem.Image = Properties.Resources.png_32;
+            pngFileToolStripMenuItem.Name = "pngFileToolStripMenuItem";
+            pngFileToolStripMenuItem.Size = new Size(119, 22);
+            pngFileToolStripMenuItem.Text = "PNG File";
+            pngFileToolStripMenuItem.Click += pngFileToolStripMenuItem_Click;
             // 
             // DDS_Viewer
             // 
@@ -135,6 +155,7 @@
             ((System.ComponentModel.ISupportInitialize)pictureBox1).EndInit();
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
+            contextMenuStrip1.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
 
@@ -146,9 +167,12 @@
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
         private System.Windows.Forms.MenuStrip menuStrip1;
-        private System.Windows.Forms.ToolStripMenuItem optionsToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem flipImageToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem gridLightDarkToolStripMenuItem;
-        private System.Windows.Forms.ToolStripComboBox toolStripComboBox1;
+        private System.Windows.Forms.ToolStripMenuItem gridToolStripMenuItem;
+        private System.Windows.Forms.ToolStripComboBox toolStripComboBox;
+        private ContextMenuStrip contextMenuStrip1;
+        private ToolStripMenuItem flipImageToolStripMenuItem;
+        private ToolStripMenuItem extractToolStripMenuItem;
+        private ToolStripMenuItem pngFileToolStripMenuItem;
+        private SaveFileDialog saveFileDialog;
     }
 }

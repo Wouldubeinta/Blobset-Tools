@@ -45,6 +45,8 @@ namespace Blobset_Tools
 
         public struct DDSInfo
         {
+            public int Width;
+            public int Height;
             public int Size;
             public int Offset;
             public int Length;

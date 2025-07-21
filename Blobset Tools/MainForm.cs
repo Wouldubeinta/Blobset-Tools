@@ -29,9 +29,7 @@ namespace Blobset_Tools
         private void MainForm_Load(object sender, EventArgs e)
         {
             foreach (string line in UI.LoadingText)
-            {
                 fileInfo_richTextBox.AppendText(line);
-            }
 
             string gameVersion = string.Empty;
             int gameID = Properties.Settings.Default.GameID;
@@ -126,7 +124,6 @@ namespace Blobset_Tools
                     icon = 5;
 
                 lvi[i] = new ListViewItem { ImageIndex = icon, Text = Global.filelist[i].FileName };
-                lvi[i].Tag = Global.filelist[i].MappingIndex;
             }
 
             AddItems(lvi);
@@ -145,24 +142,24 @@ namespace Blobset_Tools
 
         private void files_listView_MouseClick(object sender, MouseEventArgs e)
         {
-            if (Global.fileIndex != -1)
+            if (e.Button == MouseButtons.Right)
             {
-                if (e.Button == MouseButtons.Right)
-                {
-                    if (Global.filelist == null)
-                        return;
+                if (Global.filelist == null)
+                    return;
 
-                    string ext = Path.GetExtension(Global.filelist[Global.fileIndex].FilePath);
+                if (Global.fileIndex == -1)
+                    return;
 
-                    if (ext == ".dds")
-                        extractImage_contextMenuStrip.Show(Cursor.Position);
-                    else if (ext == ".wem")
-                        extractFile_contextMenuStrip.Show(Cursor.Position);
-                    else if (ext == ".bnk")
-                        extractFile_contextMenuStrip.Show(Cursor.Position);
-                    else if (ext == ".dat")
-                        extractFile_contextMenuStrip.Show(Cursor.Position);
-                }
+                string ext = Path.GetExtension(Global.filelist[Global.fileIndex].FilePath);
+
+                if (ext == ".dds")
+                    extractImage_contextMenuStrip.Show(Cursor.Position);
+                else if (ext == ".wem")
+                    extractFile_contextMenuStrip.Show(Cursor.Position);
+                else if (ext == ".bnk")
+                    extractFile_contextMenuStrip.Show(Cursor.Position);
+                else if (ext == ".dat")
+                    extractFile_contextMenuStrip.Show(Cursor.Position);
             }
         }
 
@@ -170,9 +167,11 @@ namespace Blobset_Tools
         {
             try
             {
-                
                 Global.fileIndex = UI.getLVSelectedIndex(files_listView);
                 fileInfo_richTextBox.Clear();
+
+                if (Global.filelist == null)
+                    return;
 
                 if (Global.fileIndex == -1)
                     return;
@@ -188,8 +187,12 @@ namespace Blobset_Tools
 
                 if (type == ".dds")
                 {
+                    if (dds_pictureBox.Image != null)
+                        dds_pictureBox.Image.Dispose();
+
                     Structs.DDSInfo ddsInfo = new();
-                    Bitmap bitmap = UI.DDStoBitmap(UI.GetDDSData(Global.filelist), ref ddsInfo);
+                    byte[] ddsData = UI.GetDDSData(Global.filelist);
+                    Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo, true);
 
                     fileInfo_richTextBox.AppendText("*** DDS Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
@@ -222,15 +225,13 @@ namespace Blobset_Tools
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText("Format: " + ddsInfo.PFormat.ToString() + " " + ddsInfo.IFormat.ToString());
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("Height: " + bitmap.Height.ToString());
+                    fileInfo_richTextBox.AppendText("Height: " + ddsInfo.Height.ToString());
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("Width: " + bitmap.Width.ToString());
+                    fileInfo_richTextBox.AppendText("Width: " + ddsInfo.Width.ToString());
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText("MipMaps: 1 / " + ddsInfo.MipMap.ToString());
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText("Size: " + Utilities.FormatSize((ulong)ddsInfo.Size).ToString());
-
-                    dds_pictureBox.Image = bitmap;
                 }
                 else if (type == ".txpk")
                 {
@@ -438,13 +439,12 @@ namespace Blobset_Tools
 
         private void files_listView_MouseDoubleClick(object sender, MouseEventArgs e)
         {
-            if (Global.fileIndex != -1) 
+            if (Global.fileIndex != -1)
             {
-                string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + Global.filelist[Global.fileIndex].FolderHash + @"\" + Global.filelist[Global.fileIndex].FileHash;
-
                 if (Global.filelist == null)
                     return;
 
+                string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + Global.filelist[Global.fileIndex].FolderHash + @"\" + Global.filelist[Global.fileIndex].FileHash;
                 string ext = Path.GetExtension(Global.filelist[Global.fileIndex].FilePath);
 
                 if (ext == ".txpk")
@@ -735,7 +735,7 @@ namespace Blobset_Tools
             updateFileMappingDataToolStripMenuItem.Enabled = true;
             files_listView.Enabled = true;
 
-            if (Modify_bgw != null) { Modify_bgw.Dispose(); Modify_bgw = null;}
+            if (Modify_bgw != null) { Modify_bgw.Dispose(); Modify_bgw = null; }
         }
 
         private void blobsetCompressionToolStripMenuItem_Click(object sender, EventArgs e)
@@ -845,28 +845,7 @@ namespace Blobset_Tools
             saveFileDialog.Dispose();
         }
 
-        private void pngFileToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            List<Structs.FileIndexInfo> list = (List<Structs.FileIndexInfo>)folder_treeView.SelectedNode.Tag;
-            string path = list[Global.fileIndex].FilePath;
-
-            saveFileDialog.Title = "Save PNG File";
-            saveFileDialog.Filter = "PNG" + " File|*.png";
-            saveFileDialog.DefaultExt = "png";
-            saveFileDialog.FileName = Path.GetFileNameWithoutExtension(path);
-
-            if (saveFileDialog.ShowDialog() == DialogResult.OK)
-            {
-                dds_pictureBox.Image.Save(saveFileDialog.FileName);
-
-                fileInfo_richTextBox.Clear();
-                fileInfo_richTextBox.AppendText("PNG File has been saved to - " + saveFileDialog.FileName);
-                MessageBox.Show("PNG File has been saved to - " + saveFileDialog.FileName, "Save PNG File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
-            }
-            saveFileDialog.Dispose();
-        }
-
-        private void extractToolStripMenuItem1_Click(object sender, EventArgs e)
+        private void extractToolStripMenuItem_Click(object sender, EventArgs e)
         {
             List<Structs.FileIndexInfo> list = (List<Structs.FileIndexInfo>)folder_treeView.SelectedNode.Tag;
 
@@ -932,6 +911,66 @@ namespace Blobset_Tools
             fileInfo_richTextBox.Clear();
             fileInfo_richTextBox.AppendText("File log saved to - " + Global.currentPath + @"\FileLog.txt");
             status_Label.Text = "File log saved to - " + Global.currentPath + @"\FileLog.txt";
+        }
+
+        private void Search()
+        {
+            bool valueResult = true;
+
+            try
+            {
+                int filesCount = files_listView.Items.Count;
+                int fileIndex = UI.getLVSelectedIndex(files_listView);
+                int index = fileIndex + 1;
+
+                if (fileIndex == 0)
+                    index = 0;
+
+                if (index > (fileIndex + 1))
+                    index = 0;
+
+                for (int i = index; i < filesCount; i++)
+                {
+                    if (files_listView.Items[i].Text.Contains(searchToolStripTextBox.Text))
+                    {
+                        files_listView.Focus();
+                        files_listView.Items[i].Focused = true;
+                        files_listView.Items[i].Selected = true;
+                        files_listView.EnsureVisible(i);
+                        files_listView.Refresh();
+                        valueResult = false;
+                        break;
+                    }
+                }
+                if (valueResult)
+                {
+                    files_listView.Focus();
+                    files_listView.Items[0].Focused = true;
+                    files_listView.Items[0].Selected = true;
+                    files_listView.Refresh();
+                    MessageBox.Show("Could not find the item", "No Results Found", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+        }
+
+        private void searchToolStripTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (files_listView.Items.Count > 0) 
+            {
+                if (e.KeyValue == (char)Keys.Enter)
+                    Search();
+            }
+        }
+
+        private void searchToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (files_listView.Items.Count > 0)
+                Search();
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
