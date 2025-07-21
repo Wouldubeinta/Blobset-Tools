@@ -923,10 +923,7 @@ namespace Blobset_Tools
                 int fileIndex = UI.getLVSelectedIndex(files_listView);
                 int index = fileIndex + 1;
 
-                if (fileIndex == 0)
-                    index = 0;
-
-                if (index > (fileIndex + 1))
+                if (index == filesCount)
                     index = 0;
 
                 for (int i = index; i < filesCount; i++)
