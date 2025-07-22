@@ -65,6 +65,7 @@ Once done, go to the Blobset Tools, click on **"Tools->M3MP Creator"**. Once loa
 ![enter image description here](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/9.jpg?raw=true)
 
 **Options:**
+
 ![enter image description here](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/10.jpg?raw=true)
 
  - **Blobset Compression** - Not used at the moment, the files are created
