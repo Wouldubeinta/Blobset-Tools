@@ -87,6 +87,7 @@ Once done, go to the Blobset Tools, click on **"Tools->M3MP Creator"**. Once loa
  - **Skip Unknown Files** - If ticked, this will skip unknown file types
    like meshes, animations, ect..., which haven't been mapped yet.
 
+   
 **Special Thanks To:**
 BigAnt for the support.
 Luigi Auriemma for he's expertise over the year's.
