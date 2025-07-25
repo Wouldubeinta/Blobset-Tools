@@ -94,6 +94,7 @@ namespace Blobset_Tools
 
             string progress = string.Empty;
             string _filePath = string.Empty;
+            int chunkSize = 262144;
             bool error = false;
 
             try
@@ -141,7 +142,8 @@ namespace Blobset_Tools
                 List<int> vramUncompressedSize = [];
                 List<int> headerIndex = [];
 
-                int pathRemoveLength = Global.currentPath.Length + @"\games\".Length + Properties.Settings.Default.GameName.Length + @"\mods\".Length;
+                string filePathRemove = Global.currentPath + "\\games\\" + Properties.Settings.Default.GameName + "\\mods\\";
+                int pathRemoveLength = filePathRemove.Length;
 
                 string gameLocation = Path.GetDirectoryName(blobsetFile) + @"\";
 
@@ -152,7 +154,7 @@ namespace Blobset_Tools
                     if (fm == null)
                     {
                         error = true;
-                        MessageBox.Show(Path.GetFileName(ddsfileList[i]) + " - fileIndex can't be found, make sure the dds filename or location is correct", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(ddsfileList[i] + " - fileIndex can't be found, make sure the dds filename or location is correct", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return error;
                     }
 
@@ -164,7 +166,7 @@ namespace Blobset_Tools
                     if (File.Exists(filePath))
                         File.Delete(filePath);
 
-                    writer = new (filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                    writer = new(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
                     Mini_TXPK mini_TXPK = new();
                     mini_TXPK.Serialize(ddsfileList[i], ddsfileList[i].Remove(0, pathRemoveLength), writer);
@@ -178,12 +180,16 @@ namespace Blobset_Tools
                     int chunkCount = Utilities.ChunkAmount(vramUncompSize);
                     long[] chunkSizes = Utilities.ChunkSizes(vramUncompSize, chunkCount);
 
-                    Reader? br = new (ddsfileList[i]);
+                    Reader? br = new(ddsfileList[i]);
 
-                    for (int j = 0; j < chunkCount; j++) 
+                    for (int j = 0; j < chunkCount; j++)
                     {
                         byte[] ddsChunkData = br.ReadBytes((int)chunkSizes[j]);
-                        ZSTD_IO.CompressAndWrite(ddsChunkData, writer, (int)chunkSizes[j]);
+
+                        if ((int)chunkSizes[j] != chunkSize)
+                            ZSTD_IO.CompressAndWrite(ddsChunkData, writer, (int)chunkSizes[j]);
+                        else
+                            IO.ReadWriteModifyData(ddsChunkData, writer, (int)chunkSizes[j]);
                     }
 
                     vramCompressedSize.Add((int)Utilities.FileInfo(filePath) - mainSize);
@@ -201,7 +207,7 @@ namespace Blobset_Tools
 
                 for (int i = 0; i < txpkListLength; i++)
                 {
-                    if (!File.Exists(txpkfileList[i].Replace(".txpk", ".xml"))) 
+                    if (!File.Exists(txpkfileList[i].Replace(".txpk", ".xml")))
                     {
                         error = false;
                         MessageBox.Show("Can't find TXPK xml info - " + txpkfileList[i].Replace(".txpk", ".xml"), "XML File Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -209,22 +215,37 @@ namespace Blobset_Tools
                     }
 
                     ModifyFileInfo txpkXmlInfo = IO.XmlDeserialize<ModifyFileInfo>(txpkfileList[i].Replace(".txpk", ".xml"));
-                    FileMapping fmIndex = Utilities.GetFileMappingIndex(txpkXmlInfo.Index, fileMapping);
 
-                    string folderName = fmIndex.Entries[0].FolderHash;
-                    string fileName = fmIndex.Entries[0].FileNameHash;
+                    if (txpkXmlInfo == null)
+                    {
+                        error = false;
+                        MessageBox.Show(txpkfileList[i].Replace(".txpk", ".xml") + " - XmlDeserialize failed.", "Modify XML Info Was Null", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return error;
+                    }
+
+                    FileMapping fm = Utilities.GetFileMappingIndex(txpkXmlInfo.Index, fileMapping);
+
+                    if (fm == null)
+                    {
+                        error = true;
+                        MessageBox.Show(txpkfileList[i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return error;
+                    }
+
+                    string folderName = fm.Entries[0].FolderHash;
+                    string fileName = fm.Entries[0].FileNameHash;
                     string filePath = gameLocation + folderName + @"\" + fileName;
                     _filePath = filePath;
 
                     if (File.Exists(filePath))
                         File.Delete(filePath);
 
-                    Reader? mainBr = new (txpkfileList[i]);
+                    Reader? mainBr = new(txpkfileList[i]);
 
-                    TXPK txpk = new ();
+                    TXPK txpk = new();
                     txpk.Deserialize(mainBr);
 
-                    writer = new (filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                    writer = new(filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
                     txpk.Serialize(writer);
 
@@ -234,13 +255,13 @@ namespace Blobset_Tools
                     int vramChunkCount = Utilities.ChunkAmount(txpkXmlInfo.VramUnCompressedSize);
                     long[] vramChunkSizes = Utilities.ChunkSizes(txpkXmlInfo.VramUnCompressedSize, vramChunkCount);
 
-                    Reader? txpkHeaderBr = new (filePath);
+                    Reader? txpkHeaderBr = new(filePath);
 
                     writer.Position = 0;
 
                     int _mainCompressedSize = 0;
 
-                    for (int j = 0; j < mainChunkCount; j++) 
+                    for (int j = 0; j < mainChunkCount; j++)
                     {
                         byte[] txpkMainChunkData = txpkHeaderBr.ReadBytes((int)mainChunkSizes[j]);
                         _mainCompressedSize += ZSTD_IO.CompressAndWrite(txpkMainChunkData, writer, (int)mainChunkSizes[j]);
@@ -254,7 +275,11 @@ namespace Blobset_Tools
                     for (int j = 0; j < vramChunkCount; j++)
                     {
                         byte[] txpkVramChunkData = mainBr.ReadBytes((int)vramChunkSizes[j]);
-                        ZSTD_IO.CompressAndWrite(txpkVramChunkData, writer, (int)vramChunkSizes[j]);
+
+                        if ((int)vramChunkSizes[j] != chunkSize)
+                            ZSTD_IO.CompressAndWrite(txpkVramChunkData, writer, (int)vramChunkSizes[j]);
+                        else
+                            IO.ReadWriteModifyData(txpkVramChunkData, writer, (int)vramChunkSizes[j]);
                     }
 
                     int _vramCompressedSize = (int)Utilities.FileInfo(filePath) - _mainCompressedSize;
@@ -279,40 +304,50 @@ namespace Blobset_Tools
 
                     ModifyFileInfo m3mpFileInfo = IO.XmlDeserialize<ModifyFileInfo>(m3mpfileList[i].Replace(".m3mp", ".xml"));
 
-                    int mainSize = (int)Utilities.FileInfo(m3mpfileList[i]);
-
-                    FileMapping fmIndex = Utilities.GetFileMappingIndex(m3mpFileInfo.Index, fileMapping);
-
-                    if (fmIndex == null)
+                    if (m3mpFileInfo == null)
                     {
-                        error = true;
-                        MessageBox.Show(Path.GetFileName(m3mpfileList[i]) + " - fileIndex can't be found, make sure it's correct ", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        error = false;
+                        MessageBox.Show(m3mpfileList[i].Replace(".m3mp", ".xml") + " - XmlDeserialize failed.", "Modify XML Info Was Null", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return error;
                     }
 
-                    string folderName = fmIndex.Entries[0].FolderHash;
-                    string fileName = fmIndex.Entries[0].FileNameHash;
+                    FileMapping fm = Utilities.GetFileMappingIndex(m3mpFileInfo.Index, fileMapping);
+
+                    if (fm == null)
+                    {
+                        error = true;
+                        MessageBox.Show(m3mpfileList[i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return error;
+                    }
+
+                    string folderName = fm.Entries[0].FolderHash;
+                    string fileName = fm.Entries[0].FileNameHash;
                     string filePath = gameLocation + folderName + @"\" + fileName;
                     _filePath = filePath;
 
+                    int mainSize = (int)Utilities.FileInfo(m3mpfileList[i]);
                     int mainChunkCount = Utilities.ChunkAmount(mainSize);
                     long[] mainChunkSizes = Utilities.ChunkSizes(mainSize, mainChunkCount);
 
-                    writer = new (filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                    writer = new(filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
                     if (!m3mpFileInfo.IsCompressed)
                     {
-                        for (int j = 0; j < mainChunkCount; j++) 
+                        for (int j = 0; j < mainChunkCount; j++)
                         {
-                            byte[] tmpChunkData = br.ReadBytes((int)mainChunkSizes[j]);
-                            IO.ReadWriteData(tmpChunkData, writer, (int)mainChunkSizes[j]);
+                            byte[] m3mpChunkData = br.ReadBytes((int)mainChunkSizes[j]);
+
+                            if ((int)mainChunkSizes[j] != chunkSize)
+                                ZSTD_IO.CompressAndWrite(m3mpChunkData, writer, (int)mainChunkSizes[j]);
+                            else
+                                IO.ReadWriteModifyData(m3mpChunkData, writer, (int)mainChunkSizes[j]);
                         }
 
                         mainCompressedSize.Add(mainSize);
                     }
                     else
                     {
-                        for (int j = 0; j < mainChunkCount; j++) 
+                        for (int j = 0; j < mainChunkCount; j++)
                         {
                             byte[] m3mpChunkData = br.ReadBytes((int)mainChunkSizes[j]);
                             ZSTD_IO.CompressAndWrite(m3mpChunkData, writer, (int)mainChunkSizes[j]);
@@ -343,7 +378,7 @@ namespace Blobset_Tools
                     if (fmIndex == null)
                     {
                         error = true;
-                        MessageBox.Show(Path.GetFileName(wemfileList[i]) + " - fileIndex can't be found, make sure it's correct ", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(wemfileList[i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return error;
                     }
 
@@ -365,7 +400,7 @@ namespace Blobset_Tools
                     Reader? br = new(wemfileList[i]);
                     writer = new(filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
-                    for (int j = 0; j < mainChunkCount; j++) 
+                    for (int j = 0; j < mainChunkCount; j++)
                     {
                         byte[] tmpChunkData = br.ReadBytes((int)mainChunkSizes[j]);
                         IO.ReadWriteData(tmpChunkData, writer, (int)mainChunkSizes[j]);
@@ -389,7 +424,7 @@ namespace Blobset_Tools
                     if (fmIndex == null)
                     {
                         error = true;
-                        MessageBox.Show(Path.GetFileName(bnkfileList[i]) + " - fileIndex can't be found, make sure it's correct ", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(bnkfileList[i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return error;
                     }
 

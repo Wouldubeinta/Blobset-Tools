@@ -31,7 +31,7 @@ namespace Blobset_Tools
 
         private void createTXPKToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (File.Exists(Global.currentPath + @"\txpk\TXPK_List.xml")) 
+            if (File.Exists(Global.currentPath + @"\txpk\TXPK_List.xml"))
             {
                 TXPK_Xml_In = IO.XmlDeserialize<ExtractFileInfo>(Global.currentPath + @"\txpk\TXPK_List.xml");
 
@@ -95,7 +95,7 @@ namespace Blobset_Tools
             if (TXPK_Create_bgw != null) { TXPK_Create_bgw.Dispose(); TXPK_Create_bgw = null; }
         }
 
-        private bool CreateTXPK() 
+        private bool CreateTXPK()
         {
             Reader? br = null;
             FileStream? writer = null;
@@ -105,15 +105,12 @@ namespace Blobset_Tools
 
             try
             {
-                int totalFileSize = 0;
-                long[]? chunkSizes = null;
-
                 txpk.Entries = new TXPK.Entry[TXPK_Xml_In.Entries.Length];
                 txpk.FilesCount = (uint)TXPK_Xml_In.Entries.Length;
 
                 int dataOffset = 0;
 
-                for (int i = 0; i < TXPK_Xml_In.Entries.Length; i++) 
+                for (int i = 0; i < TXPK_Xml_In.Entries.Length; i++)
                 {
                     txpk.Entries[i] = new();
                     string filePath = Global.currentPath + @"\txpk\" + TXPK_Xml_In.Entries[i].FilePath;
@@ -154,7 +151,7 @@ namespace Blobset_Tools
 
                 writer = new FileStream(saveFileDialog1.FileName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
-                for (int i = 0; i < TXPK_Xml_In.Entries.Length; i++) 
+                for (int i = 0; i < TXPK_Xml_In.Entries.Length; i++)
                 {
                     string filePath = Global.currentPath + @"\txpk\" + TXPK_Xml_In.Entries[i].FilePath;
                     br = new Reader(filePath);
@@ -188,7 +185,7 @@ namespace Blobset_Tools
                 result = true;
                 MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
-            finally 
+            finally
             {
                 if (br != null) { br.Close(); br = null; }
                 if (writer != null) { writer.Dispose(); writer = null; }

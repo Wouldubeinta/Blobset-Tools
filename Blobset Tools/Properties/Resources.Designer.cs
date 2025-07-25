@@ -59,31 +59,107 @@ namespace Blobset_Tools.Properties {
                 resourceCulture = value;
             }
         }
-
+        
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap close_32
-        {
-            get
-            {
+        internal static System.Drawing.Bitmap Blobset_Tools {
+            get {
+                object obj = ResourceManager.GetObject("Blobset_Tools", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap bnk_32 {
+            get {
+                object obj = ResourceManager.GetObject("bnk_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap close_32 {
+            get {
                 object obj = ResourceManager.GetObject("close_32", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-
+        
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap save_32
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("save_32", resourceCulture);
+        internal static System.Drawing.Bitmap compression_32 {
+            get {
+                object obj = ResourceManager.GetObject("compression_32", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap dat_32 {
+            get {
+                object obj = ResourceManager.GetObject("dat_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap dds_32 {
+            get {
+                object obj = ResourceManager.GetObject("dds_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap extract_32 {
+            get {
+                object obj = ResourceManager.GetObject("extract_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap file_32 {
+            get {
+                object obj = ResourceManager.GetObject("file_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap flip_image_32 {
+            get {
+                object obj = ResourceManager.GetObject("flip_image_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap folder_32 {
+            get {
+                object obj = ResourceManager.GetObject("folder_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
@@ -107,8 +183,7 @@ namespace Blobset_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap loading_32
-        {
+        internal static System.Drawing.Bitmap loading_32 {
             get {
                 object obj = ResourceManager.GetObject("loading_32", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
@@ -118,10 +193,49 @@ namespace Blobset_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap mapping_32
-        {
+        internal static System.Drawing.Bitmap m3mp_32 {
+            get {
+                object obj = ResourceManager.GetObject("m3mp_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap mapping_32 {
             get {
                 object obj = ResourceManager.GetObject("mapping_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap png_32 {
+            get {
+                object obj = ResourceManager.GetObject("png_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap reset_32 {
+            get {
+                object obj = ResourceManager.GetObject("reset_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap save_32 {
+            get {
+                object obj = ResourceManager.GetObject("save_32", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -141,7 +255,7 @@ namespace Blobset_Tools.Properties {
         /// </summary>
         internal static System.Drawing.Bitmap steam_32 {
             get {
-                object obj = ResourceManager.GetObject("Steam_32", resourceCulture);
+                object obj = ResourceManager.GetObject("steam_32", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -149,178 +263,29 @@ namespace Blobset_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap compression_32
-        {
+        internal static System.Drawing.Bitmap txpk_32 {
             get {
-                object obj = ResourceManager.GetObject("compression_32", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap extract_32
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("extract_32", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap reset_32
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("reset_32", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap dds_32
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("dds_32", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap png_32
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("png_32", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap folder_32
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("folder_32", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap wouldy_mods
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("wouldy_mods", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap txpk_32
-        {
-            get
-            {
                 object obj = ResourceManager.GetObject("txpk_32", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-
+        
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap Blobset_Tools
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("Blobset_Tools", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap flip_image_32
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("flip_image_32", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap m3mp_32
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("m3mp_32", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap file_32
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("file_32", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap dat_32
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("dat_32", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap wem_32
-        {
-            get
-            {
+        internal static System.Drawing.Bitmap wem_32 {
+            get {
                 object obj = ResourceManager.GetObject("wem_32", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-
+        
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap bnk_32
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("bnk_32", resourceCulture);
+        internal static System.Drawing.Bitmap wouldy_mods {
+            get {
+                object obj = ResourceManager.GetObject("wouldy_mods", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

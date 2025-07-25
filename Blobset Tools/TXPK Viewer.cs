@@ -2,7 +2,6 @@
 using PackageIO;
 using Pfim;
 using System.ComponentModel;
-using System.Formats.Asn1;
 
 namespace Blobset_Tools
 {
@@ -121,7 +120,7 @@ namespace Blobset_Tools
                 ddsFormat = ddsInfo.PFormat;
                 mipmapCount = ddsInfo.MipMap + 1;
 
-                Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo, false);
+                Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo);
 
                 if (bitmap != null)
                 {
@@ -142,6 +141,8 @@ namespace Blobset_Tools
 
         private void extractTXPKToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            extractTXPK_fbd.SelectedPath = Global.currentPath + @"\txpk\";
+
             if (extractTXPK_fbd.ShowDialog() == DialogResult.OK)
             {
                 TXPKExtractBgw();
@@ -177,7 +178,7 @@ namespace Blobset_Tools
 
         private void TXPKDecompress_bgw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            if (!e.Cancelled) 
+            if (!e.Cancelled)
             {
                 status_Label.Text = "DDS TXPK has finished decompressing to a temp file for reading";
             }
@@ -188,7 +189,7 @@ namespace Blobset_Tools
             if (TXPKDecompress_bgw != null) { TXPKDecompress_bgw.Dispose(); }
         }
 
-        private bool TXPXDecompress() 
+        private bool TXPXDecompress()
         {
             Reader? br = null;
             FileStream? fsWriter = null;
@@ -253,7 +254,7 @@ namespace Blobset_Tools
             files_listView.Enabled = false;
         }
 
-        private void TXPKExtract_bgw_DoWork(object sender, DoWorkEventArgs e) 
+        private void TXPKExtract_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
             bool errorCheck = ExtractTXPK();
 
@@ -272,7 +273,7 @@ namespace Blobset_Tools
 
         private void TXPKExtract_bgw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            if (!e.Cancelled) 
+            if (!e.Cancelled)
             {
                 status_Label.ForeColor = Color.DarkGreen;
                 status_Label.Text = "DDS TXPK has finished extracting.";
@@ -327,12 +328,12 @@ namespace Blobset_Tools
 
                     writer = new FileStream(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
-                    for (int i = 0; i < chunkCount; i++) 
+                    for (int i = 0; i < chunkCount; i++)
                     {
                         byte[] tmpChunkData = br.ReadBytes((int)chunkSizes[i]);
                         IO.ReadWriteData(tmpChunkData, writer, (int)chunkSizes[i]);
                     }
-    
+
                     txpkInfo.Entries[index] = new();
                     txpkInfo.Entries[index].FilePath = entry.DDSFilePath.Replace(@"/", @"\") + ".dds";
 

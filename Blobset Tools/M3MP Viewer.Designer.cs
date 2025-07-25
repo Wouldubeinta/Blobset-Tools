@@ -75,7 +75,7 @@
             // status_Label
             // 
             status_Label.Name = "status_Label";
-            status_Label.Size = new Size(552, 17);
+            status_Label.Size = new Size(583, 17);
             status_Label.Spring = true;
             status_Label.TextAlign = ContentAlignment.MiddleLeft;
             // 
@@ -126,6 +126,10 @@
             files_listView.TabIndex = 0;
             files_listView.UseCompatibleStateImageBehavior = false;
             files_listView.View = View.List;
+            // 
+            // extractM3MP_fbd
+            // 
+            extractM3MP_fbd.Description = "Select the m3mp folder in the root directory of the Blobset Tools.";
             // 
             // M3MP_Viewer
             // 

@@ -1,6 +1,7 @@
 using BlobsetIO;
 using System.ComponentModel;
 using System.Reflection;
+using WEMSharp;
 
 namespace Blobset_Tools
 {
@@ -57,7 +58,7 @@ namespace Blobset_Tools
 
             if (fileMappingVersion != gameVersion || gameVersion == "0")
             {
-                if (gameID == (int)Enums.Game.AFLL & gameID == (int)Enums.Game.RLL2)
+                if (gameID == (int)Enums.Game.AFLL || gameID == (int)Enums.Game.RLL2)
                 {
                     updateFileMappingDataToolStripMenuItem_Click(sender, new EventArgs());
                     File.Delete(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\version.txt");
@@ -167,6 +168,8 @@ namespace Blobset_Tools
         {
             try
             {
+                dds_pictureBox.Image = Properties.Resources.Blobset_Tools;
+
                 Global.fileIndex = UI.getLVSelectedIndex(files_listView);
                 fileInfo_richTextBox.Clear();
 
@@ -187,12 +190,9 @@ namespace Blobset_Tools
 
                 if (type == ".dds")
                 {
-                    if (dds_pictureBox.Image != null)
-                        dds_pictureBox.Image.Dispose();
-
                     Structs.DDSInfo ddsInfo = new();
                     byte[] ddsData = UI.GetDDSData(Global.filelist);
-                    Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo, true);
+                    Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo);
 
                     fileInfo_richTextBox.AppendText("*** DDS Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
@@ -235,8 +235,6 @@ namespace Blobset_Tools
                 }
                 else if (type == ".txpk")
                 {
-                    dds_pictureBox.Image = Properties.Resources.Blobset_Tools;
-
                     fileInfo_richTextBox.AppendText("*** TXPK Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath);
@@ -287,8 +285,6 @@ namespace Blobset_Tools
                 }
                 else if (type == ".m3mp")
                 {
-                    dds_pictureBox.Image = Properties.Resources.Blobset_Tools;
-
                     fileInfo_richTextBox.AppendText("*** M3MP Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath);
@@ -342,8 +338,6 @@ namespace Blobset_Tools
                 }
                 else if (type == ".wem")
                 {
-                    dds_pictureBox.Image = Properties.Resources.Blobset_Tools;
-
                     fileInfo_richTextBox.AppendText("*** Wise Audio WEM Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath);
@@ -366,14 +360,24 @@ namespace Blobset_Tools
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
 
+                    WEMFile wem = new(filePath, WEMForcePacketFormat.NoForcePacketFormat);
+                    //wem.GenerateOGG(@"D:\test.ogg", @"D:\packed_codebooks_aoTuV_603.bin", false, false);
+                    //VorbisFile worbisFile = new(@"D:\test.ogg");
+                    //IO.ReadWritePCMData(@"D:\test.ogg", @"D:\test.pcm");
+                    //int b = 0;
+
                     fileInfo_richTextBox.AppendText("*** Wise Audio WEM Info ***");
+                    fileInfo_richTextBox.AppendText(Environment.NewLine);
+                    fileInfo_richTextBox.AppendText("WEM Channel Count: " + wem.Channels);
+                    fileInfo_richTextBox.AppendText(Environment.NewLine);
+                    fileInfo_richTextBox.AppendText("WEM Sample Rate: " + wem.SampleRate + " Hz");
+                    fileInfo_richTextBox.AppendText(Environment.NewLine);
+                    fileInfo_richTextBox.AppendText("WEM Average Bytes Per Second: " + Utilities.FormatSize(wem.AverageBytesPerSecond));
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText("WEM File Size: " + Utilities.FormatSize(MainUnCompressedSize));
                 }
                 else if (type == ".bnk")
                 {
-                    dds_pictureBox.Image = Properties.Resources.Blobset_Tools;
-
                     fileInfo_richTextBox.AppendText("*** Wise Audio BNK Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath);
@@ -402,8 +406,6 @@ namespace Blobset_Tools
                 }
                 else if (type == ".dat")
                 {
-                    dds_pictureBox.Image = Properties.Resources.Blobset_Tools;
-
                     fileInfo_richTextBox.AppendText("*** Unknown File DAT Location ***");
                     fileInfo_richTextBox.AppendText(Environment.NewLine);
                     fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath);
@@ -588,6 +590,8 @@ namespace Blobset_Tools
                 fileInfo_richTextBox.AppendText("Blobset file has finished extracting....");
                 MessageBox.Show(Properties.Settings.Default.GameName + " Blobset file has finished extracting", "Blobset Extraction", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
+            else
+                fileInfo_richTextBox.Clear();
 
             toolStripProgressBar.Value = 0;
             progressStripStatusLabel.Text = string.Empty;
@@ -597,6 +601,7 @@ namespace Blobset_Tools
             validateSteamGameFilesToolStripMenuItem.Enabled = true;
             updateFileMappingDataToolStripMenuItem.Enabled = true;
             files_listView.Enabled = true;
+            status_Label.ForeColor = Color.Black;
 
             if (Extract_bgw != null) { Extract_bgw.Dispose(); Extract_bgw = null; }
         }
@@ -653,6 +658,8 @@ namespace Blobset_Tools
                 fileInfo_richTextBox.AppendText("Creating New File Mapping has finished....");
                 MessageBox.Show("Creating New File Mapping has finished", "Creating New File Mapping", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
+            else
+                fileInfo_richTextBox.Clear();
 
             toolStripProgressBar.Value = 0;
             progressStripStatusLabel.Text = string.Empty;
@@ -662,6 +669,7 @@ namespace Blobset_Tools
             validateSteamGameFilesToolStripMenuItem.Enabled = true;
             updateFileMappingDataToolStripMenuItem.Enabled = true;
             files_listView.Enabled = true;
+            status_Label.ForeColor = Color.Black;
 
             if (FileMapping_bgw != null)
             {
@@ -725,6 +733,8 @@ namespace Blobset_Tools
                 fileInfo_richTextBox.AppendText("Mods have been added to the blobset....");
                 MessageBox.Show("Mods have been added to the blobset....", "Blobset Modify", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
+            else
+                fileInfo_richTextBox.Clear();
 
             toolStripProgressBar.Value = 0;
             progressStripStatusLabel.Text = string.Empty;
@@ -734,6 +744,7 @@ namespace Blobset_Tools
             validateSteamGameFilesToolStripMenuItem.Enabled = true;
             updateFileMappingDataToolStripMenuItem.Enabled = true;
             files_listView.Enabled = true;
+            status_Label.ForeColor = Color.Black;
 
             if (Modify_bgw != null) { Modify_bgw.Dispose(); Modify_bgw = null; }
         }
@@ -921,7 +932,10 @@ namespace Blobset_Tools
             {
                 int filesCount = files_listView.Items.Count;
                 int fileIndex = UI.getLVSelectedIndex(files_listView);
-                int index = fileIndex + 1;
+                int index = fileIndex;
+
+                if (fileIndex == -1)
+                    index = 0;
 
                 if (index == filesCount)
                     index = 0;
@@ -957,7 +971,7 @@ namespace Blobset_Tools
 
         private void searchToolStripTextBox_KeyDown(object sender, KeyEventArgs e)
         {
-            if (files_listView.Items.Count > 0) 
+            if (files_listView.Items.Count > 0)
             {
                 if (e.KeyValue == (char)Keys.Enter)
                     Search();

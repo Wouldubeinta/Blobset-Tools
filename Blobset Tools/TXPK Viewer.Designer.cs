@@ -102,7 +102,7 @@
             // 
             // extractTXPK_fbd
             // 
-            extractTXPK_fbd.Description = "Extract all the dds files and fileIndex.txt to a folder.";
+            extractTXPK_fbd.Description = "Select the txpk folder in the root directory of the Blobset Tools.";
             // 
             // menuStrip1
             // 
@@ -138,7 +138,7 @@
             // 
             DDSInfo_SSLabel.ForeColor = Color.Blue;
             DDSInfo_SSLabel.Name = "DDSInfo_SSLabel";
-            DDSInfo_SSLabel.Size = new Size(552, 17);
+            DDSInfo_SSLabel.Size = new Size(583, 17);
             DDSInfo_SSLabel.Spring = true;
             DDSInfo_SSLabel.TextAlign = ContentAlignment.MiddleRight;
             // 

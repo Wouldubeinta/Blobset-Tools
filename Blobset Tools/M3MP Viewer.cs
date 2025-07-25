@@ -127,9 +127,9 @@ namespace Blobset_Tools
             {
                 string m3mpName = Global.currentPath + @"\temp\" + Path.GetFileName(filename);
 
-                br = new (Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash);
+                br = new(Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash);
 
-                fsWriter = new (m3mpName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                fsWriter = new(m3mpName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
                 int i = 0;
 
@@ -183,6 +183,8 @@ namespace Blobset_Tools
 
         private void extractM3MPToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            extractM3MP_fbd.SelectedPath = Global.currentPath + @"\m3mp\";
+
             if (extractM3MP_fbd.ShowDialog() == DialogResult.OK)
                 M3MPExtractBGW();
         }

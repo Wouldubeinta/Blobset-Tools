@@ -1,4 +1,5 @@
 ﻿using BlobsetIO;
+using OggSharp;
 using PackageIO;
 using System.Xml;
 using System.Xml.Serialization;
@@ -45,7 +46,7 @@ namespace Blobset_Tools
 
             try
             {
-                writer = new (fileOut, FileMode.OpenOrCreate, FileAccess.Write);
+                writer = new(fileOut, FileMode.OpenOrCreate, FileAccess.Write);
 
                 int readCount = 0;
                 byte[] buffer = new byte[chunkSize];
@@ -131,7 +132,7 @@ namespace Blobset_Tools
         }
 
         /// <summary>
-        /// Read data from a Binary Reader and writes to file in chunks.
+        /// Read data from a Byte[] array and writes chunk to file.
         /// </summary>
         /// <param name="data">Input byte[] array.</param>
         /// <param name="writer">Output FileStream writer.</param>
@@ -158,6 +159,34 @@ namespace Blobset_Tools
         }
 
         /// <summary>
+        /// Read data from a Byte[] array and writes modify uncompressed data.
+        /// </summary>
+        /// <param name="data">Input byte[] array.</param>
+        /// <param name="writer">Output FileStream writer.</param>
+        /// <param name="chunkSize">Chunk size to write to file.</param>
+        /// <history>
+        /// [Wouldubeinta]		30/06/2025	Created
+        /// </history>
+        public static void ReadWriteModifyData(byte[] data, FileStream writer, int chunkSize = 262144)
+        {
+            try
+            {
+                int tmpSize = chunkSize;
+
+                if (chunkSize > data.Length)
+                    tmpSize = data.Length;
+
+                writer.Write(BitConverter.GetBytes(tmpSize + 4), 0, 4);
+                writer.Write(data, 0, tmpSize);
+                writer.Flush();
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + Extract.debugTest + " - " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+        }
+
+        /// <summary>
         /// Read data from a file path and writes to file in chunks.
         /// </summary>
         /// <param name="reader">Input Binary Reader stream.</param>
@@ -173,8 +202,8 @@ namespace Blobset_Tools
 
             try
             {
-                reader = new (fileIn);
-                writer = new (fileOut, FileMode.OpenOrCreate, FileAccess.Write);
+                reader = new(fileIn);
+                writer = new(fileOut, FileMode.OpenOrCreate, FileAccess.Write);
 
                 int readCount = 0;
                 byte[] buffer = new byte[chunkSize];
@@ -214,7 +243,7 @@ namespace Blobset_Tools
 
             try
             {
-                br = new (tmpFilePath);
+                br = new(tmpFilePath);
 
                 TXPK txpk = new();
                 txpk.Deserialize(br);
@@ -224,7 +253,7 @@ namespace Blobset_Tools
                     string ddsFilePath = entry.DDSFilePath.Replace("/", @"\") + ".dds";
                     string filePath = folderPath + ddsFilePath;
                     Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-                    fsWriter = new (filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                    fsWriter = new(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
                     br.Position = entry.DDSDataOffset + MainUncompressedSize;
 
@@ -270,7 +299,7 @@ namespace Blobset_Tools
 
             try
             {
-                memoryStream = new (buffer);
+                memoryStream = new(buffer);
 
                 for (int i = 0; i < data.Count; i++)
                     memoryStream.Write(data[i], 0, data[i].Length);
@@ -284,6 +313,45 @@ namespace Blobset_Tools
                 if (memoryStream != null) { memoryStream.Close(); memoryStream = null; }
             }
             return buffer;
+        }
+
+        /// <summary>
+        /// Read pcm data from a file path and writes to file in chunks.
+        /// </summary>
+        /// <param name="reader">Input Binary Reader stream.</param>
+        /// <param name="fileOut">Output file path.</param>
+        /// <param name="chunkSize">Chunk size to write to file.</param>
+        /// <history>
+        /// [Wouldubeinta]		30/06/2025	Created
+        /// </history>
+        public static void ReadWritePCMData(string fileIn, string fileOut, int chunkSize = 1000)
+        {
+            FileStream? writer = null;
+            VorbisFile? worbisFile = null;
+
+            try
+            {
+                writer = new(fileOut, FileMode.OpenOrCreate, FileAccess.Write);
+                worbisFile = new(fileIn);
+
+                int readCount = 0;
+                byte[] buffer = new byte[chunkSize];
+
+                while ((readCount = worbisFile.read(buffer, chunkSize, 0, 2, 1, [0])) != 0)
+                {
+                    writer.Write(buffer, 0, readCount);
+                    writer.Flush();
+                }
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (writer != null) { writer.Dispose(); writer = null; }
+                if (worbisFile != null) { worbisFile = null; }
+            }
         }
 
         /// <summary>
@@ -302,7 +370,7 @@ namespace Blobset_Tools
             try
             {
                 XmlSerializer serializer = new(typeof(T));
-                reader = new (fileIn);
+                reader = new(fileIn);
                 xmlData = (T)serializer.Deserialize(reader);
             }
             catch (Exception ex)
@@ -334,7 +402,7 @@ namespace Blobset_Tools
                 settings.Indent = true;
                 settings.OmitXmlDeclaration = true;
                 settings.NewLineHandling = NewLineHandling.None;
-                stringWriter = new ();
+                stringWriter = new();
                 XmlWriter writer = XmlWriter.Create(stringWriter, settings);
                 XmlSerializer serializer = new(typeof(T));
                 XmlSerializerNamespaces ns = new();

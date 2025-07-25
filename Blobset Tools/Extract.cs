@@ -1,7 +1,6 @@
 ﻿using BlobsetIO;
 using PackageIO;
 using System.ComponentModel;
-using System.IO;
 
 namespace Blobset_Tools
 {
@@ -110,7 +109,7 @@ namespace Blobset_Tools
                 BlobsetFile blobset = Global.blobsetHeaderData;
                 string folder = Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\data-0.blobset\";
 
-                if (Directory.Exists(folder)) 
+                if (Directory.Exists(folder))
                 {
                     Directory.Delete(folder, true);
                     Directory.CreateDirectory(folder);
@@ -131,7 +130,7 @@ namespace Blobset_Tools
                     if (File.Exists(filePath))
                     {
                         FileStream blobsetContentFs = new(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                        blobsetContent_br = new (blobsetContentFs);
+                        blobsetContent_br = new(blobsetContentFs);
 
                         uint mainCompressedSize = blobset.Entries[i].MainCompressedSize;
                         uint mainUnCompressedSize = blobset.Entries[i].MainUnCompressedSize;
@@ -141,7 +140,7 @@ namespace Blobset_Tools
 
                         if (blobsetContent_br.Length > 4)
                         {
-                            if (mainCompressedSize == mainUnCompressedSize & vramCompressedSize != 0)
+                            if (mainCompressedSize == mainUnCompressedSize && vramCompressedSize < vramUnCompressedSize)
                             {
                                 blobsetContent_br.Position = 20; // Offset to convant2 string.
 
@@ -159,7 +158,7 @@ namespace Blobset_Tools
                                     string ddsFilePathDir = folder + Path.GetDirectoryName(mini_TXPK.DDSFilePath.Replace("/", @"\"));
                                     Directory.CreateDirectory(ddsFilePathDir);
 
-                                    writer = new (ddsFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                                    writer = new(ddsFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
                                     while (blobsetContent_br.Position < blobsetContent_br.Length)
                                     {
@@ -183,8 +182,42 @@ namespace Blobset_Tools
                                     if (writer != null) { writer.Dispose(); writer = null; }
                                     progress = mini_TXPK.DDSFilePath.Replace("/", @"\");
                                 }
+                                {
+                                    blobsetContent_br.Position = 0;
+
+                                    if (!Properties.Settings.Default.SkipUnknown)
+                                    {
+                                        string unknownName = folder + @"\unknown\mainuncompressed_vramcompressed\" + i.ToString() + ".dat";
+                                        Directory.CreateDirectory(Path.GetDirectoryName(unknownName));
+                                        writer = new(unknownName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                                        writer.Write(blobsetContent_br.ReadBytes((int)mainUnCompressedSize), 0, (int)mainUnCompressedSize);
+                                        writer.Flush();
+
+                                        while (blobsetContent_br.Position < blobsetContent_br.Length)
+                                        {
+                                            int compressedSize = blobsetContent_br.ReadInt32();
+                                            int tmp = compressedSize -= 4;
+                                            compressedSize = tmp;
+
+                                            bool isCompressed = true;
+
+                                            byte[] unknownChunk = blobsetContent_br.ReadBytes(compressedSize);
+
+                                            byte[] ZstdMagicArray = [unknownChunk[0], unknownChunk[1], unknownChunk[2], unknownChunk[3]];
+                                            uint ZstdMagic = BitConverter.ToUInt32(ZstdMagicArray);
+
+                                            if (ZstdMagic != 4247762216)
+                                                isCompressed = false;
+
+                                            ZSTD_IO.DecompressAndWrite(unknownChunk, writer, isCompressed);
+                                        }
+
+                                        if (writer != null) { writer.Dispose(); writer = null; }
+                                        progress = @"\unknown\mainuncompressed_vramcompressed\" + i.ToString() + ".dat";
+                                    }
+                                }
                             }
-                            else if (mainCompressedSize == mainUnCompressedSize & vramCompressedSize == 0)
+                            else if (mainCompressedSize == mainUnCompressedSize && vramCompressedSize == 0)
                             {
                                 int magic = blobsetContent_br.ReadInt32();
                                 blobsetContent_br.Position = 0;
@@ -209,15 +242,48 @@ namespace Blobset_Tools
                                     default:
                                         if (!Properties.Settings.Default.SkipUnknown)
                                         {
-                                            string unknownName = folder + @"\unknown\uncompressed_no_header\" + i.ToString() + ".dat";
+                                            string unknownName = folder + @"\unknown\mainuncompressed\" + i.ToString() + ".dat";
                                             Directory.CreateDirectory(Path.GetDirectoryName(unknownName));
                                             IO.ReadWriteData(blobsetContent_br, unknownName);
-                                            progress = @"\unknown\uncompressed_no_header\" + i.ToString() + ".dat";
+                                            progress = @"\unknown\mainuncompressed\" + i.ToString() + ".dat";
                                         }
                                         break;
                                 }
                             }
-                            else if (mainCompressedSize < mainUnCompressedSize & vramCompressedSize == 0)
+                            else if (mainCompressedSize == mainUnCompressedSize && vramCompressedSize == vramUnCompressedSize)
+                            {
+                                blobsetContent_br.Position = 20; // Offset to convant2 string.
+
+                                if (blobsetContent_br.ReadString(4) == "conv") // Makes sure it's a mini DDS TXPK.
+                                {
+                                    blobsetContent_br.Position = 0;
+
+                                    Mini_TXPK? mini_TXPK = new();
+                                    mini_TXPK.Deserialize(blobsetContent_br);
+
+                                    if (Properties.Settings.Default.GameID == (int)Enums.Game.RL26)
+                                        mini_TXPK.DDSFilePath = mini_TXPK.DDSFilePath.Replace(".badds", ".dds");
+
+                                    string ddsFilePath = folder + mini_TXPK.DDSFilePath.Replace("/", @"\");
+                                    string ddsFilePathDir = folder + Path.GetDirectoryName(mini_TXPK.DDSFilePath.Replace("/", @"\"));
+                                    Directory.CreateDirectory(ddsFilePathDir);
+                                    IO.ReadWriteData(blobsetContent_br, ddsFilePath);
+                                    progress = mini_TXPK.DDSFilePath.Replace("/", @"\");
+                                }
+                                else
+                                {
+                                    blobsetContent_br.Position = 0;
+
+                                    if (!Properties.Settings.Default.SkipUnknown)
+                                    {
+                                        string unknownName = folder + @"\unknown\mainuncompressed_vramuncompressed\" + i.ToString() + ".dat";
+                                        Directory.CreateDirectory(Path.GetDirectoryName(unknownName));
+                                        IO.ReadWriteData(blobsetContent_br, unknownName);
+                                        progress = @"\unknown\mainuncompressed_vramuncompressed\" + i.ToString() + ".dat";
+                                    }
+                                }
+                            }
+                            else if (mainCompressedSize < mainUnCompressedSize && vramCompressedSize == 0)
                             {
                                 int compressedSize = blobsetContent_br.ReadInt32();
                                 int tmp = compressedSize -= 4;
@@ -244,7 +310,7 @@ namespace Blobset_Tools
 
                                         if (File.Exists(m3mpTempPath)) { File.Delete(m3mpTempPath); }
 
-                                        writer = new (m3mpTempPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                                        writer = new(m3mpTempPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
                                         while (blobsetContent_br.Position < blobsetContent_br.Length)
                                         {
@@ -274,10 +340,10 @@ namespace Blobset_Tools
                                     default:
                                         if (!Properties.Settings.Default.SkipUnknown)
                                         {
-                                            string unknownName = folder + @"\unknown\compressed_no_header\" + i.ToString() + ".dat";
+                                            string unknownName = folder + @"\unknown\maincompressed\" + i.ToString() + ".dat";
                                             Directory.CreateDirectory(Path.GetDirectoryName(unknownName));
 
-                                            writer = new (unknownName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                                            writer = new(unknownName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
                                             while (blobsetContent_br.Position < blobsetContent_br.Length)
                                             {
@@ -298,7 +364,7 @@ namespace Blobset_Tools
                                                 ZSTD_IO.DecompressAndWrite(unknownData, writer, isUnknownCompressed);
                                             }
 
-                                            progress = @"unknown\compressed_no_header\" + i.ToString() + ".dat";
+                                            progress = @"unknown\maincompressed\" + i.ToString() + ".dat";
 
                                             if (writer != null) { writer.Dispose(); writer = null; }
                                         }
@@ -388,7 +454,7 @@ namespace Blobset_Tools
 
                                         if (File.Exists(txpkTempPath)) { File.Delete(txpkTempPath); }
 
-                                        writer = new (txpkTempPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                                        writer = new(txpkTempPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
                                         while (blobsetContent_br.Position < blobsetContent_br.Length)
                                         {
@@ -419,10 +485,10 @@ namespace Blobset_Tools
                                     default:
                                         if (!Properties.Settings.Default.SkipUnknown)
                                         {
-                                            string unknownName = folder + @"\unknown\compressed_with_header\" + i.ToString() + ".dat";
+                                            string unknownName = folder + @"\unknown\maincompressed_vramcompressed\" + i.ToString() + ".dat";
                                             Directory.CreateDirectory(Path.GetDirectoryName(unknownName));
 
-                                            writer = new (unknownName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                                            writer = new(unknownName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
                                             while (blobsetContent_br.Position < blobsetContent_br.Length)
                                             {
@@ -443,7 +509,7 @@ namespace Blobset_Tools
                                                 ZSTD_IO.DecompressAndWrite(unknownData, writer, isUnknownCompressed);
                                             }
 
-                                            progress = @"unknown\compressed_with_header\" + i.ToString() + ".dat";
+                                            progress = @"unknown\maincompressed_vramcompressed\" + i.ToString() + ".dat";
 
                                             if (writer != null) { writer.Dispose(); writer = null; }
                                         }
@@ -453,7 +519,7 @@ namespace Blobset_Tools
                         }
                     }
 
-                    
+
 
                     int percentProgress = 100 * i / (int)blobset.FilesCount;
                     Extract_bgw.ReportProgress(percentProgress, progress);

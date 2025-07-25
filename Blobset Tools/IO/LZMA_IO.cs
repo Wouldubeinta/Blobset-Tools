@@ -2,7 +2,6 @@
 using PackageIO;
 using SevenZip.Compression.LZMA;
 using System.ComponentModel;
-using System.IO;
 
 namespace Blobset_Tools
 {
@@ -49,12 +48,12 @@ namespace Blobset_Tools
 
             try
             {
-                inStream = new (input);
+                inStream = new(input);
                 outStream = new();
                 decoder = new();
                 byte[] properties = { 93, 0, 32, 0, 0 };
                 buffer = new byte[outSize];
-                outStream = new (buffer);
+                outStream = new(buffer);
                 decoder.SetDecoderProperties(properties);
                 decoder.Code(inStream, outStream, input.Length, outSize, null);
             }
@@ -101,9 +100,9 @@ namespace Blobset_Tools
             {
                 MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
-            finally 
-            { 
-                if (inStream != null) { inStream.Dispose(); inStream = null; } 
+            finally
+            {
+                if (inStream != null) { inStream.Dispose(); inStream = null; }
                 if (outStream != null) { outStream.Dispose(); outStream = null; }
                 if (encoder != null) { encoder = null; }
             }
@@ -127,7 +126,7 @@ namespace Blobset_Tools
 
             try
             {
-                inStream = new (input);
+                inStream = new(input);
                 outStream = new();
                 decoder = new();
                 byte[] properties = { 93, 0, 32, 0, 0 };
@@ -218,7 +217,7 @@ namespace Blobset_Tools
             try
             {
                 inStream = new(input);
-                outStream = new ();
+                outStream = new();
                 encoder = new();
                 encoder.Code(inStream, outStream, input.Length, -1, null);
 

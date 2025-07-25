@@ -35,7 +35,7 @@
 
             Structs.DDSInfo ddsInfo = new();
 
-            Bitmap bitmap = UI.DDStoBitmap(UI.GetDDSData(list), ref ddsInfo, false);
+            Bitmap bitmap = UI.DDStoBitmap(UI.GetDDSData(list), ref ddsInfo);
 
             pictureBox1.Image = null;
 
@@ -89,16 +89,16 @@
 
         private void gridToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (gridToolStripMenuItem.Checked) 
+            if (gridToolStripMenuItem.Checked)
             {
                 gridToolStripMenuItem.Image = Properties.Resources.grid_dark;
                 pictureBox1.BackgroundImage = Properties.Resources.grid_dark;
-            }   
-            else 
+            }
+            else
             {
                 gridToolStripMenuItem.Image = Properties.Resources.grid_light;
                 pictureBox1.BackgroundImage = Properties.Resources.grid_light;
-            }     
+            }
         }
 
         private void flipImageToolStripMenuItem_Click(object sender, EventArgs e)

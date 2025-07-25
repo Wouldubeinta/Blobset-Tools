@@ -1,7 +1,7 @@
 ﻿using BlobsetIO;
 using PackageIO;
-using ZstdSharp;
 using System.ComponentModel;
+using ZstdSharp;
 
 namespace Blobset_Tools
 {
@@ -247,14 +247,13 @@ namespace Blobset_Tools
                 if (isMiniTXPK)
                 {
                     tmp[0] = 77; tmp[1] = 73; tmp[2] = 78; tmp[3] = 73; // setting the magic to "MINI"
-                }    
+                }
                 else
                 {
                     tmp[0] = buffer[0]; tmp[1] = buffer[1]; tmp[2] = buffer[2]; tmp[3] = buffer[3];
                 }
 
                 magic = BitConverter.ToInt32(tmp);
-                int y = 0;
             }
             catch (Exception error)
             {

@@ -38,7 +38,7 @@ namespace Blobset_Tools
             {
                 M3MP_Xml_In = IO.XmlDeserialize<ExtractFileInfo>(Global.currentPath + @"\m3mp\M3MP_List.xml");
 
-                if (M3MP_Xml_In == null) 
+                if (M3MP_Xml_In == null)
                 {
                     MessageBox.Show("There is a problem with the xml file - M3MP_List.xml", "XML Format Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
@@ -174,7 +174,7 @@ namespace Blobset_Tools
                     int tmpChunkCount = Utilities.ChunkAmount((int)Utilities.FileInfo(filePath));
                     long[] tmpChunkSizes = Utilities.ChunkSizes((int)Utilities.FileInfo(filePath), tmpChunkCount);
 
-                    for (int j = 0; j < tmpChunkCount; j++) 
+                    for (int j = 0; j < tmpChunkCount; j++)
                     {
                         byte[] tmpData = br.ReadBytes((int)tmpChunkSizes[j]);
                         IO.ReadWriteData(tmpData, writer, (int)tmpChunkSizes[j]);
@@ -193,8 +193,8 @@ namespace Blobset_Tools
                 if (writer != null) { writer.Dispose(); writer = null; }
                 if (bw != null) { bw.Close(); bw = null; }
 
-                br = new (Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp");
-                writer = new (Global.currentPath + @"\temp\m3mp_compressed_data.tmp", FileMode.OpenOrCreate, FileAccess.Write);
+                br = new(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp");
+                writer = new(Global.currentPath + @"\temp\m3mp_compressed_data.tmp", FileMode.OpenOrCreate, FileAccess.Write);
 
                 M3MP_Create_bgw.ReportProgress(0, Environment.NewLine);
 
@@ -214,7 +214,7 @@ namespace Blobset_Tools
                 if (writer != null) { writer.Dispose(); writer = null; }
                 if (br != null) { br.Close(); br = null; }
 
-                bw = new (Global.currentPath + @"\temp\m3mp_header.tmp");
+                bw = new(Global.currentPath + @"\temp\m3mp_header.tmp");
 
                 bw.Position = 0;
                 m3mp.Serialize(bw);

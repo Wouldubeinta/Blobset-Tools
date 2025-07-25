@@ -1,7 +1,11 @@
 ﻿using BlobsetIO;
+using Gameloop.Vdf;
+using Gameloop.Vdf.JsonConverter;
+using Gameloop.Vdf.Linq;
 using Microsoft.Win32;
 using PackageIO;
 using Pfim;
+using System.Buffers;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using static Blobset_Tools.Structs;
@@ -68,7 +72,7 @@ namespace Blobset_Tools
             {
                 br = new Reader(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\data\BlobsetFileMapping.bin");
 
-                fileMapping = new ();
+                fileMapping = new();
                 fileMapping.Read(br);
 
                 if (fileMapping == null | fileMapping.FilesCount == 0)
@@ -112,9 +116,11 @@ namespace Blobset_Tools
             return Index;
         }
 
-        public static Bitmap DDStoBitmap(byte[] ddsData, ref DDSInfo ddsInfo, bool isUI)
+        public static Bitmap DDStoBitmap(byte[] ddsData, ref DDSInfo ddsInfo)
         {
             MemoryStream? ms = null;
+            IImage? image = null;
+            ArrayPoolAllocator? allocator = null;
             Bitmap? bitmap = null;
             ddsInfo.MipMap = 1;
             ddsInfo.IFormat = ImageFormat.Rgba32;
@@ -125,7 +131,7 @@ namespace Blobset_Tools
 
                 if (ddsData.Length > 124)
                 {
-                    ms = new (ddsData);
+                    ms = new(ddsData);
 
                     byte[] tmp = new byte[4];
                     ms.Position = 84;
@@ -134,65 +140,55 @@ namespace Blobset_Tools
 
                     ms.Position = 0;
 
-                    using (var image = Pfimage.FromStream(ms))
+                    allocator = new();
+                    var config = new PfimConfig(allocator: allocator);
+                    image = Pfimage.FromStream(ms, config);
+                    System.Drawing.Imaging.PixelFormat format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
+                    ddsInfo.Width = image.Width;
+                    ddsInfo.Height = image.Height;
+                    ddsInfo.IFormat = image.Format;
+                    ddsInfo.MipMap = image.MipMaps.Length + 1;
+
+                    // Convert from Pfim's backend agnostic image format into GDI+'s image format
+                    switch (image.Format)
                     {
-                        System.Drawing.Imaging.PixelFormat format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
-                        ddsInfo.Width = image.Width;
-                        ddsInfo.Height = image.Height;
-                        ddsInfo.IFormat = image.Format;
-                        ddsInfo.MipMap = image.MipMaps.Length + 1;
+                        case ImageFormat.Rgb24:
+                            format = System.Drawing.Imaging.PixelFormat.Format24bppRgb;
+                            break;
 
-                        // Convert from Pfim's backend agnostic image format into GDI+'s image format
-                        switch (image.Format)
-                        {
-                            case ImageFormat.Rgb24:
-                                format = System.Drawing.Imaging.PixelFormat.Format24bppRgb;
-                                break;
+                        case ImageFormat.Rgba32:
+                            format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
+                            break;
 
-                            case ImageFormat.Rgba32:
-                                format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
-                                break;
+                        case ImageFormat.R5g5b5:
+                            format = System.Drawing.Imaging.PixelFormat.Format16bppRgb555;
+                            break;
 
-                            case ImageFormat.R5g5b5:
-                                format = System.Drawing.Imaging.PixelFormat.Format16bppRgb555;
-                                break;
+                        case ImageFormat.R5g6b5:
+                            format = System.Drawing.Imaging.PixelFormat.Format16bppRgb565;
+                            break;
 
-                            case ImageFormat.R5g6b5:
-                                format = System.Drawing.Imaging.PixelFormat.Format16bppRgb565;
-                                break;
+                        case ImageFormat.R5g5b5a1:
+                            format = System.Drawing.Imaging.PixelFormat.Format16bppArgb1555;
+                            break;
 
-                            case ImageFormat.R5g5b5a1:
-                                format = System.Drawing.Imaging.PixelFormat.Format16bppArgb1555;
-                                break;
+                        case ImageFormat.Rgb8:
+                            format = System.Drawing.Imaging.PixelFormat.Format8bppIndexed;
+                            break;
+                    }
 
-                            case ImageFormat.Rgb8:
-                                format = System.Drawing.Imaging.PixelFormat.Format8bppIndexed;
-                                break;
-                        }
-
-                        // Pin pfim's data array so that it doesn't get reaped by GC, unnecessary
-                        // in this snippet but useful technique if the data was going to be used in
-                        // control like a picture box
-                        var handle = GCHandle.Alloc(image.Data, GCHandleType.Normal);
-                        try
-                        {
-                            var data = Marshal.UnsafeAddrOfPinnedArrayElement(image.Data, 0);
-                            Bitmap bm = new Bitmap(image.Width, image.Height, image.Stride, format, data);
-
-                            if (isUI) 
-                            {
-                                var thumbSize = Utilities.ResizeImageSize(bm.Width, bm.Height, 450, 450);
-
-                                Image Thumbnail = bm.GetThumbnailImage(thumbSize.Width, thumbSize.Height, null, IntPtr.Zero);
-                                bitmap = new Bitmap(Thumbnail);
-                            }
-                            else
-                                bitmap = bm;
-                        }
-                        finally
-                        {
-                            handle.Free();
-                        }
+                    // Pin pfim's data array so that it doesn't get reaped by GC, unnecessary
+                    // in this snippet but useful technique if the data was going to be used in
+                    // control like a picture box
+                    var handle = GCHandle.Alloc(image.Data, GCHandleType.Normal);
+                    try
+                    {
+                        var data = Marshal.UnsafeAddrOfPinnedArrayElement(image.Data, 0);
+                        bitmap = new(image.Width, image.Height, image.Stride, format, data);
+                    }
+                    finally
+                    {
+                        handle.Free();
                     }
                 }
             }
@@ -203,6 +199,8 @@ namespace Blobset_Tools
             finally
             {
                 if (ms != null) { ms.Dispose(); ms = null; }
+                if (image != null) { image.Dispose(); image = null; }
+                if (allocator != null) { allocator = null; }
             }
             return bitmap;
         }
@@ -214,14 +212,14 @@ namespace Blobset_Tools
 
             try
             {
-                br = new (Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash);
+                br = new(Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash);
 
                 int MainCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
                 int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
                 int VramCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramCompressedSize;
                 int VramUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
 
-                if (MainCompressedSize != MainUnCompressedSize) 
+                if (MainCompressedSize != MainUnCompressedSize)
                 {
                     br.Position = MainCompressedSize;
                 }
@@ -270,6 +268,7 @@ namespace Blobset_Tools
         {
             MemoryStream? ms = null;
             IImage? image = null;
+            ArrayPoolAllocator? allocator = null;
             Bitmap? bitmap = null;
             mipmapCount = 1;
             fmt = ImageFormat.Rgba32;
@@ -283,7 +282,7 @@ namespace Blobset_Tools
 
                     if (ddsData.Length > 124)
                     {
-                        ms = new (ddsData);
+                        ms = new(ddsData);
 
                         byte[] tmp = new byte[4];
                         ms.Position = 84;
@@ -303,7 +302,9 @@ namespace Blobset_Tools
                             case PixelFormat.G32R32F:
                                 break;
                             default:
-                                image = Pfimage.FromStream(ms);
+                                allocator = new();
+                                var config = new PfimConfig(allocator: allocator);
+                                image = Pfimage.FromStream(ms, config);
 
                                 System.Drawing.Imaging.PixelFormat format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
                                 fmt = image.Format;
@@ -363,9 +364,22 @@ namespace Blobset_Tools
             {
                 if (ms != null) { ms.Close(); ms = null; }
                 if (image != null) { image.Dispose(); image = null; }
-                GC.Collect();
+                if (allocator != null) { allocator = null; }
             }
             return bitmap;
+        }
+
+        public class ArrayPoolAllocator : IImageAllocator
+        {
+            public byte[] Rent(int minLength)
+            {
+                return ArrayPool<byte>.Shared.Rent(minLength);
+            }
+
+            public void Return(byte[] array)
+            {
+                ArrayPool<byte>.Shared.Return(array);
+            }
         }
 
         public static TreeNode MakeTreeFromPaths(FileMapping fileMapping, string rootNodeName = "", char separator = '\\')
@@ -463,7 +477,7 @@ namespace Blobset_Tools
         public static string getSteamLocation()
         {
             RegistryKey? key = null;
-            object value = string.Empty;
+            string value = string.Empty;
 
             try
             {
@@ -471,10 +485,39 @@ namespace Blobset_Tools
 
                 if (key != null)
                 {
-                    object tmp = key.GetValue("InstallPath", null);
+                    object? steamPath = key.GetValue("InstallPath", null);
 
-                    if (tmp != null)
-                        value = tmp;
+                    if (steamPath != null)
+                    {
+                        string libararyFoldersPath = steamPath.ToString() + @"\config\libraryfolders.vdf";
+
+                        if (File.Exists(libararyFoldersPath))
+                        {
+                            VProperty libraryfolders_vdf = VdfConvert.Deserialize(File.ReadAllText(libararyFoldersPath));
+                            string slf = libraryfolders_vdf.ToJson().ToString();
+                            SteamLibraryFolders? libraryFolders = System.Text.Json.JsonSerializer.Deserialize<SteamLibraryFolders>("{" + slf + "}");
+
+                            bool hasGameId = false;
+
+                            foreach (var libraryFolder in libraryFolders.LibraryFolders)
+                            {
+                                foreach (var app in libraryFolder.Value.Apps)
+                                {
+                                    if (app.Key.ToString() == Properties.Settings.Default.SteamGameID.ToString())
+                                    {
+                                        hasGameId = true;
+                                        break;
+                                    }
+                                }
+
+                                if (hasGameId)
+                                {
+                                    value = libraryFolder.Value.Path;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception arg)
@@ -489,7 +532,7 @@ namespace Blobset_Tools
                     key = null;
                 }
             }
-            return value.ToString();
+            return value;
         }
 
         public static void ValidateSteamGame()
@@ -509,12 +552,12 @@ namespace Blobset_Tools
                 string gameAppID = steamID.ToString();
 
                 Process? p = null;
-                ProcessStartInfo ps = null;
+                ProcessStartInfo? ps = null;
 
                 try
                 {
-                    p = new ();
-                    ps = new ();
+                    p = new();
+                    ps = new();
 
                     ps.FileName = steamLocation + @"\Steam.exe";
                     string arg = " steam://validate/" + gameAppID;
