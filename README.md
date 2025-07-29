@@ -95,3 +95,6 @@ Once done, go to the Blobset Tools, click on **"Tools->M3MP Creator"**. Once loa
  - 7zip class - https://www.7-zip.org/a/lzma2500.7z
  - Facebook & oleg-st for ZstdSharp - https://github.com/oleg-st/ZstdSharp
  - nickbabcock for Pfim - https://github.com/nickbabcock/Pfim
+ - shravan2x for https://github.com/shravan2x/Gameloop.Vdf
+ - JamesNK for https://github.com/JamesNK/Newtonsoft.Json
+ - Crauzer for https://github.com/Crauzer/WEMSharp
