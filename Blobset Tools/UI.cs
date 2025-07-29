@@ -219,39 +219,44 @@ namespace Blobset_Tools
                 int VramCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramCompressedSize;
                 int VramUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
 
-                if (MainCompressedSize != MainUnCompressedSize)
-                {
-                    br.Position = MainCompressedSize;
-                }
-                else
-                    br.Position = MainUnCompressedSize;
-
                 ddsData = new byte[VramUnCompressedSize];
 
-                int size = 0;
+                if (MainCompressedSize == MainUnCompressedSize)
+                    br.Position = MainUnCompressedSize;
+                else
+                    br.Position = MainCompressedSize;
 
-                while (br.Position < br.Length)
+                if (VramCompressedSize != VramUnCompressedSize)
                 {
-                    int CompressedSize = br.ReadInt32();
-                    int Tmp = CompressedSize -= 4;
-                    CompressedSize = Tmp;
+                    int size = 0;
 
-                    bool isCompressed = true;
+                    while (br.Position < br.Length)
+                    {
+                        int CompressedSize = br.ReadInt32();
+                        int Tmp = CompressedSize -= 4;
+                        CompressedSize = Tmp;
 
-                    byte[] Data = br.ReadBytes(CompressedSize);
+                        bool isCompressed = true;
 
-                    byte[] ZstdMagicArray = [Data[0], Data[1], Data[2], Data[3]];
-                    uint ZstdMagic = BitConverter.ToUInt32(ZstdMagicArray);
+                        byte[] Data = br.ReadBytes(CompressedSize);
 
-                    if (ZstdMagic != 4247762216)
-                        isCompressed = false;
+                        byte[] ZstdMagicArray = [Data[0], Data[1], Data[2], Data[3]];
+                        uint ZstdMagic = BitConverter.ToUInt32(ZstdMagicArray);
 
-                    byte[] tmpddsData = ZSTD_IO.DecompressAndRead(Data, isCompressed);
-                    Buffer.BlockCopy(tmpddsData, 0, ddsData, size, tmpddsData.Length);
-                    size += tmpddsData.Length;
+                        if (ZstdMagic != 4247762216)
+                            isCompressed = false;
+
+                        byte[] tmpddsData = ZSTD_IO.DecompressAndRead(Data, isCompressed);
+                        Buffer.BlockCopy(tmpddsData, 0, ddsData, size, tmpddsData.Length);
+                        size += tmpddsData.Length;
+                    }
+                    if (br != null) { br.Close(); br = null; }
                 }
-
-                if (br != null) { br.Close(); br = null; }
+                else
+                {
+                    ddsData = br.ReadBytes(VramUnCompressedSize);
+                    if (br != null) { br.Close(); br = null; }
+                }
             }
             catch (Exception error)
             {
@@ -579,11 +584,6 @@ namespace Blobset_Tools
 
         public static string[] LoadingText =
         {
-            "*** " + "Blobset Tools - v" + Global.version + " ***",
-            Environment.NewLine,
-            "Description: Extract and Modify BigAnt games blobset files",
-            Environment.NewLine,
-            Environment.NewLine,
             "Author: Wouldubeinta",
             Environment.NewLine,
             "Discord ID: Wouldubeinta",
@@ -591,17 +591,26 @@ namespace Blobset_Tools
             Environment.NewLine,
             "*** Special Thanks To ***",
             Environment.NewLine,
-            "BigAnt for the support",
+            "BigAnt for the support.",
             Environment.NewLine,
-            "Luigi Auriemma for he's expertise over the year's",
+            "Luigi Auriemma for he's expertise over the year's.",
             Environment.NewLine,
-            "FeudalNate for PackageIO class",
+            "FeudalNate for PackageIO class.",
             Environment.NewLine,
             "Facebook & oleg-st for ZstdSharp - ",
             "https://github.com/oleg-st/ZstdSharp",
             Environment.NewLine,
             "nickbabcock for Pfim - ",
             "https://github.com/nickbabcock/Pfim",
+            Environment.NewLine,
+            "shravan2x for Gameloop.Vdf - ",
+            "https://github.com/shravan2x/Gameloop.Vdf",
+            Environment.NewLine,
+            "JamesNK for Newtonsoft.Json - ",
+            "https://github.com/JamesNK/Newtonsoft.Json",
+            Environment.NewLine,
+            "Crauzer for WEMSharp - ",
+            "https://github.com/Crauzer/WEMSharp",
             Environment.NewLine,
             Environment.NewLine,
         };

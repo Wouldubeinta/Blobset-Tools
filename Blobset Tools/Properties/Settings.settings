@@ -9,7 +9,7 @@
       <Value Profile="(Default)">False</Value>
     </Setting>
     <Setting Name="SkipUnknown" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
+      <Value Profile="(Default)">False</Value>
     </Setting>
     <Setting Name="GameLocation" Type="System.String" Scope="User">
       <Value Profile="(Default)">D:\Steam\steamapps\common\Rugby 25\data\data-0.blobset.pc</Value>

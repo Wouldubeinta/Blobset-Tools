@@ -62,14 +62,21 @@
             dds_pictureBox = new PictureBox();
             extractImage_contextMenuStrip = new ContextMenuStrip(components);
             extractToolStripMenuItem = new ToolStripMenuItem();
-            dDSFileToolStripMenuItem = new ToolStripMenuItem();
+            ddsFileToolStripMenuItem = new ToolStripMenuItem();
+            pngFileToolStripMenuItem = new ToolStripMenuItem();
             saveFileDialog = new SaveFileDialog();
-            extractFile_contextMenuStrip = new ContextMenuStrip(components);
-            extractToolStripMenuItem1 = new ToolStripMenuItem();
+            extractSoundFile_contextMenuStrip = new ContextMenuStrip(components);
+            extractSoundToolStripMenuItem = new ToolStripMenuItem();
+            wemFileToolStripMenuItem = new ToolStripMenuItem();
+            oggFileToolStripMenuItem = new ToolStripMenuItem();
+            wavFileToolStripMenuItem = new ToolStripMenuItem();
             SaveLog_contextMenuStrip = new ContextMenuStrip(components);
             saveLogTotxtToolStripMenuItem = new ToolStripMenuItem();
             flipImage_contextMenuStrip = new ContextMenuStrip(components);
             flipImageToolStripMenuItem = new ToolStripMenuItem();
+            extractDatFilecontextMenuStrip = new ContextMenuStrip(components);
+            extractDatToolStripMenuItem = new ToolStripMenuItem();
+            datFileToolStripMenuItem = new ToolStripMenuItem();
             statusStrip1.SuspendLayout();
             menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
@@ -86,9 +93,10 @@
             splitContainer3.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dds_pictureBox).BeginInit();
             extractImage_contextMenuStrip.SuspendLayout();
-            extractFile_contextMenuStrip.SuspendLayout();
+            extractSoundFile_contextMenuStrip.SuspendLayout();
             SaveLog_contextMenuStrip.SuspendLayout();
             flipImage_contextMenuStrip.SuspendLayout();
+            extractDatFilecontextMenuStrip.SuspendLayout();
             SuspendLayout();
             // 
             // statusStrip1
@@ -163,8 +171,8 @@
             // 
             gameName_toolStripTextBox.Alignment = ToolStripItemAlignment.Right;
             gameName_toolStripTextBox.BackColor = SystemColors.Control;
-            gameName_toolStripTextBox.Font = new Font("RLFont", 9F);
-            gameName_toolStripTextBox.ForeColor = Color.Blue;
+            gameName_toolStripTextBox.Font = new Font("RLFont", 10F, FontStyle.Bold | FontStyle.Underline);
+            gameName_toolStripTextBox.ForeColor = Color.DodgerBlue;
             gameName_toolStripTextBox.Name = "gameName_toolStripTextBox";
             gameName_toolStripTextBox.ReadOnly = true;
             gameName_toolStripTextBox.ShortcutsEnabled = false;
@@ -183,7 +191,7 @@
             // 
             tXPKCreatorToolStripMenuItem.Image = (Image)resources.GetObject("tXPKCreatorToolStripMenuItem.Image");
             tXPKCreatorToolStripMenuItem.Name = "tXPKCreatorToolStripMenuItem";
-            tXPKCreatorToolStripMenuItem.Size = new Size(184, 26);
+            tXPKCreatorToolStripMenuItem.Size = new Size(151, 22);
             tXPKCreatorToolStripMenuItem.Text = "TXPK Creator";
             tXPKCreatorToolStripMenuItem.ToolTipText = "To create DDS TXPK files.";
             tXPKCreatorToolStripMenuItem.Click += txpkCreatorToolStripMenuItem_Click;
@@ -192,7 +200,7 @@
             // 
             m3MPCreatorToolStripMenuItem.Image = (Image)resources.GetObject("m3MPCreatorToolStripMenuItem.Image");
             m3MPCreatorToolStripMenuItem.Name = "m3MPCreatorToolStripMenuItem";
-            m3MPCreatorToolStripMenuItem.Size = new Size(184, 26);
+            m3MPCreatorToolStripMenuItem.Size = new Size(151, 22);
             m3MPCreatorToolStripMenuItem.Text = "M3MP Creator";
             m3MPCreatorToolStripMenuItem.ToolTipText = "To Create M3MP files.";
             m3MPCreatorToolStripMenuItem.Click += m3mpCreatorToolStripMenuItem_Click;
@@ -402,33 +410,65 @@
             // 
             // extractToolStripMenuItem
             // 
-            extractToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { dDSFileToolStripMenuItem });
+            extractToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { ddsFileToolStripMenuItem, pngFileToolStripMenuItem });
             extractToolStripMenuItem.Image = Properties.Resources.extract_32;
             extractToolStripMenuItem.Name = "extractToolStripMenuItem";
             extractToolStripMenuItem.Size = new Size(109, 22);
             extractToolStripMenuItem.Text = "Extract";
             // 
-            // dDSFileToolStripMenuItem
+            // ddsFileToolStripMenuItem
             // 
-            dDSFileToolStripMenuItem.Image = Properties.Resources.dds_32;
-            dDSFileToolStripMenuItem.Name = "dDSFileToolStripMenuItem";
-            dDSFileToolStripMenuItem.Size = new Size(117, 22);
-            dDSFileToolStripMenuItem.Text = "DDS File";
-            dDSFileToolStripMenuItem.Click += ddsFileToolStripMenuItem_Click;
+            ddsFileToolStripMenuItem.Image = Properties.Resources.dds_32;
+            ddsFileToolStripMenuItem.Name = "ddsFileToolStripMenuItem";
+            ddsFileToolStripMenuItem.Size = new Size(119, 22);
+            ddsFileToolStripMenuItem.Text = "DDS File";
+            ddsFileToolStripMenuItem.Click += ddsFileToolStripMenuItem_Click;
             // 
-            // extractFile_contextMenuStrip
+            // pngFileToolStripMenuItem
             // 
-            extractFile_contextMenuStrip.Items.AddRange(new ToolStripItem[] { extractToolStripMenuItem1 });
-            extractFile_contextMenuStrip.Name = "extractFile_contextMenuStrip";
-            extractFile_contextMenuStrip.Size = new Size(110, 26);
+            pngFileToolStripMenuItem.Image = Properties.Resources.png_32;
+            pngFileToolStripMenuItem.Name = "pngFileToolStripMenuItem";
+            pngFileToolStripMenuItem.Size = new Size(119, 22);
+            pngFileToolStripMenuItem.Text = "PNG File";
+            pngFileToolStripMenuItem.Click += pngFileToolStripMenuItem_Click;
             // 
-            // extractToolStripMenuItem1
+            // extractSoundFile_contextMenuStrip
             // 
-            extractToolStripMenuItem1.Image = Properties.Resources.extract_32;
-            extractToolStripMenuItem1.Name = "extractToolStripMenuItem1";
-            extractToolStripMenuItem1.Size = new Size(109, 22);
-            extractToolStripMenuItem1.Text = "Extract";
-            extractToolStripMenuItem1.Click += extractToolStripMenuItem_Click;
+            extractSoundFile_contextMenuStrip.Items.AddRange(new ToolStripItem[] { extractSoundToolStripMenuItem });
+            extractSoundFile_contextMenuStrip.Name = "extractFile_contextMenuStrip";
+            extractSoundFile_contextMenuStrip.Size = new Size(110, 26);
+            // 
+            // extractSoundToolStripMenuItem
+            // 
+            extractSoundToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { wemFileToolStripMenuItem, oggFileToolStripMenuItem, wavFileToolStripMenuItem });
+            extractSoundToolStripMenuItem.Image = Properties.Resources.extract_32;
+            extractSoundToolStripMenuItem.Name = "extractSoundToolStripMenuItem";
+            extractSoundToolStripMenuItem.Size = new Size(109, 22);
+            extractSoundToolStripMenuItem.Text = "Extract";
+            // 
+            // wemFileToolStripMenuItem
+            // 
+            wemFileToolStripMenuItem.Image = Properties.Resources.wem_32;
+            wemFileToolStripMenuItem.Name = "wemFileToolStripMenuItem";
+            wemFileToolStripMenuItem.Size = new Size(180, 22);
+            wemFileToolStripMenuItem.Text = "Wem File";
+            wemFileToolStripMenuItem.Click += wemFileToolStripMenuItem_Click;
+            // 
+            // oggFileToolStripMenuItem
+            // 
+            oggFileToolStripMenuItem.Image = Properties.Resources.ogg_32;
+            oggFileToolStripMenuItem.Name = "oggFileToolStripMenuItem";
+            oggFileToolStripMenuItem.Size = new Size(180, 22);
+            oggFileToolStripMenuItem.Text = "Ogg File";
+            oggFileToolStripMenuItem.Click += oggFileToolStripMenuItem_Click;
+            // 
+            // wavFileToolStripMenuItem
+            // 
+            wavFileToolStripMenuItem.Image = Properties.Resources.wav_32;
+            wavFileToolStripMenuItem.Name = "wavFileToolStripMenuItem";
+            wavFileToolStripMenuItem.Size = new Size(180, 22);
+            wavFileToolStripMenuItem.Text = "Wav File";
+            wavFileToolStripMenuItem.Click += wavFileToolStripMenuItem_Click;
             // 
             // SaveLog_contextMenuStrip
             // 
@@ -457,6 +497,28 @@
             flipImageToolStripMenuItem.Size = new Size(129, 22);
             flipImageToolStripMenuItem.Text = "Flip Image";
             flipImageToolStripMenuItem.Click += flipImageToolStripMenuItem_Click;
+            // 
+            // extractDatFilecontextMenuStrip
+            // 
+            extractDatFilecontextMenuStrip.Items.AddRange(new ToolStripItem[] { extractDatToolStripMenuItem });
+            extractDatFilecontextMenuStrip.Name = "extractFile_contextMenuStrip";
+            extractDatFilecontextMenuStrip.Size = new Size(181, 48);
+            // 
+            // extractDatToolStripMenuItem
+            // 
+            extractDatToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { datFileToolStripMenuItem });
+            extractDatToolStripMenuItem.Image = Properties.Resources.extract_32;
+            extractDatToolStripMenuItem.Name = "extractDatToolStripMenuItem";
+            extractDatToolStripMenuItem.Size = new Size(180, 22);
+            extractDatToolStripMenuItem.Text = "Extract";
+            // 
+            // datFileToolStripMenuItem
+            // 
+            datFileToolStripMenuItem.Image = Properties.Resources.dat_32;
+            datFileToolStripMenuItem.Name = "datFileToolStripMenuItem";
+            datFileToolStripMenuItem.Size = new Size(180, 22);
+            datFileToolStripMenuItem.Text = "Dat File";
+            datFileToolStripMenuItem.Click += datFileToolStripMenuItem_Click;
             // 
             // MainForm
             // 
@@ -491,9 +553,10 @@
             splitContainer3.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dds_pictureBox).EndInit();
             extractImage_contextMenuStrip.ResumeLayout(false);
-            extractFile_contextMenuStrip.ResumeLayout(false);
+            extractSoundFile_contextMenuStrip.ResumeLayout(false);
             SaveLog_contextMenuStrip.ResumeLayout(false);
             flipImage_contextMenuStrip.ResumeLayout(false);
+            extractDatFilecontextMenuStrip.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -525,10 +588,10 @@
         private PictureBox dds_pictureBox;
         private ContextMenuStrip extractImage_contextMenuStrip;
         private ToolStripMenuItem extractToolStripMenuItem;
-        private ToolStripMenuItem dDSFileToolStripMenuItem;
+        private ToolStripMenuItem ddsFileToolStripMenuItem;
         private SaveFileDialog saveFileDialog;
-        private ContextMenuStrip extractFile_contextMenuStrip;
-        private ToolStripMenuItem extractToolStripMenuItem1;
+        private ContextMenuStrip extractSoundFile_contextMenuStrip;
+        private ToolStripMenuItem extractSoundToolStripMenuItem;
         private ContextMenuStrip SaveLog_contextMenuStrip;
         private ToolStripMenuItem saveLogTotxtToolStripMenuItem;
         private ContextMenuStrip flipImage_contextMenuStrip;
@@ -539,5 +602,12 @@
         private ToolStripMenuItem m3MPCreatorToolStripMenuItem;
         private ToolStripMenuItem searchToolStripMenuItem;
         private ToolStripTextBox searchToolStripTextBox;
+        private ToolStripMenuItem pngFileToolStripMenuItem;
+        private ToolStripMenuItem wemFileToolStripMenuItem;
+        private ToolStripMenuItem oggFileToolStripMenuItem;
+        private ToolStripMenuItem wavFileToolStripMenuItem;
+        private ContextMenuStrip extractDatFilecontextMenuStrip;
+        private ToolStripMenuItem extractDatToolStripMenuItem;
+        private ToolStripMenuItem datFileToolStripMenuItem;
     }
 }

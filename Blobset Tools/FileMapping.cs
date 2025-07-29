@@ -246,6 +246,7 @@ namespace Blobset_Tools
                                 if (blobsetContent_br.ReadString(4) == "conv") // Makes sure it's a mini DDS TXPK.
                                 {
                                     blobsetContent_br.Position = 0;
+
                                     Mini_TXPK mini_TXPK = new();
                                     mini_TXPK.Deserialize(blobsetContent_br);
 
@@ -271,24 +272,23 @@ namespace Blobset_Tools
                                 }
                                 else
                                 {
-                                    if (!Properties.Settings.Default.SkipUnknown)
-                                    {
-                                        string unknownFileName = @"unknown\mainuncompressed_vramcompressed\" + i.ToString() + ".dat";
+                                    blobsetContent_br.Position = 0;
 
-                                        writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                                        bw = new(writer);
+                                    string txpkFileName = @"dds_txpk\" + i.ToString() + ".txpk";
 
-                                        bw.Write(i);
-                                        bw.Write(unknownFileName);
-                                        bw.Write(folderName);
-                                        bw.Write(fileName);
-                                        bw.Flush();
+                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                    bw = new(writer);
 
-                                        fileMappingSize++;
+                                    bw.Write(i);
+                                    bw.Write(txpkFileName);
+                                    bw.Write(folderName);
+                                    bw.Write(fileName);
+                                    bw.Flush();
 
-                                        progress = unknownFileName;
-                                        if (bw != null) { bw.Close(); bw = null; }
-                                    }
+                                    fileMappingSize++;
+
+                                    progress = txpkFileName;
+                                    if (bw != null) { bw.Close(); bw = null; }
                                 }
                             }
                             else if (mainCompressedSize == mainUnCompressedSize && vramCompressedSize == 0)

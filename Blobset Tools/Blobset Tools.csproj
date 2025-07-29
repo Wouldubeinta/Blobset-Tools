@@ -15,7 +15,7 @@
     <ApplicationIcon>Blobset_Tools.ico</ApplicationIcon>
     <Company>Wouldy Mods</Company>
     <Title>$(AssemblyName)</Title>
-    <Version>1.0.0.1</Version>
+    <Version>1.0.2.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -50,6 +50,9 @@
 
   <ItemGroup>
     <None Update="Newtonsoft.Json.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="opus.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="packed_codebooks_aoTuV_603.bin">

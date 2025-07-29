@@ -68,6 +68,36 @@ namespace Blobset_Tools
         }
 
         /// <summary>
+        /// Decompresses chunk and writes the data.
+        /// </summary>
+        /// <param name="br">Binary Reader input.</param>
+        /// <param name="writer">Filestream writer</param>
+        /// <history>
+        /// [Wouldubeinta]	26/07/2025	Created
+        /// </history>
+        public static void DecompressChunk(Reader br, FileStream writer)
+        {
+            while (br.Position < br.Length)
+            {
+                int compressedSize = br.ReadInt32();
+                int tmp = compressedSize -= 4;
+                compressedSize = tmp;
+
+                bool isCompressed = true;
+
+                byte[] dataChunk = br.ReadBytes(compressedSize);
+
+                byte[] ZstdMagicArray = [dataChunk[0], dataChunk[1], dataChunk[2], dataChunk[3]];
+                uint ZstdMagic = BitConverter.ToUInt32(ZstdMagicArray);
+
+                if (ZstdMagic != 4247762216)
+                    isCompressed = false;
+
+                DecompressAndWrite(dataChunk, writer, isCompressed);
+            }
+        }
+
+        /// <summary>
         /// Compresses data from a byte array and returns it.
         /// </summary>
         /// <param name="input">Input Byte array.</param>
@@ -444,28 +474,39 @@ namespace Blobset_Tools
 
             try
             {
+                uint MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+
                 input = new(fileIn);
-                int txpkCompressedChunkSize = input.ReadInt32();
-                int txpkTmp = txpkCompressedChunkSize -= 4;
-                txpkCompressedChunkSize = txpkTmp;
 
-                bool isCompressed = true;
+                if (MainCompressedSize != MainUnCompressedSize)
+                {
+                    int txpkCompressedChunkSize = input.ReadInt32();
+                    int txpkTmp = txpkCompressedChunkSize -= 4;
+                    txpkCompressedChunkSize = txpkTmp;
 
-                byte[] txpkData = input.ReadBytes(txpkCompressedChunkSize);
+                    bool isTxpkCompressed = true;
 
-                byte[] ZstdMagicArray = [txpkData[0], txpkData[1], txpkData[2], txpkData[3]];
-                uint ZstdMagic = BitConverter.ToUInt32(ZstdMagicArray);
+                    byte[] txpkData = input.ReadBytes(txpkCompressedChunkSize);
 
-                if (ZstdMagic != 4247762216)
-                    isCompressed = false;
+                    byte[] ZstdMagicArray = [txpkData[0], txpkData[1], txpkData[2], txpkData[3]];
+                    uint ZstdMagic = BitConverter.ToUInt32(ZstdMagicArray);
 
-                byte[] txpkHeader = DecompressAndRead(txpkData, isCompressed);
+                    if (ZstdMagic != 4247762216)
+                        isTxpkCompressed = false;
 
-                txpk_br = new(txpkHeader);
+                    byte[] txpkHeader = DecompressAndRead(txpkData, isTxpkCompressed);
 
-                txpk = new();
-                txpk.Deserialize(txpk_br);
-                return txpk;
+                    txpk_br = new(txpkHeader);
+
+                    txpk = new();
+                    txpk.Deserialize(txpk_br);
+                }
+                else
+                {
+                    txpk = new();
+                    txpk.Deserialize(input);
+                }
             }
             catch (Exception error)
             {

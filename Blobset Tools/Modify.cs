@@ -136,6 +136,12 @@ namespace Blobset_Tools
                 FileMapping fileMapping = new();
                 fileMapping.Read(fileMapping_br);
 
+                if (fileMapping == null)
+                {
+                    MessageBox.Show("Looks like the file mapping data is corrupted. Might need to run 'Update File Mapping Data' in Settings or Validate Steam Files", "File Mapping Data Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return error;
+                }
+
                 List<int> mainCompressedSize = [];
                 List<int> mainUncompressedSize = [];
                 List<int> vramCompressedSize = [];
@@ -143,13 +149,12 @@ namespace Blobset_Tools
                 List<int> headerIndex = [];
 
                 string filePathRemove = Global.currentPath + "\\games\\" + Properties.Settings.Default.GameName + "\\mods\\";
-                int pathRemoveLength = filePathRemove.Length;
 
                 string gameLocation = Path.GetDirectoryName(blobsetFile) + @"\";
 
                 for (int i = 0; i < ddsListLength; i++)
                 {
-                    FileMapping fm = Utilities.GetFileMappingIndex(ddsfileList[i].Remove(0, pathRemoveLength), fileMapping);
+                    FileMapping fm = Utilities.GetFileMappingIndex(ddsfileList[i].Replace(filePathRemove, string.Empty), fileMapping);
 
                     if (fm == null)
                     {
@@ -169,7 +174,7 @@ namespace Blobset_Tools
                     writer = new(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
                     Mini_TXPK mini_TXPK = new();
-                    mini_TXPK.Serialize(ddsfileList[i], ddsfileList[i].Remove(0, pathRemoveLength), writer);
+                    mini_TXPK.Serialize(ddsfileList[i], ddsfileList[i].Replace(filePathRemove, string.Empty), writer);
 
                     int mainSize = (int)Utilities.FileInfo(filePath);
                     int vramUncompSize = (int)Utilities.FileInfo(ddsfileList[i]);
@@ -197,7 +202,7 @@ namespace Blobset_Tools
 
                     headerIndex.Add(Convert.ToInt32(fm.Entries[0].Index));
 
-                    progress = ddsfileList[i].Remove(0, pathRemoveLength);
+                    progress = ddsfileList[i].Replace(filePathRemove, string.Empty);
                     int percentProgress = 100 * i / ddsListLength;
                     Modify_bgw.ReportProgress(percentProgress, progress);
 
@@ -287,7 +292,7 @@ namespace Blobset_Tools
                     vramCompressedSize.Add(_vramCompressedSize);
                     vramUncompressedSize.Add(txpkXmlInfo.VramUnCompressedSize);
 
-                    progress = txpkfileList[i].Remove(0, pathRemoveLength);
+                    progress = txpkfileList[i].Replace(filePathRemove, string.Empty);
 
                     headerIndex.Add(txpkXmlInfo.Index);
 
@@ -360,7 +365,7 @@ namespace Blobset_Tools
                     vramCompressedSize.Add(0);
                     vramUncompressedSize.Add(0);
 
-                    progress = m3mpfileList[i].Remove(0, pathRemoveLength);
+                    progress = m3mpfileList[i].Replace(filePathRemove, string.Empty);
 
                     headerIndex.Add(m3mpFileInfo.Index);
 
@@ -373,7 +378,7 @@ namespace Blobset_Tools
 
                 for (int i = 0; i < wemListLength; i++)
                 {
-                    FileMapping fmIndex = Utilities.GetFileMappingIndex(wemfileList[i].Remove(0, pathRemoveLength), fileMapping);
+                    FileMapping fmIndex = Utilities.GetFileMappingIndex(wemfileList[i].Replace(filePathRemove, string.Empty), fileMapping);
 
                     if (fmIndex == null)
                     {
@@ -408,7 +413,7 @@ namespace Blobset_Tools
 
                     headerIndex.Add(fmIndex.Entries[0].Index);
 
-                    progress = wemfileList[i].Remove(0, pathRemoveLength);
+                    progress = wemfileList[i].Replace(filePathRemove, string.Empty);
 
                     int percentProgress = 100 * i / wemListLength;
                     Modify_bgw.ReportProgress(percentProgress, progress);
@@ -419,7 +424,7 @@ namespace Blobset_Tools
 
                 for (int i = 0; i < bnkListLength; i++)
                 {
-                    FileMapping fmIndex = Utilities.GetFileMappingIndex(bnkfileList[i].Remove(0, pathRemoveLength), fileMapping);
+                    FileMapping fmIndex = Utilities.GetFileMappingIndex(bnkfileList[i].Replace(filePathRemove, string.Empty), fileMapping);
 
                     if (fmIndex == null)
                     {
@@ -454,7 +459,7 @@ namespace Blobset_Tools
 
                     headerIndex.Add(fmIndex.Entries[0].Index);
 
-                    progress = bnkfileList[i].Remove(0, pathRemoveLength);
+                    progress = bnkfileList[i].Replace(filePathRemove, string.Empty);
 
                     int percentProgress = 100 * i / bnkListLength;
                     Modify_bgw.ReportProgress(percentProgress, progress);

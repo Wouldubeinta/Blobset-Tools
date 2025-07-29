@@ -19,6 +19,7 @@ namespace Blobset_Tools
         private void Hex_Viewer_Load(object sender, EventArgs e)
         {
             HexViewerLoad();
+            Text = "Hex Viewer - " + filename;
         }
 
         private void HexViewerLoad()

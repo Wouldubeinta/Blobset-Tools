@@ -33,8 +33,6 @@ namespace Blobset_Tools
     /// </history>
     public class Extract
     {
-        public static string debugTest = string.Empty;
-
         #region Extract Blobset Version 1
         /// <summary>
         /// Read Blobset header and than extract's file's to a folder - version 1.
@@ -125,8 +123,6 @@ namespace Blobset_Tools
                     string filePath = $@"{Functions.GetDirectory(blobsetfile)}\{folderName}\{fileName}";
                     _filePath = filePath;
 
-                    debugTest = filePath + " - Index: " + i.ToString();
-
                     if (File.Exists(filePath))
                     {
                         FileStream blobsetContentFs = new(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
@@ -160,61 +156,30 @@ namespace Blobset_Tools
 
                                     writer = new(ddsFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
-                                    while (blobsetContent_br.Position < blobsetContent_br.Length)
-                                    {
-                                        int compressedSize = blobsetContent_br.ReadInt32();
-                                        int tmp = compressedSize -= 4;
-                                        compressedSize = tmp;
-
-                                        bool isCompressed = true;
-
-                                        byte[] ddsChunk = blobsetContent_br.ReadBytes(compressedSize);
-
-                                        byte[] ZstdMagicArray = [ddsChunk[0], ddsChunk[1], ddsChunk[2], ddsChunk[3]];
-                                        uint ZstdMagic = BitConverter.ToUInt32(ZstdMagicArray);
-
-                                        if (ZstdMagic != 4247762216)
-                                            isCompressed = false;
-
-                                        ZSTD_IO.DecompressAndWrite(ddsChunk, writer, isCompressed);
-                                    }
+                                    ZSTD_IO.DecompressChunk(blobsetContent_br, writer);
 
                                     if (writer != null) { writer.Dispose(); writer = null; }
                                     progress = mini_TXPK.DDSFilePath.Replace("/", @"\");
                                 }
+                                else
                                 {
                                     blobsetContent_br.Position = 0;
 
-                                    if (!Properties.Settings.Default.SkipUnknown)
-                                    {
-                                        string unknownName = folder + @"\unknown\mainuncompressed_vramcompressed\" + i.ToString() + ".dat";
-                                        Directory.CreateDirectory(Path.GetDirectoryName(unknownName));
-                                        writer = new(unknownName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
-                                        writer.Write(blobsetContent_br.ReadBytes((int)mainUnCompressedSize), 0, (int)mainUnCompressedSize);
-                                        writer.Flush();
+                                    string txpkTempPath = Global.currentPath + @"\temp\" + i.ToString() + ".txpk";
 
-                                        while (blobsetContent_br.Position < blobsetContent_br.Length)
-                                        {
-                                            int compressedSize = blobsetContent_br.ReadInt32();
-                                            int tmp = compressedSize -= 4;
-                                            compressedSize = tmp;
+                                    if (File.Exists(txpkTempPath)) { File.Delete(txpkTempPath); }
 
-                                            bool isCompressed = true;
+                                    writer = new(txpkTempPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
-                                            byte[] unknownChunk = blobsetContent_br.ReadBytes(compressedSize);
+                                    byte[] txpkHeader = blobsetContent_br.ReadBytes((int)mainUnCompressedSize);
 
-                                            byte[] ZstdMagicArray = [unknownChunk[0], unknownChunk[1], unknownChunk[2], unknownChunk[3]];
-                                            uint ZstdMagic = BitConverter.ToUInt32(ZstdMagicArray);
+                                    writer.Write(txpkHeader, 0, (int)mainUnCompressedSize);
+                                    ZSTD_IO.DecompressChunk(blobsetContent_br, writer);
 
-                                            if (ZstdMagic != 4247762216)
-                                                isCompressed = false;
+                                    progress = IO.TXPK_DDS_Extractor(txpkTempPath, folder, (int)mainUnCompressedSize);
 
-                                            ZSTD_IO.DecompressAndWrite(unknownChunk, writer, isCompressed);
-                                        }
-
-                                        if (writer != null) { writer.Dispose(); writer = null; }
-                                        progress = @"\unknown\mainuncompressed_vramcompressed\" + i.ToString() + ".dat";
-                                    }
+                                    if (writer != null) { writer.Dispose(); writer = null; }
+                                    if (File.Exists(txpkTempPath)) { File.Delete(txpkTempPath); }
                                 }
                             }
                             else if (mainCompressedSize == mainUnCompressedSize && vramCompressedSize == 0)
@@ -312,24 +277,7 @@ namespace Blobset_Tools
 
                                         writer = new(m3mpTempPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
-                                        while (blobsetContent_br.Position < blobsetContent_br.Length)
-                                        {
-                                            int m3mpCompressedSize = blobsetContent_br.ReadInt32();
-                                            int m3mpTmp = m3mpCompressedSize -= 4;
-                                            m3mpCompressedSize = m3mpTmp;
-
-                                            bool isM3mpCompressed = true;
-
-                                            byte[] m3mpData = blobsetContent_br.ReadBytes(m3mpCompressedSize);
-
-                                            byte[] ZstdMagicArrayM3mp = [m3mpData[0], m3mpData[1], m3mpData[2], m3mpData[3]];
-                                            uint ZstdMagicM3mp = BitConverter.ToUInt32(ZstdMagicArrayM3mp);
-
-                                            if (ZstdMagicM3mp != 4247762216)
-                                                isM3mpCompressed = false;
-
-                                            ZSTD_IO.DecompressAndWrite(m3mpData, writer, isM3mpCompressed);
-                                        }
+                                        ZSTD_IO.DecompressChunk(blobsetContent_br, writer);
 
                                         if (writer != null) { writer.Dispose(); writer = null; }
 
@@ -345,24 +293,7 @@ namespace Blobset_Tools
 
                                             writer = new(unknownName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
-                                            while (blobsetContent_br.Position < blobsetContent_br.Length)
-                                            {
-                                                int unknownCompressedSize = blobsetContent_br.ReadInt32();
-                                                int unknownTmp = unknownCompressedSize -= 4;
-                                                unknownCompressedSize = unknownTmp;
-
-                                                bool isUnknownCompressed = true;
-
-                                                byte[] unknownData = blobsetContent_br.ReadBytes(unknownCompressedSize);
-
-                                                byte[] ZstdMagicArrayUnknown = [unknownData[0], unknownData[1], unknownData[2], unknownData[3]];
-                                                uint ZstdMagicUnknown = BitConverter.ToUInt32(ZstdMagicArrayUnknown);
-
-                                                if (ZstdMagicUnknown != 4247762216)
-                                                    isUnknownCompressed = false;
-
-                                                ZSTD_IO.DecompressAndWrite(unknownData, writer, isUnknownCompressed);
-                                            }
+                                            ZSTD_IO.DecompressChunk(blobsetContent_br, writer);
 
                                             progress = @"unknown\maincompressed\" + i.ToString() + ".dat";
 
@@ -427,24 +358,7 @@ namespace Blobset_Tools
 
                                         writer = new(ddsFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
-                                        while (blobsetContent_br.Position < blobsetContent_br.Length)
-                                        {
-                                            int miniTXPKCompressedSize = blobsetContent_br.ReadInt32();
-                                            int miniTXPKTmp = miniTXPKCompressedSize -= 4;
-                                            miniTXPKCompressedSize = miniTXPKTmp;
-
-                                            bool isMiniTXPKCompressed = true;
-
-                                            byte[] miniTXPKChunk = blobsetContent_br.ReadBytes(miniTXPKCompressedSize);
-
-                                            byte[] ZstdMagicArrayMini = [miniTXPKChunk[0], miniTXPKChunk[1], miniTXPKChunk[2], miniTXPKChunk[3]];
-                                            uint ZstdMagicMini = BitConverter.ToUInt32(ZstdMagicArrayMini);
-
-                                            if (ZstdMagicMini != 4247762216)
-                                                isMiniTXPKCompressed = false;
-
-                                            ZSTD_IO.DecompressAndWrite(miniTXPKChunk, writer, isMiniTXPKCompressed);
-                                        }
+                                        ZSTD_IO.DecompressChunk(blobsetContent_br, writer);
 
                                         if (writer != null) { writer.Dispose(); writer = null; }
                                         progress = mini_TXPK.DDSFilePath.Replace("/", @"\");
@@ -456,28 +370,9 @@ namespace Blobset_Tools
 
                                         writer = new(txpkTempPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
-                                        while (blobsetContent_br.Position < blobsetContent_br.Length)
-                                        {
-                                            int txpkCompressedSize = blobsetContent_br.ReadInt32();
-                                            int txpkTmp = txpkCompressedSize -= 4;
-                                            txpkCompressedSize = txpkTmp;
+                                        ZSTD_IO.DecompressChunk(blobsetContent_br, writer);
 
-                                            bool isTxpkCompressed = true;
-
-                                            byte[] txpkData = blobsetContent_br.ReadBytes(txpkCompressedSize);
-
-                                            byte[] ZstdMagicArrayTxpk = [txpkData[0], txpkData[1], txpkData[2], txpkData[3]];
-                                            uint ZstdMagicTxpk = BitConverter.ToUInt32(ZstdMagicArrayTxpk);
-
-                                            if (ZstdMagicTxpk != 4247762216)
-                                                isTxpkCompressed = false;
-
-                                            ZSTD_IO.DecompressAndWrite(txpkData, writer, isTxpkCompressed);
-                                        }
-
-                                        if (writer != null) { writer.Dispose(); writer = null; }
-
-                                        progress = IO.TXPKDDSExtractor(txpkTempPath, folder, (int)mainUnCompressedSize);
+                                        progress = IO.TXPK_DDS_Extractor(txpkTempPath, folder, (int)mainUnCompressedSize);
 
                                         if (writer != null) { writer.Dispose(); writer = null; }
                                         if (File.Exists(txpkTempPath)) { File.Delete(txpkTempPath); }
@@ -490,24 +385,7 @@ namespace Blobset_Tools
 
                                             writer = new(unknownName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
-                                            while (blobsetContent_br.Position < blobsetContent_br.Length)
-                                            {
-                                                int unknownCompressedSize = blobsetContent_br.ReadInt32();
-                                                int unknownTmp = unknownCompressedSize -= 4;
-                                                unknownCompressedSize = unknownTmp;
-
-                                                bool isUnknownCompressed = true;
-
-                                                byte[] unknownData = blobsetContent_br.ReadBytes(unknownCompressedSize);
-
-                                                byte[] ZstdMagicArrayUnknown = [unknownData[0], unknownData[1], unknownData[2], unknownData[3]];
-                                                uint ZstdMagicUnknown = BitConverter.ToUInt32(ZstdMagicArrayUnknown);
-
-                                                if (ZstdMagicUnknown != 4247762216)
-                                                    isUnknownCompressed = false;
-
-                                                ZSTD_IO.DecompressAndWrite(unknownData, writer, isUnknownCompressed);
-                                            }
+                                            ZSTD_IO.DecompressChunk(blobsetContent_br, writer);
 
                                             progress = @"unknown\maincompressed_vramcompressed\" + i.ToString() + ".dat";
 

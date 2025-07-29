@@ -1,5 +1,6 @@
 ﻿using BlobsetIO;
-using OggSharp;
+using Concentus;
+using Concentus.Oggfile;
 using PackageIO;
 using System.Xml;
 using System.Xml.Serialization;
@@ -154,7 +155,7 @@ namespace Blobset_Tools
             }
             catch (Exception error)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + Extract.debugTest + " - " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
         }
 
@@ -182,7 +183,7 @@ namespace Blobset_Tools
             }
             catch (Exception error)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + Extract.debugTest + " - " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
         }
 
@@ -235,7 +236,7 @@ namespace Blobset_Tools
         /// <history>
         /// [Wouldubeinta]		30/06/2025	Created
         /// </history>
-        public static string TXPKDDSExtractor(string tmpFilePath, string folderPath, int MainUncompressedSize)
+        public static string TXPK_DDS_Extractor(string tmpFilePath, string folderPath, int MainUncompressedSize)
         {
             FileStream? fsWriter = null;
             Reader? br = null;
@@ -316,32 +317,53 @@ namespace Blobset_Tools
         }
 
         /// <summary>
-        /// Read pcm data from a file path and writes to file in chunks.
+        /// Read pcm data from a memory stream and writes wav data to memory stream.
         /// </summary>
-        /// <param name="reader">Input Binary Reader stream.</param>
-        /// <param name="fileOut">Output file path.</param>
+        /// <param name="ms">Input memory stream.</param>
+        /// <param name="sampleRate">PCM sample rate.</param>
+        /// <param name="numChannels">Number of channels in pcm data.</param>
+        /// <param name="sampleCount">How many samples in pcm data.</param>
         /// <param name="chunkSize">Chunk size to write to file.</param>
+        /// <returns>Returns wav data.</returns>
         /// <history>
-        /// [Wouldubeinta]		30/06/2025	Created
+        /// [Wouldubeinta]		28/07/2025	Created
         /// </history>
-        public static void ReadWritePCMData(string fileIn, string fileOut, int chunkSize = 1000)
+        public static MemoryStream WriteVorbisOggWAVData(MemoryStream? ms, uint sampleRate, int numChannels, uint sampleCount, int chunkSize = 256)
         {
-            FileStream? writer = null;
-            VorbisFile? worbisFile = null;
+            MemoryStream? wavStream = null;
+            OggSharp.VorbisFile? vorbFile = null;
+            int _chunkSize = chunkSize;
 
             try
             {
-                writer = new(fileOut, FileMode.OpenOrCreate, FileAccess.Write);
-                worbisFile = new(fileIn);
+                if (numChannels == 1)
+                    _chunkSize = 64;
+
+                wavStream = new MemoryStream();
+                ms.Position = 0;
+                vorbFile = new OggSharp.VorbisFile(ms);
+
+                double duration = (double)sampleCount / sampleRate;
+                int pcmSize = (int)(sampleRate * 2 * 2 * duration);
+                Wav.WavHeader wavHeader = new((int)sampleRate, numChannels);
+                wavHeader.headerSize = pcmSize + 38;
+                wavHeader.pcmDataSize = pcmSize;
+                wavHeader.Serialize(wavStream);
+
+                int chunkCount = Utilities.ChunkAmount(pcmSize, _chunkSize);
+                long[] chunkSizes = Utilities.ChunkSizes(pcmSize, chunkCount, _chunkSize);
 
                 int readCount = 0;
-                byte[] buffer = new byte[chunkSize];
 
-                while ((readCount = worbisFile.read(buffer, chunkSize, 0, 2, 1, [0])) != 0)
+                for (int i = 0; i < chunkCount; i++)
                 {
-                    writer.Write(buffer, 0, readCount);
-                    writer.Flush();
+                    byte[] buffer = new byte[chunkSizes[i]];
+
+                    readCount = vorbFile.read(buffer, buffer.Length, 0, 2, 1, [0]);
+                    wavStream.Write(buffer, 0, buffer.Length);
+                    wavStream.Flush();
                 }
+                wavStream.Position = 0;
             }
             catch (Exception error)
             {
@@ -349,9 +371,66 @@ namespace Blobset_Tools
             }
             finally
             {
-                if (writer != null) { writer.Dispose(); writer = null; }
-                if (worbisFile != null) { worbisFile = null; }
+                if (ms != null) { ms.Dispose(); ms = null; }
+                if (vorbFile != null) { vorbFile.Dispose(); vorbFile = null; }
             }
+            return wavStream;
+        }
+
+        /// <summary>
+        /// Read pcm data from a memory stream and writes wav data to memory stream.
+        /// </summary>
+        /// <param name="ms">Input memory stream.</param>
+        /// <param name="sampleRate">PCM sample rate.</param>
+        /// <param name="numChannels">Number of channels in pcm data.</param>
+        /// <param name="chunkSize">Chunk size to write to file.</param>
+        /// <returns>Returns wav data.</returns>
+        /// <history>
+        /// [Wouldubeinta]		29/07/2025	Created
+        /// </history>
+        public static MemoryStream WriteOpusOggWAVData(MemoryStream? ms, int sampleRate, int numChannels, int chunkSize = 512)
+        {
+            MemoryStream? pcmStream = null;
+            MemoryStream? wavStream = null;
+
+            try
+            {
+                pcmStream = new MemoryStream();
+                wavStream = new MemoryStream();
+
+                IOpusDecoder decoder = OpusCodecFactory.CreateDecoder(sampleRate, numChannels);
+                OpusOggReadStream oggIn = new(decoder, ms);
+                while (oggIn.HasNextPacket)
+                {
+                    short[] packet = oggIn.DecodeNextPacket();
+                    if (packet != null)
+                    {
+                        for (int i = 0; i < packet.Length; i++)
+                        {
+                            var bytes = BitConverter.GetBytes(packet[i]);
+                            pcmStream.Write(bytes, 0, bytes.Length);
+                        }
+                    }
+                }
+                pcmStream.Position = 0;
+
+                Wav.WavHeader wavHeader = new(sampleRate, numChannels);
+                wavHeader.headerSize = (int)pcmStream.Length + 38;
+                wavHeader.pcmDataSize = (int)pcmStream.Length;
+                wavHeader.Serialize(wavStream);
+
+                pcmStream.CopyTo(wavStream);
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (ms != null) { ms.Dispose(); ms = null; }
+                if (pcmStream != null) { pcmStream.Dispose(); pcmStream = null; }
+            }
+            return wavStream;
         }
 
         /// <summary>

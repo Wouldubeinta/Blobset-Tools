@@ -15,6 +15,11 @@ namespace Blobset_Tools
         private BackgroundWorker? TXPKExtract_bgw = null;
         private ImageList myImageList = null;
 
+        private uint MainCompressedSize = 0;
+        private uint MainUnCompressedSize = 0;
+        private uint VramCompressedSize = 0;
+        private uint VramUnCompressedSize = 0;
+
         public TXPK_Viewer(string _filename, TXPK _txpkData, List<Structs.FileIndexInfo> _list)
         {
             InitializeComponent();
@@ -27,11 +32,15 @@ namespace Blobset_Tools
         {
             if (txpkData != null)
             {
+                MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                MainUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+                VramCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramCompressedSize;
+                VramUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
+
                 Text = Text + " - " + filename;
                 myImageList = new ImageList();
                 myImageList.Images.Add(Properties.Resources.folder_32);
                 myImageList.Images.Add(Properties.Resources.dds_32);
-
 
                 folder_treeView.ImageList = myImageList;
 
@@ -82,7 +91,6 @@ namespace Blobset_Tools
                 int icon = 1;
 
                 lvi = files_listView.Items.Add(new ListViewItem { ImageIndex = icon, Text = list[i].FileName });
-                lvi.Tag = list[i].MappingIndex;
             }
 
             status_Label.Text = list.Count + " items in " + folder_treeView.SelectedNode.Text + " folder";
@@ -99,16 +107,19 @@ namespace Blobset_Tools
 
                 fileIndex = UI.getLVSelectedIndex(files_listView);
 
-                if (fileIndex == -1)
-                    return;
+                if (fileIndex == -1) return;
 
                 TXPK txpk = new();
                 txpk.Deserialize(br);
 
-                int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+                if (txpk == null) return;
 
-                br.Position = MainUnCompressedSize + txpk.Entries[fileIndex].DDSDataOffset;
-                byte[] ddsData = br.ReadBytes((int)txpk.Entries[fileIndex].DDSDataSize1);
+                int index = Get_DDS_Index(files_listView.Items[fileIndex].Text, txpk);
+
+                if (index == -1) return;
+
+                br.Position = br.Position + txpk.Entries[index].DDSDataOffset;
+                byte[] ddsData = br.ReadBytes((int)txpk.Entries[index].DDSDataSize1);
 
                 int mipmapCount = 1;
                 ImageFormat? fmt = ImageFormat.Rgba32;
@@ -165,7 +176,12 @@ namespace Blobset_Tools
 
         private void TXPKDecompress_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
-            bool errorCheck = TXPXDecompress();
+            bool errorCheck = false;
+
+            if (MainCompressedSize != MainUnCompressedSize && VramCompressedSize != VramUnCompressedSize)
+                errorCheck = TXPX_Decompress(false);
+            else
+                errorCheck = TXPX_Decompress(true);
 
             if (errorCheck)
                 e.Cancel = true;
@@ -189,7 +205,7 @@ namespace Blobset_Tools
             if (TXPKDecompress_bgw != null) { TXPKDecompress_bgw.Dispose(); }
         }
 
-        private bool TXPXDecompress()
+        private bool TXPX_Decompress(bool isVramCompressed)
         {
             Reader? br = null;
             FileStream? fsWriter = null;
@@ -200,7 +216,13 @@ namespace Blobset_Tools
                 br = new Reader(Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash);
 
                 string txpkName = Path.GetFileName(filename);
-                fsWriter = new FileStream(Global.currentPath + @"\temp\" + txpkName, FileMode.OpenOrCreate, FileAccess.Write);
+                fsWriter = new FileStream(Global.currentPath + @"\temp\" + txpkName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+
+                if (isVramCompressed)
+                {
+                    byte[] txpkHeader = br.ReadBytes((int)MainUnCompressedSize);
+                    fsWriter.Write(txpkHeader, 0, txpkHeader.Length);
+                }
 
                 int i = 0;
 
@@ -236,7 +258,6 @@ namespace Blobset_Tools
             finally
             {
                 if (br != null) { br.Close(); br = null; }
-
             }
             return error;
         }
@@ -363,6 +384,24 @@ namespace Blobset_Tools
                 errorCheck = false;
             }
             return errorCheck;
+        }
+
+        private int Get_DDS_Index(string ddsFileName, TXPK txpk)
+        {
+            int index = -1;
+
+            int i = 0;
+
+            foreach (var item in txpk.Entries)
+            {
+                if (ddsFileName == Path.GetFileName(item.DDSFilePath + ".dds"))
+                {
+                    index = i;
+                    break;
+                }
+                i++;
+            }
+            return index;
         }
 
         private void pictureBox1_MouseClick(object sender, MouseEventArgs e)

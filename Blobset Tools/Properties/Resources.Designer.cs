@@ -213,6 +213,16 @@ namespace Blobset_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap ogg_32 {
+            get {
+                object obj = ResourceManager.GetObject("ogg_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap png_32 {
             get {
                 object obj = ResourceManager.GetObject("png_32", resourceCulture);
@@ -266,6 +276,16 @@ namespace Blobset_Tools.Properties {
         internal static System.Drawing.Bitmap txpk_32 {
             get {
                 object obj = ResourceManager.GetObject("txpk_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap wav_32 {
+            get {
+                object obj = ResourceManager.GetObject("wav_32", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

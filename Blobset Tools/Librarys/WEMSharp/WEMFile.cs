@@ -4,7 +4,7 @@ namespace WEMSharp
 {
     public class WEMFile
     {
-        private readonly FileStream _wemFile;
+        public readonly FileStream _wemFile;
 
         private readonly uint _fmtChunkOffset = 0xFFFFFFFF;
         private readonly uint _fmtChunkSize = 0xFFFFFFFF;
@@ -28,6 +28,8 @@ namespace WEMSharp
         /// </summary>
         public uint SampleRate { get; private set; }
         public uint AverageBytesPerSecond { get; private set; }
+
+        public uint SampleCount { get; private set; }
 
         private readonly uint _cueCount;
         private readonly uint _loopCount;
@@ -217,6 +219,7 @@ namespace WEMSharp
                 }
 
                 _sampleCount = br.ReadUInt32();
+                SampleCount = _sampleCount;
 
                 switch (_vorbChunkSize)
                 {
@@ -306,7 +309,7 @@ namespace WEMSharp
             }
         }
 
-        public void GenerateOGG(string fileLocation, string codebooksLocation, bool inlineCodebooks, bool fullSetup)
+        public void GenerateOGG(MemoryStream ms, string codebooksLocation, bool inlineCodebooks, bool fullSetup)
         {
             if (inlineCodebooks && string.IsNullOrEmpty(codebooksLocation))
             {
@@ -317,154 +320,153 @@ namespace WEMSharp
                 throw new ArgumentException("Either Inline Codebooks or Codebooks Location must be set");
             }
 
-            using (OggStream ogg = new(File.Create(fileLocation)))
+            OggStream ogg = new(ms);
+
+            bool[]? modeBlockFlag = null;
+            uint modeBits = 0;
+            bool previousBlockFlag = false;
+
+            if (_headerTriadPresent)
             {
-                bool[]? modeBlockFlag = null;
-                uint modeBits = 0;
-                bool previousBlockFlag = false;
+                GenerateOGGHeaderTriad(ogg);
+            }
+            else
+            {
+                GenerateOGGHeader(ogg, codebooksLocation, inlineCodebooks, fullSetup, ref modeBlockFlag, ref modeBits);
+            }
 
-                if (_headerTriadPresent)
-                {
-                    GenerateOGGHeaderTriad(ogg);
-                }
-                else
-                {
-                    GenerateOGGHeader(ogg, codebooksLocation, inlineCodebooks, fullSetup, ref modeBlockFlag, ref modeBits);
-                }
+            {
+                uint offset = _dataChunkOffset + _firstAudioPacketOffset;
 
+                while (offset < _dataChunkOffset + _dataChunkSize)
                 {
-                    uint offset = _dataChunkOffset + _firstAudioPacketOffset;
+                    uint size;
+                    uint granule;
+                    uint packetHeaderSize;
+                    uint packetPayloadOffset;
+                    uint nextOffset;
 
-                    while (offset < _dataChunkOffset + _dataChunkSize)
+                    if (_oldPacketHeaders)
                     {
-                        uint size;
-                        uint granule;
-                        uint packetHeaderSize;
-                        uint packetPayloadOffset;
-                        uint nextOffset;
+                        Packet8 audioPacket = new(_wemFile, offset);
+                        packetHeaderSize = audioPacket.GetHeaderSize();
+                        size = audioPacket.GetSize();
+                        packetPayloadOffset = audioPacket.GetOffset();
+                        granule = audioPacket.GetGranule();
+                        nextOffset = audioPacket.NextOffset();
+                    }
+                    else
+                    {
+                        Packet audioPacket = new(_wemFile, offset, _noGranule);
+                        packetHeaderSize = audioPacket.GetHeaderSize();
+                        size = audioPacket.GetSize();
+                        packetPayloadOffset = audioPacket.GetOffset();
+                        granule = audioPacket.GetGranule();
+                        nextOffset = audioPacket.NextOffset();
+                    }
 
-                        if (_oldPacketHeaders)
-                        {
-                            Packet8 audioPacket = new(_wemFile, offset);
-                            packetHeaderSize = audioPacket.GetHeaderSize();
-                            size = audioPacket.GetSize();
-                            packetPayloadOffset = audioPacket.GetOffset();
-                            granule = audioPacket.GetGranule();
-                            nextOffset = audioPacket.NextOffset();
-                        }
-                        else
-                        {
-                            Packet audioPacket = new(_wemFile, offset, _noGranule);
-                            packetHeaderSize = audioPacket.GetHeaderSize();
-                            size = audioPacket.GetSize();
-                            packetPayloadOffset = audioPacket.GetOffset();
-                            granule = audioPacket.GetGranule();
-                            nextOffset = audioPacket.NextOffset();
-                        }
+                    if (offset + packetHeaderSize > _dataChunkOffset + _dataChunkSize)
+                    {
+                        throw new Exception("There was an error generating a vorbis packet");
+                    }
 
-                        if (offset + packetHeaderSize > _dataChunkOffset + _dataChunkSize)
+                    offset = packetPayloadOffset;
+
+                    _wemFile.Seek(offset, SeekOrigin.Begin);
+
+                    if (granule == 0xFFFFFFFF)
+                    {
+                        ogg.SetGranule(1);
+                    }
+                    else
+                    {
+                        ogg.SetGranule(granule);
+                    }
+
+                    if (_modPackets)
+                    {
+                        if (modeBlockFlag == null)
                         {
                             throw new Exception("There was an error generating a vorbis packet");
                         }
 
-                        offset = packetPayloadOffset;
+                        byte packetType = 0;
+                        ogg.WriteBit(packetType);
 
-                        _wemFile.Seek(offset, SeekOrigin.Begin);
+                        uint modeNumber = 0;
+                        uint remainder = 0;
 
-                        if (granule == 0xFFFFFFFF)
                         {
-                            ogg.SetGranule(1);
+                            BitStream bitStream = new(_wemFile);
+
+                            modeNumber = bitStream.Read((int)modeBits);
+                            ogg.BitWrite(modeNumber, (byte)modeBits);
+
+                            remainder = bitStream.Read(8 - (int)modeBits);
                         }
-                        else
+
+                        if (modeBlockFlag[modeNumber])
                         {
-                            ogg.SetGranule(granule);
-                        }
+                            _wemFile.Seek(nextOffset, SeekOrigin.Begin);
 
-                        if (_modPackets)
-                        {
-                            if (modeBlockFlag == null)
+                            bool nextBlockFlag = false;
+                            if (nextOffset + packetHeaderSize <= _dataChunkOffset + _dataChunkSize)
                             {
-                                throw new Exception("There was an error generating a vorbis packet");
-                            }
+                                Packet audioPacket = new(_wemFile, nextOffset, _noGranule);
+                                uint nextPacketSize = audioPacket.GetSize();
 
-                            byte packetType = 0;
-                            ogg.WriteBit(packetType);
-
-                            uint modeNumber = 0;
-                            uint remainder = 0;
-
-                            {
-                                BitStream bitStream = new(_wemFile);
-
-                                modeNumber = bitStream.Read((int)modeBits);
-                                ogg.BitWrite(modeNumber, (byte)modeBits);
-
-                                remainder = bitStream.Read(8 - (int)modeBits);
-                            }
-
-                            if (modeBlockFlag[modeNumber])
-                            {
-                                _wemFile.Seek(nextOffset, SeekOrigin.Begin);
-
-                                bool nextBlockFlag = false;
-                                if (nextOffset + packetHeaderSize <= _dataChunkOffset + _dataChunkSize)
+                                if (nextPacketSize != 0xFFFFFFFF)
                                 {
-                                    Packet audioPacket = new(_wemFile, nextOffset, _noGranule);
-                                    uint nextPacketSize = audioPacket.GetSize();
+                                    _wemFile.Seek(audioPacket.GetOffset(), SeekOrigin.Begin);
 
-                                    if (nextPacketSize != 0xFFFFFFFF)
-                                    {
-                                        _wemFile.Seek(audioPacket.GetOffset(), SeekOrigin.Begin);
+                                    BitStream bitStream = new(_wemFile);
+                                    uint nextModeNumber = bitStream.Read((int)modeBits);
 
-                                        BitStream bitStream = new(_wemFile);
-                                        uint nextModeNumber = bitStream.Read((int)modeBits);
-
-                                        nextBlockFlag = modeBlockFlag[nextModeNumber];
-                                    }
+                                    nextBlockFlag = modeBlockFlag[nextModeNumber];
                                 }
-
-                                byte previousWindowType = previousBlockFlag ? (byte)1 : (byte)0;
-                                ogg.WriteBit(previousWindowType);
-
-                                byte nextWindowType = previousBlockFlag ? (byte)1 : (byte)0;
-                                ogg.WriteBit(nextWindowType);
-
-                                _wemFile.Seek(offset + 1, SeekOrigin.Begin);
                             }
 
-                            previousBlockFlag = modeBlockFlag[modeNumber];
-                            ogg.BitWrite(remainder, (byte)(8 - modeBits));
-                        }
-                        else
-                        {
-                            int b = _wemFile.ReadByte();
-                            if (b < 0)
-                            {
-                                throw new Exception("There was an error generating a vorbis packet");
-                            }
+                            byte previousWindowType = previousBlockFlag ? (byte)1 : (byte)0;
+                            ogg.WriteBit(previousWindowType);
 
-                            ogg.BitWrite((byte)b);
+                            byte nextWindowType = previousBlockFlag ? (byte)1 : (byte)0;
+                            ogg.WriteBit(nextWindowType);
+
+                            _wemFile.Seek(offset + 1, SeekOrigin.Begin);
                         }
 
-                        for (int i = 1; i < size; i++)
-                        {
-                            int b = _wemFile.ReadByte();
-                            if (b < 0)
-                            {
-                                throw new Exception("There was an error generating a vorbis packet");
-                            }
-
-                            ogg.BitWrite((byte)b);
-                        }
-
-                        offset = nextOffset;
-                        ogg.FlushPage(false, (offset == _dataChunkOffset + _dataChunkSize));
+                        previousBlockFlag = modeBlockFlag[modeNumber];
+                        ogg.BitWrite(remainder, (byte)(8 - modeBits));
                     }
-
-                    if (offset > _dataChunkOffset + _dataChunkSize)
+                    else
                     {
-                        throw new Exception("There was an error while creating the OGG file");
+                        int b = _wemFile.ReadByte();
+                        if (b < 0)
+                        {
+                            throw new Exception("There was an error generating a vorbis packet");
+                        }
+
+                        ogg.BitWrite((byte)b);
                     }
+
+                    for (int i = 1; i < size; i++)
+                    {
+                        int b = _wemFile.ReadByte();
+                        if (b < 0)
+                        {
+                            throw new Exception("There was an error generating a vorbis packet");
+                        }
+
+                        ogg.BitWrite((byte)b);
+                    }
+
+                    offset = nextOffset;
+                    ogg.FlushPage(false, (offset == _dataChunkOffset + _dataChunkSize));
+                }
+
+                if (offset > _dataChunkOffset + _dataChunkSize)
+                {
+                    throw new Exception("There was an error while creating the OGG file");
                 }
             }
         }

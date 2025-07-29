@@ -39,7 +39,6 @@ namespace BlobsetIO
         private Entry[]? entries;
         #endregion
 
-
         public BlobsetFile()
         {
             entries = null;

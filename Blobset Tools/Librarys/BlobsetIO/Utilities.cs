@@ -36,7 +36,7 @@ namespace BlobsetIO
         public static int ChunkAmount(int UnCommpressedSize, int ChunkSize = 262144)
         {
             int ChunkCount = 0;
-            decimal ChunkSizeDec = (decimal)UnCommpressedSize / ChunkSize;
+            decimal ChunkSizeDec = UnCommpressedSize / (decimal)ChunkSize;
 
             if (UnCommpressedSize < ChunkSize)
             {
@@ -160,6 +160,32 @@ namespace BlobsetIO
                 }
             }
             return fm;
+        }
+
+        public static string GetGameVersion()
+        {
+            string gameVersion = string.Empty;
+            int gameID = Blobset_Tools.Properties.Settings.Default.GameID;
+
+            switch (gameID)
+            {
+                case (int)Enums.Game.AFLL:
+                case (int)Enums.Game.RLL2:
+                    break;
+                case (int)Enums.Game.DBC14:
+                case (int)Enums.Game.RLL3:
+                case (int)Enums.Game.AC:
+                    string gv1 = Blobset_Tools.Properties.Settings.Default.GameLocation.Replace(@"data-0.blobset.pc", string.Empty) + "version.txt";
+                    if (File.Exists(gv1))
+                        gameVersion = File.ReadAllText(gv1);
+                    break;
+                default:
+                    string gv2 = Blobset_Tools.Properties.Settings.Default.GameLocation.Replace(@"data\data-0.blobset.pc", string.Empty) + "version.txt";
+                    if (File.Exists(gv2))
+                        gameVersion = File.ReadAllText(gv2);
+                    break;
+            }
+            return gameVersion;
         }
 
         /// <summary>

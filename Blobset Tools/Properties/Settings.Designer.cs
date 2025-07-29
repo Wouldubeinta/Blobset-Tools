@@ -49,7 +49,7 @@ namespace Blobset_Tools.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool SkipUnknown {
             get {
                 return ((bool)(this["SkipUnknown"]));
