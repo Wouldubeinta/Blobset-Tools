@@ -98,3 +98,5 @@ Once done, go to the Blobset Tools, click on **"Tools->M3MP Creator"**. Once loa
  - shravan2x for https://github.com/shravan2x/Gameloop.Vdf
  - JamesNK for https://github.com/JamesNK/Newtonsoft.Json
  - Crauzer for https://github.com/Crauzer/WEMSharp
+ - knot3 for OggSharp - https://github.com/knot3/OggSharp
+ - lostromb for concentus.oggfile - https://github.com/lostromb/concentus.oggfile
