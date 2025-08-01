@@ -149,6 +149,7 @@ namespace Blobset_Tools
                 List<int> headerIndex = [];
 
                 string filePathRemove = Global.currentPath + "\\games\\" + Properties.Settings.Default.GameName + "\\mods\\";
+                string backupFilePath = Global.currentPath + "\\games\\" + Properties.Settings.Default.GameName + "\\backup\\";
 
                 string gameLocation = Path.GetDirectoryName(blobsetFile) + @"\";
 
@@ -159,7 +160,7 @@ namespace Blobset_Tools
                     if (fm == null)
                     {
                         error = true;
-                        MessageBox.Show(ddsfileList[i] + " - fileIndex can't be found, make sure the dds filename or location is correct", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(ddsfileList[i] + " - fileIndex can't be found, make sure the dds file name or location is correct. Example: Don't have this in the file name (1).", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return error;
                     }
 
@@ -167,6 +168,12 @@ namespace Blobset_Tools
                     string fileName = fm.Entries[0].FileNameHash;
                     string filePath = gameLocation + folderName + @"\" + fileName;
                     _filePath = filePath;
+
+                    if (!File.Exists(backupFilePath + folderName + @"\" + fileName))
+                    {
+                        Directory.CreateDirectory(backupFilePath + folderName + @"\");
+                        File.Move(filePath, backupFilePath + folderName + @"\" + fileName);
+                    }
 
                     if (File.Exists(filePath))
                         File.Delete(filePath);
@@ -176,11 +183,11 @@ namespace Blobset_Tools
                     Mini_TXPK mini_TXPK = new();
                     mini_TXPK.Serialize(ddsfileList[i], ddsfileList[i].Replace(filePathRemove, string.Empty), writer);
 
-                    int mainSize = (int)Utilities.FileInfo(filePath);
+                    int mainUnCompSize = (int)Utilities.FileInfo(filePath);
                     int vramUncompSize = (int)Utilities.FileInfo(ddsfileList[i]);
 
-                    mainCompressedSize.Add(mainSize);
-                    mainUncompressedSize.Add(mainSize);
+                    mainCompressedSize.Add(mainUnCompSize);
+                    mainUncompressedSize.Add(mainUnCompSize);
 
                     int chunkCount = Utilities.ChunkAmount(vramUncompSize);
                     long[] chunkSizes = Utilities.ChunkSizes(vramUncompSize, chunkCount);
@@ -191,13 +198,13 @@ namespace Blobset_Tools
                     {
                         byte[] ddsChunkData = br.ReadBytes((int)chunkSizes[j]);
 
-                        if ((int)chunkSizes[j] != chunkSize)
+                        if ((int)chunkSizes[j] == chunkSize)
                             ZSTD_IO.CompressAndWrite(ddsChunkData, writer, (int)chunkSizes[j]);
                         else
                             IO.ReadWriteModifyData(ddsChunkData, writer, (int)chunkSizes[j]);
                     }
 
-                    vramCompressedSize.Add((int)Utilities.FileInfo(filePath) - mainSize);
+                    vramCompressedSize.Add((int)Utilities.FileInfo(filePath) - mainUnCompSize);
                     vramUncompressedSize.Add(vramUncompSize);
 
                     headerIndex.Add(Convert.ToInt32(fm.Entries[0].Index));
@@ -242,6 +249,12 @@ namespace Blobset_Tools
                     string filePath = gameLocation + folderName + @"\" + fileName;
                     _filePath = filePath;
 
+                    if (!File.Exists(backupFilePath + folderName + @"\" + fileName))
+                    {
+                        Directory.CreateDirectory(backupFilePath + folderName + @"\");
+                        File.Move(filePath, backupFilePath + folderName + @"\" + fileName);
+                    }
+
                     if (File.Exists(filePath))
                         File.Delete(filePath);
 
@@ -250,7 +263,7 @@ namespace Blobset_Tools
                     TXPK txpk = new();
                     txpk.Deserialize(mainBr);
 
-                    writer = new(filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                    writer = new(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
                     txpk.Serialize(writer);
 
@@ -264,15 +277,14 @@ namespace Blobset_Tools
 
                     writer.Position = 0;
 
-                    int _mainCompressedSize = 0;
-
                     for (int j = 0; j < mainChunkCount; j++)
                     {
                         byte[] txpkMainChunkData = txpkHeaderBr.ReadBytes((int)mainChunkSizes[j]);
-                        _mainCompressedSize += ZSTD_IO.CompressAndWrite(txpkMainChunkData, writer, (int)mainChunkSizes[j]);
+                        ZSTD_IO.CompressAndWrite(txpkMainChunkData, writer, (int)mainChunkSizes[j]);
                     }
 
-                    mainCompressedSize.Add(_mainCompressedSize);
+                    int txpkMainCompressedSize = (int)writer.Position;
+                    mainCompressedSize.Add(txpkMainCompressedSize);
                     mainUncompressedSize.Add(txpkXmlInfo.MainUnCompressedSize);
 
                     if (txpkHeaderBr != null) { txpkHeaderBr.Close(); txpkHeaderBr = null; }
@@ -281,15 +293,13 @@ namespace Blobset_Tools
                     {
                         byte[] txpkVramChunkData = mainBr.ReadBytes((int)vramChunkSizes[j]);
 
-                        if ((int)vramChunkSizes[j] != chunkSize)
+                        if ((int)vramChunkSizes[j] == chunkSize)
                             ZSTD_IO.CompressAndWrite(txpkVramChunkData, writer, (int)vramChunkSizes[j]);
                         else
                             IO.ReadWriteModifyData(txpkVramChunkData, writer, (int)vramChunkSizes[j]);
                     }
 
-                    int _vramCompressedSize = (int)Utilities.FileInfo(filePath) - _mainCompressedSize;
-
-                    vramCompressedSize.Add(_vramCompressedSize);
+                    vramCompressedSize.Add((int)Utilities.FileInfo(filePath) - txpkMainCompressedSize);
                     vramUncompressedSize.Add(txpkXmlInfo.VramUnCompressedSize);
 
                     progress = txpkfileList[i].Replace(filePathRemove, string.Empty);
@@ -330,38 +340,29 @@ namespace Blobset_Tools
                     string filePath = gameLocation + folderName + @"\" + fileName;
                     _filePath = filePath;
 
-                    int mainSize = (int)Utilities.FileInfo(m3mpfileList[i]);
-                    int mainChunkCount = Utilities.ChunkAmount(mainSize);
-                    long[] mainChunkSizes = Utilities.ChunkSizes(mainSize, mainChunkCount);
-
-                    writer = new(filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
-
-                    if (!m3mpFileInfo.IsCompressed)
+                    if (!File.Exists(backupFilePath + folderName + @"\" + fileName))
                     {
-                        for (int j = 0; j < mainChunkCount; j++)
-                        {
-                            byte[] m3mpChunkData = br.ReadBytes((int)mainChunkSizes[j]);
-
-                            if ((int)mainChunkSizes[j] != chunkSize)
-                                ZSTD_IO.CompressAndWrite(m3mpChunkData, writer, (int)mainChunkSizes[j]);
-                            else
-                                IO.ReadWriteModifyData(m3mpChunkData, writer, (int)mainChunkSizes[j]);
-                        }
-
-                        mainCompressedSize.Add(mainSize);
-                    }
-                    else
-                    {
-                        for (int j = 0; j < mainChunkCount; j++)
-                        {
-                            byte[] m3mpChunkData = br.ReadBytes((int)mainChunkSizes[j]);
-                            ZSTD_IO.CompressAndWrite(m3mpChunkData, writer, (int)mainChunkSizes[j]);
-                        }
-
-                        mainCompressedSize.Add((int)Utilities.FileInfo(filePath));
+                        Directory.CreateDirectory(backupFilePath + folderName + @"\");
+                        File.Move(filePath, backupFilePath + folderName + @"\" + fileName);
                     }
 
-                    mainUncompressedSize.Add(mainSize);
+                    if (File.Exists(filePath))
+                        File.Delete(filePath);
+
+                    int mainUncompSize = m3mpFileInfo.MainUnCompressedSize;
+                    int mainChunkCount = Utilities.ChunkAmount(mainUncompSize);
+                    long[] mainChunkSizes = Utilities.ChunkSizes(mainUncompSize, mainChunkCount);
+
+                    writer = new(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+
+                    for (int j = 0; j < mainChunkCount; j++)
+                    {
+                        byte[] m3mpChunkData = br.ReadBytes((int)mainChunkSizes[j]);
+                        IO.ReadWriteData(m3mpChunkData, writer, (int)mainChunkSizes[j]);
+                    }
+                    mainCompressedSize.Add(mainUncompSize);
+
+                    mainUncompressedSize.Add(mainUncompSize);
                     vramCompressedSize.Add(0);
                     vramUncompressedSize.Add(0);
 
@@ -392,6 +393,15 @@ namespace Blobset_Tools
                     string filePath = gameLocation + folderName + @"\" + fileName;
                     _filePath = filePath;
 
+                    if (!File.Exists(backupFilePath + folderName + @"\" + fileName))
+                    {
+                        Directory.CreateDirectory(backupFilePath + folderName + @"\");
+                        File.Move(filePath, backupFilePath + folderName + @"\" + fileName);
+                    }
+
+                    if (File.Exists(filePath))
+                        File.Delete(filePath);
+
                     int mainSize = (int)Utilities.FileInfo(wemfileList[i]);
 
                     mainCompressedSize.Add(mainSize);
@@ -403,7 +413,7 @@ namespace Blobset_Tools
                     long[] mainChunkSizes = Utilities.ChunkSizes(mainSize, mainChunkCount);
 
                     Reader? br = new(wemfileList[i]);
-                    writer = new(filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                    writer = new(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
                     for (int j = 0; j < mainChunkCount; j++)
                     {
@@ -438,6 +448,15 @@ namespace Blobset_Tools
                     string filePath = gameLocation + folderName + @"\" + fileName;
                     _filePath = filePath;
 
+                    if (!File.Exists(backupFilePath + folderName + @"\" + fileName))
+                    {
+                        Directory.CreateDirectory(backupFilePath + folderName + @"\");
+                        File.Move(filePath, backupFilePath + folderName + @"\" + fileName);
+                    }
+
+                    if (File.Exists(filePath))
+                        File.Delete(filePath);
+
                     int mainSize = (int)Utilities.FileInfo(bnkfileList[i]);
 
                     mainCompressedSize.Add(mainSize);
@@ -449,7 +468,7 @@ namespace Blobset_Tools
                     long[] mainChunkSizes = Utilities.ChunkSizes(mainSize, mainChunkCount);
 
                     Reader? br = new(bnkfileList[i]);
-                    writer = new(filePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                    writer = new(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
                     for (int j = 0; j < mainChunkCount; j++)
                     {
@@ -466,6 +485,11 @@ namespace Blobset_Tools
 
                     if (br != null) { br.Close(); br = null; }
                     if (writer != null) { writer.Dispose(); writer = null; }
+                }
+
+                if (!File.Exists(backupFilePath + "data-0.blobset.pc"))
+                {
+                    File.Copy(blobsetFile, backupFilePath + "data-0.blobset.pc");
                 }
 
                 blobsetHeader_bw = new Writer(blobsetFile);

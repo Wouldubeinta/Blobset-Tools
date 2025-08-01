@@ -25,52 +25,70 @@ namespace Blobset_Tools
 
         private void M3MP_Viewer_Load(object sender, EventArgs e)
         {
-            if (m3mpData != null)
+            Reader br = null;
+
+            try
             {
-                Text = Text + " - " + filename;
-                myImageList = new ImageList();
-                myImageList.Images.Add(Properties.Resources.folder_32);
-                myImageList.Images.Add(Properties.Resources.file_32);
-
-                folder_treeView.ImageList = myImageList;
-
-                m3mpXmlIn = new ExtractFileInfo();
-                m3mpXmlIn.Index = Convert.ToInt32(Path.GetFileNameWithoutExtension(filename));
-
-                if (filename.Contains(@"\compressed\"))
-                    isCompressed = true;
-
-                m3mpXmlIn.IsCompressed = isCompressed;
-
-                string[] filePaths = new string[m3mpData.FilesCount];
-
-                m3mpXmlIn.Entries = new ExtractFileInfo.Entry[filePaths.Length];
-
-                for (int i = 0; i < m3mpData.FilesCount; i++)
+                if (m3mpData != null)
                 {
-                    ExtractFileInfo.Entry entry = new();
-                    entry.FilePath = m3mpData.UnCompressedEntries[i].FilePath;
-                    m3mpXmlIn.Entries[i] = entry;
-                    filePaths[i] = m3mpData.UnCompressedEntries[i].FilePath;
+                    Text = Text + " - " + filename;
+                    myImageList = new ImageList();
+                    myImageList.Images.Add(Properties.Resources.folder_32);
+                    myImageList.Images.Add(Properties.Resources.file_32);
+
+                    folder_treeView.ImageList = myImageList;
+
+                    m3mpXmlIn = new ExtractFileInfo();
+                    m3mpXmlIn.Index = Convert.ToInt32(Path.GetFileNameWithoutExtension(filename));
+
+                    br = new(Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash);
+
+                    int magic = br.ReadInt32();
+
+                    if (magic != (int)Enums.FileType.M3MP)
+                    {
+                        isCompressed = true;
+                        m3mpXmlIn.IsCompressed = isCompressed;
+                    }
+
+                    string[] filePaths = new string[m3mpData.FilesCount];
+
+                    m3mpXmlIn.Entries = new ExtractFileInfo.Entry[filePaths.Length];
+
+                    for (int i = 0; i < m3mpData.FilesCount; i++)
+                    {
+                        ExtractFileInfo.Entry entry = new();
+                        entry.FilePath = m3mpData.UnCompressedEntries[i].FilePath;
+                        m3mpXmlIn.Entries[i] = entry;
+                        filePaths[i] = m3mpData.UnCompressedEntries[i].FilePath;
+                    }
+
+                    folder_treeView.Nodes.Add(UI.MakeTreeFromPaths(filePaths, Path.GetFileName(filename)));
+
+                    if (folder_treeView.Nodes.Count > 0)
+                    {
+                        folder_treeView.Nodes[0].Expand();
+                        folder_treeView.SelectedNode = folder_treeView.Nodes[0];
+                    }
+
+                    string m3mpName = Path.GetFileName(filename);
+
+                    if (isCompressed)
+                    {
+                        if (File.Exists(Global.currentPath + @"\temp\" + m3mpName))
+                            File.Delete(Global.currentPath + @"\temp" + m3mpName);
+
+                        M3MPDecompressBgw();
+                    }
                 }
-
-                folder_treeView.Nodes.Add(UI.MakeTreeFromPaths(filePaths, Path.GetFileName(filename)));
-
-                if (folder_treeView.Nodes.Count > 0)
-                {
-                    folder_treeView.Nodes[0].Expand();
-                    folder_treeView.SelectedNode = folder_treeView.Nodes[0];
-                }
-
-                string m3mpName = Path.GetFileName(filename);
-
-                if (isCompressed)
-                {
-                    if (File.Exists(Global.currentPath + @"\temp\" + m3mpName))
-                        File.Delete(Global.currentPath + @"\temp" + m3mpName);
-
-                    M3MPDecompressBgw();
-                }
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (br != null) { br.Close(); br = null; }
             }
         }
 

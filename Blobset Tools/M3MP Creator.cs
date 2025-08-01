@@ -46,6 +46,10 @@ namespace Blobset_Tools
 
                 saveFileDialog1.FileName = M3MP_Xml_In.Index.ToString();
 
+                string compCheck = M3MP_Xml_In.IsCompressed ? "compressed" : "uncompressed";
+
+                saveFileDialog1.InitialDirectory = Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\mods\m3mp\" + compCheck;
+
                 if (saveFileDialog1.ShowDialog() == DialogResult.OK)
                     M3MP_Create();
             }
@@ -198,12 +202,14 @@ namespace Blobset_Tools
 
                 M3MP_Create_bgw.ReportProgress(0, Environment.NewLine);
 
+                long m3mpHeaderSize = Utilities.FileInfo(Global.currentPath + @"\temp\m3mp_header.tmp");
+
                 for (int i = 0; i < m3mp.ChunksCount; i++)
                 {
                     byte[] buffer2 = br.ReadBytes((int)chunkSizes[i]);
                     int chunkCOffset = 0;
                     int chunkCSize = ZSTD_IO.CompressAndWrite(buffer2, writer, ref chunkCOffset, (int)chunkSizes[i]);
-                    m3mp.CompressedEntries[i].CompressedDataInfo.Offset = (uint)chunkCOffset + (uint)Utilities.FileInfo(Global.currentPath + @"\temp\m3mp_header.tmp");
+                    m3mp.CompressedEntries[i].CompressedDataInfo.Offset = (uint)chunkCOffset + (uint)m3mpHeaderSize;
                     m3mp.CompressedEntries[i].CompressedDataInfo.CompressedSize = (uint)chunkCSize;
                     m3mp.CompressedEntries[i].CompressedDataInfo.UnCompressedSize = (uint)buffer2.Length;
 

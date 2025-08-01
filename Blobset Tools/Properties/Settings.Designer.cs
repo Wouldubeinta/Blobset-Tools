@@ -38,18 +38,6 @@ namespace Blobset_Tools.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool Compression {
-            get {
-                return ((bool)(this["Compression"]));
-            }
-            set {
-                this["Compression"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool SkipUnknown {
             get {
                 return ((bool)(this["SkipUnknown"]));

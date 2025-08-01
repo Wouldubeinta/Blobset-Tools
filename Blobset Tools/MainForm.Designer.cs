@@ -44,11 +44,11 @@
             tXPKCreatorToolStripMenuItem = new ToolStripMenuItem();
             m3MPCreatorToolStripMenuItem = new ToolStripMenuItem();
             optionsToolStripMenuItem = new ToolStripMenuItem();
-            blobsetCompressionToolStripMenuItem = new ToolStripMenuItem();
             updateFileMappingDataToolStripMenuItem = new ToolStripMenuItem();
             loadGameToolStripMenuItem = new ToolStripMenuItem();
             validateSteamGameFilesToolStripMenuItem = new ToolStripMenuItem();
             skipUnknownFilesToolStripMenuItem = new ToolStripMenuItem();
+            restoreBackupFilesToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
             searchToolStripTextBox = new ToolStripTextBox();
             searchToolStripMenuItem = new ToolStripMenuItem();
@@ -172,7 +172,7 @@
             gameName_toolStripTextBox.Alignment = ToolStripItemAlignment.Right;
             gameName_toolStripTextBox.BackColor = SystemColors.Control;
             gameName_toolStripTextBox.Font = new Font("RLFont", 10F, FontStyle.Bold | FontStyle.Underline);
-            gameName_toolStripTextBox.ForeColor = Color.DodgerBlue;
+            gameName_toolStripTextBox.ForeColor = Color.FromArgb(1, 135, 15);
             gameName_toolStripTextBox.Name = "gameName_toolStripTextBox";
             gameName_toolStripTextBox.ReadOnly = true;
             gameName_toolStripTextBox.ShortcutsEnabled = false;
@@ -207,28 +207,16 @@
             // 
             // optionsToolStripMenuItem
             // 
-            optionsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { blobsetCompressionToolStripMenuItem, updateFileMappingDataToolStripMenuItem, loadGameToolStripMenuItem, validateSteamGameFilesToolStripMenuItem, skipUnknownFilesToolStripMenuItem });
+            optionsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { updateFileMappingDataToolStripMenuItem, loadGameToolStripMenuItem, validateSteamGameFilesToolStripMenuItem, skipUnknownFilesToolStripMenuItem, restoreBackupFilesToolStripMenuItem });
             optionsToolStripMenuItem.Name = "optionsToolStripMenuItem";
             optionsToolStripMenuItem.Size = new Size(61, 23);
             optionsToolStripMenuItem.Text = "Options";
-            // 
-            // blobsetCompressionToolStripMenuItem
-            // 
-            blobsetCompressionToolStripMenuItem.Checked = true;
-            blobsetCompressionToolStripMenuItem.CheckOnClick = true;
-            blobsetCompressionToolStripMenuItem.CheckState = CheckState.Checked;
-            blobsetCompressionToolStripMenuItem.Image = Properties.Resources.compression_32;
-            blobsetCompressionToolStripMenuItem.Name = "blobsetCompressionToolStripMenuItem";
-            blobsetCompressionToolStripMenuItem.Size = new Size(211, 22);
-            blobsetCompressionToolStripMenuItem.Text = "Blobset Compression";
-            blobsetCompressionToolStripMenuItem.ToolTipText = "If ticked, this will compress the blobset files.";
-            blobsetCompressionToolStripMenuItem.Click += blobsetCompressionToolStripMenuItem_Click;
             // 
             // updateFileMappingDataToolStripMenuItem
             // 
             updateFileMappingDataToolStripMenuItem.Image = Properties.Resources.mapping_32;
             updateFileMappingDataToolStripMenuItem.Name = "updateFileMappingDataToolStripMenuItem";
-            updateFileMappingDataToolStripMenuItem.Size = new Size(211, 22);
+            updateFileMappingDataToolStripMenuItem.Size = new Size(215, 26);
             updateFileMappingDataToolStripMenuItem.Text = "Update File Mapping Data";
             updateFileMappingDataToolStripMenuItem.ToolTipText = "This update's the file mapping files in the data folder.";
             updateFileMappingDataToolStripMenuItem.Click += updateFileMappingDataToolStripMenuItem_Click;
@@ -238,7 +226,7 @@
             loadGameToolStripMenuItem.CheckOnClick = true;
             loadGameToolStripMenuItem.Image = Properties.Resources.loading_32;
             loadGameToolStripMenuItem.Name = "loadGameToolStripMenuItem";
-            loadGameToolStripMenuItem.Size = new Size(211, 22);
+            loadGameToolStripMenuItem.Size = new Size(215, 26);
             loadGameToolStripMenuItem.Text = "Load Game";
             loadGameToolStripMenuItem.ToolTipText = "If ticked, this will load the game after creating the blobset.";
             loadGameToolStripMenuItem.Click += loadGameToolStripMenuItem_Click;
@@ -247,7 +235,7 @@
             // 
             validateSteamGameFilesToolStripMenuItem.Image = (Image)resources.GetObject("validateSteamGameFilesToolStripMenuItem.Image");
             validateSteamGameFilesToolStripMenuItem.Name = "validateSteamGameFilesToolStripMenuItem";
-            validateSteamGameFilesToolStripMenuItem.Size = new Size(211, 22);
+            validateSteamGameFilesToolStripMenuItem.Size = new Size(215, 26);
             validateSteamGameFilesToolStripMenuItem.Text = "Validate Steam Game Files";
             validateSteamGameFilesToolStripMenuItem.ToolTipText = "This will repair game files, If something stuffs up.";
             validateSteamGameFilesToolStripMenuItem.Click += validateSteamGameFilesToolStripMenuItem_Click;
@@ -257,10 +245,19 @@
             skipUnknownFilesToolStripMenuItem.CheckOnClick = true;
             skipUnknownFilesToolStripMenuItem.Image = Properties.Resources.skip_32;
             skipUnknownFilesToolStripMenuItem.Name = "skipUnknownFilesToolStripMenuItem";
-            skipUnknownFilesToolStripMenuItem.Size = new Size(211, 22);
+            skipUnknownFilesToolStripMenuItem.Size = new Size(215, 26);
             skipUnknownFilesToolStripMenuItem.Text = "Skip Unknown Files";
             skipUnknownFilesToolStripMenuItem.ToolTipText = "When ticked, this will skip extracting unknown file types, like meshes and animation files ect...";
             skipUnknownFilesToolStripMenuItem.Click += skipUnknownFilesToolStripMenuItem_Click;
+            // 
+            // restoreBackupFilesToolStripMenuItem
+            // 
+            restoreBackupFilesToolStripMenuItem.Image = Properties.Resources.restore_backup_32;
+            restoreBackupFilesToolStripMenuItem.Name = "restoreBackupFilesToolStripMenuItem";
+            restoreBackupFilesToolStripMenuItem.Size = new Size(215, 26);
+            restoreBackupFilesToolStripMenuItem.Text = "Restore Backup Files";
+            restoreBackupFilesToolStripMenuItem.ToolTipText = "This will restore the backed up files that you replaced with mods.";
+            restoreBackupFilesToolStripMenuItem.Click += restoreBackupFilesToolStripMenuItem_Click;
             // 
             // aboutToolStripMenuItem
             // 
@@ -372,7 +369,7 @@
             // 
             splitContainer3.Panel2.Controls.Add(dds_pictureBox);
             splitContainer3.Size = new Size(523, 675);
-            splitContainer3.SplitterDistance = 280;
+            splitContainer3.SplitterDistance = 310;
             splitContainer3.TabIndex = 0;
             // 
             // fileInfo_richTextBox
@@ -384,7 +381,7 @@
             fileInfo_richTextBox.Location = new Point(0, 0);
             fileInfo_richTextBox.Name = "fileInfo_richTextBox";
             fileInfo_richTextBox.ReadOnly = true;
-            fileInfo_richTextBox.Size = new Size(523, 280);
+            fileInfo_richTextBox.Size = new Size(523, 310);
             fileInfo_richTextBox.TabIndex = 0;
             fileInfo_richTextBox.Text = "";
             fileInfo_richTextBox.MouseClick += fileInfo_richTextBox_MouseClick;
@@ -396,7 +393,7 @@
             dds_pictureBox.Location = new Point(0, 0);
             dds_pictureBox.MaximumSize = new Size(800, 800);
             dds_pictureBox.Name = "dds_pictureBox";
-            dds_pictureBox.Size = new Size(523, 391);
+            dds_pictureBox.Size = new Size(523, 361);
             dds_pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             dds_pictureBox.TabIndex = 0;
             dds_pictureBox.TabStop = false;
@@ -450,7 +447,7 @@
             // 
             wemFileToolStripMenuItem.Image = Properties.Resources.wem_32;
             wemFileToolStripMenuItem.Name = "wemFileToolStripMenuItem";
-            wemFileToolStripMenuItem.Size = new Size(180, 22);
+            wemFileToolStripMenuItem.Size = new Size(123, 22);
             wemFileToolStripMenuItem.Text = "Wem File";
             wemFileToolStripMenuItem.Click += wemFileToolStripMenuItem_Click;
             // 
@@ -458,7 +455,7 @@
             // 
             oggFileToolStripMenuItem.Image = Properties.Resources.ogg_32;
             oggFileToolStripMenuItem.Name = "oggFileToolStripMenuItem";
-            oggFileToolStripMenuItem.Size = new Size(180, 22);
+            oggFileToolStripMenuItem.Size = new Size(123, 22);
             oggFileToolStripMenuItem.Text = "Ogg File";
             oggFileToolStripMenuItem.Click += oggFileToolStripMenuItem_Click;
             // 
@@ -466,7 +463,7 @@
             // 
             wavFileToolStripMenuItem.Image = Properties.Resources.wav_32;
             wavFileToolStripMenuItem.Name = "wavFileToolStripMenuItem";
-            wavFileToolStripMenuItem.Size = new Size(180, 22);
+            wavFileToolStripMenuItem.Size = new Size(123, 22);
             wavFileToolStripMenuItem.Text = "Wav File";
             wavFileToolStripMenuItem.Click += wavFileToolStripMenuItem_Click;
             // 
@@ -502,21 +499,21 @@
             // 
             extractDatFilecontextMenuStrip.Items.AddRange(new ToolStripItem[] { extractDatToolStripMenuItem });
             extractDatFilecontextMenuStrip.Name = "extractFile_contextMenuStrip";
-            extractDatFilecontextMenuStrip.Size = new Size(181, 48);
+            extractDatFilecontextMenuStrip.Size = new Size(110, 26);
             // 
             // extractDatToolStripMenuItem
             // 
             extractDatToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { datFileToolStripMenuItem });
             extractDatToolStripMenuItem.Image = Properties.Resources.extract_32;
             extractDatToolStripMenuItem.Name = "extractDatToolStripMenuItem";
-            extractDatToolStripMenuItem.Size = new Size(180, 22);
+            extractDatToolStripMenuItem.Size = new Size(109, 22);
             extractDatToolStripMenuItem.Text = "Extract";
             // 
             // datFileToolStripMenuItem
             // 
             datFileToolStripMenuItem.Image = Properties.Resources.dat_32;
             datFileToolStripMenuItem.Name = "datFileToolStripMenuItem";
-            datFileToolStripMenuItem.Size = new Size(180, 22);
+            datFileToolStripMenuItem.Size = new Size(113, 22);
             datFileToolStripMenuItem.Text = "Dat File";
             datFileToolStripMenuItem.Click += datFileToolStripMenuItem_Click;
             // 
@@ -569,7 +566,6 @@
         private ToolStripMenuItem createBlobsetToolStripMenuItem;
         private ToolStripMenuItem extractBlobsetToolStripMenuItem;
         private ToolStripMenuItem optionsToolStripMenuItem;
-        private ToolStripMenuItem blobsetCompressionToolStripMenuItem;
         private ToolStripMenuItem updateFileMappingDataToolStripMenuItem;
         private ToolStripMenuItem loadGameToolStripMenuItem;
         private ToolStripMenuItem validateSteamGameFilesToolStripMenuItem;
@@ -609,5 +605,6 @@
         private ContextMenuStrip extractDatFilecontextMenuStrip;
         private ToolStripMenuItem extractDatToolStripMenuItem;
         private ToolStripMenuItem datFileToolStripMenuItem;
+        private ToolStripMenuItem restoreBackupFilesToolStripMenuItem;
     }
 }

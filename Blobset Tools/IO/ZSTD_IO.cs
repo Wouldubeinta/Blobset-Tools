@@ -113,7 +113,9 @@ namespace Blobset_Tools
             try
             {
                 compressor = new();
-                compressor.SetParameter(ZstdSharp.Unsafe.ZSTD_cParameter.ZSTD_c_nbWorkers, Environment.ProcessorCount);
+                compressor.SetParameter(ZstdSharp.Unsafe.ZSTD_cParameter.ZSTD_c_dictIDFlag, 1);
+                compressor.SetParameter(ZstdSharp.Unsafe.ZSTD_cParameter.ZSTD_c_contentSizeFlag, 0);
+                compressor.SetParameter(ZstdSharp.Unsafe.ZSTD_cParameter.ZSTD_c_compressionLevel, 3);
                 buffer = compressor.Wrap(input).ToArray();
             }
             catch (Exception error)
@@ -182,7 +184,9 @@ namespace Blobset_Tools
             {
                 stream = new(data);
                 compressor = new();
-                compressor.SetParameter(ZstdSharp.Unsafe.ZSTD_cParameter.ZSTD_c_nbWorkers, Environment.ProcessorCount);
+                compressor.SetParameter(ZstdSharp.Unsafe.ZSTD_cParameter.ZSTD_c_dictIDFlag, 1);
+                compressor.SetParameter(ZstdSharp.Unsafe.ZSTD_cParameter.ZSTD_c_contentSizeFlag, 0);
+                compressor.SetParameter(ZstdSharp.Unsafe.ZSTD_cParameter.ZSTD_c_compressionLevel, 4);
 
                 int readCount = 0;
                 byte[]? buffer = new byte[chunkSize];
@@ -217,21 +221,31 @@ namespace Blobset_Tools
         /// <history>
         /// [Wouldubeinta]		14/07/2025	Created
         /// </history>
-        public static int CompressAndWrite(byte[] data, FileStream writer, int chunkSize = 262144)
+        public static void CompressAndWrite(byte[] data, FileStream writer, int chunkSize = 262144)
         {
             Compressor? compressor = null;
-            int compressedSize = 0;
 
             try
             {
                 compressor = new();
-                compressor.SetParameter(ZstdSharp.Unsafe.ZSTD_cParameter.ZSTD_c_nbWorkers, Environment.ProcessorCount);
+                compressor.SetParameter(ZstdSharp.Unsafe.ZSTD_cParameter.ZSTD_c_dictIDFlag, 1);
+                compressor.SetParameter(ZstdSharp.Unsafe.ZSTD_cParameter.ZSTD_c_contentSizeFlag, 0);
+                compressor.SetParameter(ZstdSharp.Unsafe.ZSTD_cParameter.ZSTD_c_compressionLevel, 4);
 
                 byte[]? output = compressor.Wrap(data).ToArray();
-                compressedSize = output.Length + 4;
-                writer.Write(BitConverter.GetBytes(compressedSize), 0, 4);
-                writer.Write(output, 0, output.Length);
-                writer.Flush();
+
+                if (output.Length < chunkSize)
+                {
+                    writer.Write(BitConverter.GetBytes(output.Length + 4), 0, 4);
+                    writer.Write(output, 0, output.Length);
+                    writer.Flush();
+                }
+                else
+                {
+                    writer.Write(BitConverter.GetBytes(data.Length + 4), 0, 4);
+                    writer.Write(data, 0, data.Length);
+                    writer.Flush();
+                }
             }
             catch (Exception error)
             {
@@ -241,7 +255,6 @@ namespace Blobset_Tools
             {
                 if (compressor != null) { compressor.Dispose(); compressor = null; }
             }
-            return compressedSize;
         }
 
         /// <summary>

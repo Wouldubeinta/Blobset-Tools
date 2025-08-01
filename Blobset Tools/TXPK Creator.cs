@@ -42,6 +42,7 @@ namespace Blobset_Tools
                 }
 
                 saveFileDialog1.FileName = TXPK_Xml_In.Index.ToString();
+                saveFileDialog1.InitialDirectory = Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\mods\dds_txpk\";
 
                 if (saveFileDialog1.ShowDialog() == DialogResult.OK)
                     TXPK_Create();
@@ -130,7 +131,7 @@ namespace Blobset_Tools
                     txpk.Entries[i].DDSDataSize1 = (uint)Utilities.FileInfo(filePath);
                     txpk.Entries[i].DDSDataSize2 = txpk.Entries[i].DDSDataSize1;
                     txpk.Entries[i].DDSFilePath = TXPK_Xml_In.Entries[i].FilePath.Replace(@"\", "/").Replace(".dds", string.Empty);
-                    txpk.Entries[i].DDSPathSize = (uint)txpk.Entries[i].DDSFilePath.Length;
+                    txpk.Entries[i].DDSPathSize = (uint)txpk.Entries[i].DDSFilePath.Length + 21;
                     txpk.Entries[i].DDSDataOffset = (uint)dataOffset;
 
                     dataOffset += (int)txpk.Entries[i].DDSDataSize1;
@@ -142,9 +143,15 @@ namespace Blobset_Tools
 
                 txpk.Serialize(writer);
 
+                if (writer != null) { writer.Dispose(); writer = null; }
+
                 int HeaderSize = (int)Utilities.FileInfo(saveFileDialog1.FileName);
 
-                writer.Position = 0;
+                if (File.Exists(saveFileDialog1.FileName)) 
+                    File.Delete(saveFileDialog1.FileName);
+
+                writer = new FileStream(saveFileDialog1.FileName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+
                 txpk.Serialize(writer);
 
                 if (writer != null) { writer.Dispose(); writer = null; }
@@ -177,7 +184,7 @@ namespace Blobset_Tools
                 txpkXmlOut.MainCompressedSize = 0;
                 txpkXmlOut.MainUnCompressedSize = HeaderSize;
                 txpkXmlOut.VramCompressedSize = 0;
-                txpkXmlOut.VramUnCompressedSize = FileSize;
+                txpkXmlOut.VramUnCompressedSize = FileSize - HeaderSize;
                 IO.XmlSerialize(Path.GetDirectoryName(saveFileDialog1.FileName) + @"\" + Path.GetFileNameWithoutExtension(saveFileDialog1.FileName) + ".xml", txpkXmlOut);
             }
             catch (Exception error)

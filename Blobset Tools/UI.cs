@@ -612,6 +612,12 @@ namespace Blobset_Tools
             "Crauzer for WEMSharp - ",
             "https://github.com/Crauzer/WEMSharp",
             Environment.NewLine,
+            "knot3 for OggSharp - ",
+            "https://github.com/knot3/OggSharp",
+            Environment.NewLine,
+            "lostromb for concentus.oggfile - ",
+            "https://github.com/lostromb/concentus.oggfile",
+            Environment.NewLine,
             Environment.NewLine,
         };
     }

@@ -18,7 +18,7 @@ namespace ZstdSharp
         /// Default compression level
         /// </summary>
         /// <see cref="Methods.ZSTD_defaultCLevel"/>
-        public const int DefaultCompressionLevel = 1;
+        public const int DefaultCompressionLevel = 3;
 
         private int level = DefaultCompressionLevel;
 
@@ -117,8 +117,6 @@ namespace ZstdSharp
                     returnValue =
                         Methods.ZSTD_compress2(cctx, destPtr, (nuint)dest.Length, srcPtr, (nuint)src.Length);
                 }
-
-                GC.KeepAlive(this);
 
                 if (returnValue == unchecked(0 - (nuint)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall))
                 {

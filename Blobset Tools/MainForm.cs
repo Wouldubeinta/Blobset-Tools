@@ -35,7 +35,9 @@ namespace Blobset_Tools
             int gameID = Properties.Settings.Default.GameID;
             string fileMappingVersion = File.ReadAllText(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\version.txt");
 
+            fileInfo_richTextBox.SelectionColor = Color.White;
             fileInfo_richTextBox.AppendText("*** " + "Blobset Tools - v" + Global.version + " ***" + Environment.NewLine);
+            fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
             fileInfo_richTextBox.AppendText("Description: Extract and Modify BigAnt games blobset files." + Environment.NewLine + Environment.NewLine);
 
             if (gameVersion == fileMappingVersion)
@@ -60,7 +62,6 @@ namespace Blobset_Tools
             folder_treeView.Nodes.Clear();
             UI.FilesList(folder_treeView);
 
-            blobsetCompressionToolStripMenuItem.Checked = Properties.Settings.Default.Compression;
             loadGameToolStripMenuItem.Checked = Properties.Settings.Default.LoadGame;
             skipUnknownFilesToolStripMenuItem.Checked = Properties.Settings.Default.SkipUnknown;
         }
@@ -249,6 +250,9 @@ namespace Blobset_Tools
                     fileInfo_richTextBox.AppendText("*** TXPK DDS File List ***" + Environment.NewLine);
                     fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
 
+                    if (txpk.Entries == null)
+                        return;
+
                     int i = 0;
 
                     foreach (var entry in txpk.Entries)
@@ -291,6 +295,9 @@ namespace Blobset_Tools
                     fileInfo_richTextBox.SelectionColor = Color.White;
                     fileInfo_richTextBox.AppendText("*** M3MP File List ***" + Environment.NewLine);
                     fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
+
+                    if (m3mp.UnCompressedEntries == null)
+                        return;
 
                     int i = 0;
 
@@ -705,20 +712,6 @@ namespace Blobset_Tools
             if (Modify_bgw != null) { Modify_bgw.Dispose(); Modify_bgw = null; }
         }
 
-        private void blobsetCompressionToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (blobsetCompressionToolStripMenuItem.Checked)
-            {
-                Properties.Settings.Default.Compression = true;
-                Properties.Settings.Default.Save();
-            }
-            else
-            {
-                Properties.Settings.Default.Compression = false;
-                Properties.Settings.Default.Save();
-            }
-        }
-
         private void loadGameToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (loadGameToolStripMenuItem.Checked)
@@ -1024,6 +1017,37 @@ namespace Blobset_Tools
         {
             if (files_listView.Items.Count > 0)
                 Search();
+        }
+
+        private void restoreBackupFilesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string backupFilePath = Global.currentPath + "\\games\\" + Properties.Settings.Default.GameName + "\\backup\\";
+            string gameLocation = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", "");
+
+            string[] files = Utilities.DirectoryInfo(backupFilePath, "*");
+
+            if (files.Length != 0)
+            {
+                foreach (string file in files)
+                {
+                    string? folder = Path.GetDirectoryName(file.Replace(backupFilePath, string.Empty));
+                    string filePath = gameLocation + folder + @"\" + Path.GetFileName(file);
+
+                    if (folder == string.Empty)
+                        filePath = gameLocation + folder + Path.GetFileName(file);
+
+                    if (File.Exists(filePath))
+                    {
+                        File.Delete(filePath);
+                        File.Move(file, filePath);
+                    }
+                }
+
+                UI.BlobsetHeaderData();
+                MessageBox.Show("Backup files have been restored.", "Restore Backup Files", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+            }
+            else
+                MessageBox.Show("No files to restore.", "Restore Backup Files", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)

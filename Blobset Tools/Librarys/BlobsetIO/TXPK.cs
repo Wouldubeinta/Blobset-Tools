@@ -126,17 +126,16 @@ namespace BlobsetIO
         /// <param name="output">TXPK output stream</param>
         public void Serialize(FileStream output)
         {
+            output.Position = 0;
             output.Write(BitConverter.GetBytes(1415073867), 0, 4); // KPXT
             output.Write(BitConverter.GetBytes(FilesCount), 0, 4);
-            output.Flush();
 
             for (int i = 0; i < FilesCount; i++)
             {
                 output.Write(BitConverter.GetBytes(Entries[i].DDSPathOffset), 0, 4);
-                output.Write(BitConverter.GetBytes(Entries[i].DDSPathSize + Entries[i].HeaderSize + 1), 0, 4);
+                output.Write(BitConverter.GetBytes(Entries[i].DDSPathSize), 0, 4);
                 output.Write(BitConverter.GetBytes(Entries[i].DDSDataOffset), 0, 4);
                 output.Write(BitConverter.GetBytes(Entries[i].DDSDataSize1), 0, 4);
-                output.Flush();
             }
 
             for (int i = 0; i < FilesCount; i++)
@@ -150,8 +149,8 @@ namespace BlobsetIO
                 byte[] ddsFilePathByteArray = Encoding.ASCII.GetBytes(Entries[i].DDSFilePath);
                 output.Write(ddsFilePathByteArray, 0, ddsFilePathByteArray.Length);
                 output.WriteByte(0);
-                output.Flush();
             }
+            output.Flush();
         }
         #endregion
     }

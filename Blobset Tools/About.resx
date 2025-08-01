@@ -244,22 +244,28 @@ IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL ANY C
 If the disclaimer of warranty and limitation of liability provided above cannot be given local legal effect according to their terms, reviewing courts shall apply local law that most closely approximates an absolute waiver of all civil liability in connection with the Program, unless a warranty or assumption of liability accompanies a copy of the Program in return for a fee.</value>
   </data>
   <data name="changelog_richTextBox.Text" xml:space="preserve">
-    <value>-1.0.0.0-
-Initial Release
+    <value>-1.0.2.1-
+* Fixed major issues in Modify Class, stupid me for not noticing this :(
+* Fixed TXPK Creator code.
+* Prevented program from running multiple instances.
+* Added a restore backup files, the ones you replace with mods. It's not fool proof, but it's better then nothing. 
 
--1.0.0.1-
+-1.0.2.0-
+* Fixed missing TXPK files when reading blobset, all TXPK files will show up now.
+* Fixed the TXPK Viewer not showing all images.
+* The file mapping wont be automatic now, you have to do it manually. When you load the blobset tools on the info text box you will see the version colour either green or red, if it's red that means you need to update file mapping data in the Options.
+* Added when selecting a wem audio file it will play the sound. Also if you right click, you can save as .wem, .ogg or .wav file.
+* Minor code cleanup.
+
+-1.0.1.0-
 * Now detects steam games on another hard drive in SteamLibrary folder.
 * ArrayPoolAllocator is added for buffer pooling, which can reduce memory allocations and garbage collection overhead for dds decoding on PictureBox.
 * Hopefully fixed the Index not found issue, when applying mods.
 * Added code for wem files and ogg files, this will be used later.
 * Minor improvements. 
 
--1.0.1.0-
-* Fixed missing TXPK files when reading blobset, now all TXPK files will show up now.
-* Fixed the TXPK Viewer not showing all images.
-* The file mapping wont be automatic now, you have to do it manually. When you load the blobset tools on the info text box you will see the version colour either green or red, if it's red that means you need to update file mapping data in Options.
-* Added when selecting a wem audio file it will play the sound. Also if you right click, you save as .wem, .ogg or .wav file.
-* Minor code cleanup.</value>
+-1.0.0.0-
+Initial Release</value>
   </data>
   <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
   <data name="$this.Icon" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
