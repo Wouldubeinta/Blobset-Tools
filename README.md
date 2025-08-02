@@ -18,7 +18,7 @@ Ok, Pick your game that you want to mod.
 
 ![Title Image](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/1.jpg?raw=true)
 
-First time use, the program may run the **Update File Mapping Data**, just let it do it's thing. This will also run if there is a game update.
+First time use, run the **Update File Mapping Data** in the Options, just let it do it's thing.
 
 On the left side you should see the folder layout. Select a folder and on the right it will show the files in that folder.
 
@@ -68,9 +68,7 @@ Once done, go to the Blobset Tools, click on **"Tools->M3MP Creator"**. Once loa
 
 ![enter image description here](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/10.jpg?raw=true)
 
- - **Blobset Compression** - Not used at the moment, the files are created
-   like the originals. I'm thinking of getting ride of it.
-   
+
  - **Update File Mapping Data** - This is used to map all of the files in the
    blobset, so the Blobset Tools knows what file is what. This will run
    the first time you load the Blobset Tools if it doesn't have the
@@ -86,6 +84,8 @@ Once done, go to the Blobset Tools, click on **"Tools->M3MP Creator"**. Once loa
    
  - **Skip Unknown Files** - If ticked, this will skip unknown file types
    like meshes, animations, ect..., which haven't been mapped yet.
+
+ - **Restore Backup Files** - This will restore the files you replaced with mods.
 
 
 **Special Thanks To:**
