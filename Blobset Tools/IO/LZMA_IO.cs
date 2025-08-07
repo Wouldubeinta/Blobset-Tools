@@ -51,11 +51,19 @@ namespace Blobset_Tools
                 inStream = new(input);
                 outStream = new();
                 decoder = new();
-                byte[] properties = { 93, 0, 32, 0, 0 };
+
                 buffer = new byte[outSize];
-                outStream = new(buffer);
+
+                byte[] properties = new byte[5];
+                if (inStream.Read(properties, 0, 5) != 5)
+                    throw (new Exception("input .lzma is too short"));
+
                 decoder.SetDecoderProperties(properties);
-                decoder.Code(inStream, outStream, input.Length, outSize, null);
+
+                long inSize = inStream.Length - inStream.Position;
+                decoder.Code(inStream, outStream, inSize, outSize, null);
+                outStream.Position = 0;
+                outStream.Read(buffer, 0, outSize);
             }
             catch (Exception error)
             {
@@ -129,13 +137,20 @@ namespace Blobset_Tools
                 inStream = new(input);
                 outStream = new();
                 decoder = new();
-                byte[] properties = { 93, 0, 32, 0, 0 };
+
                 byte[] buffer = new byte[outSize];
-                outStream = new MemoryStream(buffer);
+
+                byte[] properties = new byte[5];
+                if (inStream.Read(properties, 0, 5) != 5)
+                    throw (new Exception("input .lzma is too short"));
+
                 decoder.SetDecoderProperties(properties);
-                decoder.Code(inStream, outStream, input.Length, outSize, null);
+
+                long inSize = inStream.Length - inStream.Position;
+                decoder.Code(inStream, outStream, inSize, outSize, null);
+                outStream.Position = 0;
+                outStream.Read(buffer, 0, outSize);
                 writer.Write(buffer, 0, buffer.Length);
-                writer.Flush();
             }
             catch (Exception error)
             {
@@ -254,20 +269,43 @@ namespace Blobset_Tools
             MemoryStream? inStream = null;
             MemoryStream? outStream = null;
             int magic = 0;
+            bool isMiniTXPK = false;
+            int _outSize = outSize;
+            byte[]? buffer = null;
 
             try
             {
                 inStream = new(input);
                 outStream = new();
                 decoder = new();
-                byte[] properties = { 93, 0, 32, 0, 0 };
-                byte[] buffer = new byte[outSize];
-                outStream = new MemoryStream(buffer);
-                decoder.SetDecoderProperties(properties);
-                decoder.Code(inStream, outStream, input.Length, outSize, null);
-                outStream.Write(buffer, 0, outSize);
 
-                byte[] tmp = [buffer[0], buffer[1], buffer[2], buffer[3]];
+                buffer = new byte[outSize];
+
+                byte[] properties = new byte[5];
+                if (inStream.Read(properties, 0, 5) != 5)
+                    throw (new Exception("input .lzma is too short"));
+
+                decoder.SetDecoderProperties(properties);
+
+                long inSize = inStream.Length - inStream.Position;
+                decoder.Code(inStream, outStream, inSize, outSize, null);
+                outStream.Position = 0;
+                outStream.Read(buffer, 0, outSize);
+
+                if (buffer[20] == 99 && buffer[21] == 111 && buffer[22] == 110 && buffer[23] == 118)  // checking for "conv" string
+                    isMiniTXPK = true;
+
+                byte[] tmp = new byte[4];
+
+                if (isMiniTXPK)
+                {
+                    tmp[0] = 77; tmp[1] = 73; tmp[2] = 78; tmp[3] = 73; // setting the magic to "MINI"
+                }
+                else
+                {
+                    tmp[0] = buffer[0]; tmp[1] = buffer[1]; tmp[2] = buffer[2]; tmp[3] = buffer[3];
+                }
+
                 magic = BitConverter.ToInt32(tmp);
             }
             catch (Exception error)

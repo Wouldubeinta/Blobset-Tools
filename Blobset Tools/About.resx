@@ -244,7 +244,12 @@ IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL ANY C
 If the disclaimer of warranty and limitation of liability provided above cannot be given local legal effect according to their terms, reviewing courts shall apply local law that most closely approximates an absolute waiver of all civil liability in connection with the Program, unless a warranty or assumption of liability accompanies a copy of the Program in return for a fee.</value>
   </data>
   <data name="changelog_richTextBox.Text" xml:space="preserve">
-    <value>-1.0.2.1-
+    <value>-1.0.2.2-
+* Fixed corrupted uncompressed m3mp files when extracting all file.
+* File Mapping Data is now 2 times faster now.
+* Extract all files is a lot faster now.
+
+-1.0.2.1-
 * Fixed major issues in Modify Class, stupid me for not noticing this :(
 * Fixed TXPK Creator code.
 * Prevented program from running multiple instances.

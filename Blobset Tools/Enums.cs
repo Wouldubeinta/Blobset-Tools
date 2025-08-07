@@ -29,7 +29,7 @@
         {
             BMf = 543575362, // Used in AFLL.
             BSB = 1112752672, // Used in AFLL.
-            FEV1 = 0, // Used in AFLL.
+            FEV1 = 827737414, // Used in AFLL.
             FSB = 876761926,
             M3MP = 1347236685,
             MINI = 1229867341,

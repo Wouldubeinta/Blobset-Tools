@@ -7,8 +7,10 @@ using PackageIO;
 using Pfim;
 using System.Buffers;
 using System.Diagnostics;
+using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using static Blobset_Tools.Structs;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Blobset_Tools
 {
@@ -205,7 +207,75 @@ namespace Blobset_Tools
             return bitmap;
         }
 
-        public static byte[] GetDDSData(List<Structs.FileIndexInfo> list)
+        public static byte[] GetDDSData_V1_V2(List<Structs.FileIndexInfo> list)
+        {
+            Reader? br = null;
+            byte[]? ddsData = null;
+
+            try
+            {
+                br = new(Properties.Settings.Default.GameLocation);
+
+                int MainFinalOffset = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
+                int MainCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+                int VramFinalOffset = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramFinalOffSet;
+                int VramCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramCompressedSize;
+                int VramUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
+
+                ddsData = new byte[VramUnCompressedSize];
+
+                br.Position = VramFinalOffset;
+
+                if (VramCompressedSize != VramUnCompressedSize)
+                {
+                    int size = 0;
+                    int chunkCount = br.ReadInt32();
+                    int[] chunkCompressedSize = new int[chunkCount];
+
+                    for (int j = 0; j < chunkCount; j++)
+                    {
+                        chunkCompressedSize[j] = br.ReadInt32();
+                        chunkCompressedSize[j] = chunkCompressedSize[j] -= 4;
+                    }
+
+                    for (int j = 0; j < chunkCount; j++) 
+                    {
+                        int chunkUnCompressedSize = br.ReadInt32();
+
+                        if (chunkCompressedSize[j] == chunkUnCompressedSize) 
+                        {
+                            byte[] tmpddsData = br.ReadBytes(chunkUnCompressedSize);
+                            Buffer.BlockCopy(tmpddsData, 0, ddsData, size, tmpddsData.Length);
+                            size += tmpddsData.Length;
+                        }
+                        else 
+                        {
+                            byte[] compressedTmpddsData = br.ReadBytes(chunkCompressedSize[j]);
+                            byte[] tmpddsData = LZMA_IO.DecompressAndRead(compressedTmpddsData, chunkUnCompressedSize);
+                            Buffer.BlockCopy(tmpddsData, 0, ddsData, size, tmpddsData.Length);
+                            size += tmpddsData.Length;
+                        }
+                    }
+                }
+                else
+                {
+                    ddsData = br.ReadBytes(VramUnCompressedSize);
+                }
+                if (br != null) { br.Close(); br = null; }
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (br != null) { br.Close(); br = null; }
+            }
+            return ddsData;
+        }
+
+        public static byte[] GetDDSData_V3_V4(List<Structs.FileIndexInfo> list)
         {
             Reader? br = null;
             byte[]? ddsData = null;

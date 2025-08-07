@@ -2,6 +2,7 @@ using BlobsetIO;
 using System.ComponentModel;
 using System.Reflection;
 using WEMSharp;
+using static Blobset_Tools.Enums;
 
 namespace Blobset_Tools
 {
@@ -179,7 +180,8 @@ namespace Blobset_Tools
                 if (type == ".dds")
                 {
                     Structs.DDSInfo ddsInfo = new();
-                    byte[] ddsData = UI.GetDDSData(Global.filelist);
+                    int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+                    byte[] ddsData = blobsetVersion >= 2 ? UI.GetDDSData_V3_V4(Global.filelist) : UI.GetDDSData_V1_V2(Global.filelist);
 
                     if (ddsData == null)
                         return;
@@ -585,7 +587,24 @@ namespace Blobset_Tools
         private void FileMapping_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
             string blobsetFile = Properties.Settings.Default.GameLocation;
-            bool errorCheck = FileMapping.WriteV4(blobsetFile, FileMapping_bgw);
+            Enums.BlobsetVersion blobsetVersion = (Enums.BlobsetVersion)Properties.Settings.Default.BlobsetVersion;
+            bool errorCheck = true;
+
+            switch (blobsetVersion) 
+            {
+                case Enums.BlobsetVersion.v1:
+                    errorCheck = FileMapping.WriteV1(blobsetFile, FileMapping_bgw);
+                    break;
+                case Enums.BlobsetVersion.v2:
+                    errorCheck = FileMapping.WriteV2(blobsetFile, FileMapping_bgw);
+                    break;
+                case Enums.BlobsetVersion.v3:
+                    errorCheck = FileMapping.WriteV3(blobsetFile, FileMapping_bgw);
+                    break;
+                case Enums.BlobsetVersion.v4:
+                    errorCheck = FileMapping.WriteV4(blobsetFile, FileMapping_bgw);
+                    break;
+            }
 
             if (errorCheck)
                 e.Cancel = true;
@@ -796,7 +815,7 @@ namespace Blobset_Tools
 
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
-                File.WriteAllBytes(saveFileDialog.FileName, UI.GetDDSData(list));
+                File.WriteAllBytes(saveFileDialog.FileName, UI.GetDDSData_V3_V4(list));
 
                 fileInfo_richTextBox.Clear();
                 fileInfo_richTextBox.AppendText("DDS File has been saved to - " + saveFileDialog.FileName);

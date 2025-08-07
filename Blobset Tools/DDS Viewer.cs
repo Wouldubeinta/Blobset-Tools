@@ -35,7 +35,7 @@
 
             Structs.DDSInfo ddsInfo = new();
 
-            Bitmap bitmap = UI.DDStoBitmap(UI.GetDDSData(list), ref ddsInfo);
+            Bitmap bitmap = UI.DDStoBitmap(UI.GetDDSData_V3_V4(list), ref ddsInfo);
 
             pictureBox1.Image = null;
 

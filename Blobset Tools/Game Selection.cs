@@ -73,7 +73,7 @@
             Properties.Settings.Default.GameName = "Don Bradman Cricket 14";
             Properties.Settings.Default.SteamGameID = 216260;
             Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Don Bradman Cricket 14\data-0.blobset.pc"
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v1;
+            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v2;
             Properties.Settings.Default.Save();
 
             if (!File.Exists(Properties.Settings.Default.GameLocation))

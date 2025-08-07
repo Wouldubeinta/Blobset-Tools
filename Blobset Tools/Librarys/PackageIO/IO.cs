@@ -6,8 +6,8 @@
     public class IO
     {
         private PackageLayout Package;
-        public Reader Reader;
-        public Writer Writer;
+        public Reader? Reader;
+        public Writer? Writer;
 
         public IO(FileStream Package, Endian EndianType = (Endian)1, long Position = 0)
         {

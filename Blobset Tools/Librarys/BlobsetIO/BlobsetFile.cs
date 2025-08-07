@@ -34,7 +34,8 @@ namespace BlobsetIO
     {
         #region Fields
         private byte[]? sHA1Hash = new byte[20]; // only used in older games
-        private uint magic = 0; // Should be  - BLOB
+        private uint magic = 0; // Should be  - BLOB or BOLB
+        private uint blobsetCount = 0;
         private uint filesCount = 0;
         private Entry[]? entries;
         #endregion
@@ -71,6 +72,12 @@ namespace BlobsetIO
             set { magic = value; }
         }
 
+        public uint BlobsetCount
+        {
+            get { return blobsetCount; }
+            set { blobsetCount = value; }
+        }
+
         public uint FilesCount
         {
             get { return filesCount; }
@@ -96,11 +103,14 @@ namespace BlobsetIO
 
             Magic = input.ReadUInt32();
 
-            if (Magic != 1112493122) // BLOB
+            if (Magic != 1112493122 && Magic != 1112297282) // BLOB or BOLB
             {
                 MessageBox.Show("This isn't a Blobset File", "Wrong Magic", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
+
+            if (blobsetVersion != Enums.BlobsetVersion.v3 && blobsetVersion != Enums.BlobsetVersion.v4)
+                BlobsetCount = input.ReadUInt32();
 
             FilesCount = input.ReadUInt32();
 
@@ -119,7 +129,7 @@ namespace BlobsetIO
                     Entries[i].FolderHashName = folderName;
                     Entries[i].FileHashName = fileName;
                 }
-                else if (blobsetVersion == Enums.BlobsetVersion.v1 | blobsetVersion == Enums.BlobsetVersion.v2)
+                else if (blobsetVersion == Enums.BlobsetVersion.v1 || blobsetVersion == Enums.BlobsetVersion.v2)
                 {
                     Entries[i].MainFinalOffSet = input.ReadUInt32();
                     Entries[i].MainCompressedSize = input.ReadUInt32();
