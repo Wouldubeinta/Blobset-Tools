@@ -175,6 +175,9 @@
             }
         }
 
+        public DdsHeader DDSHeader => throw new NotImplementedException();
+        public DdsHeaderDxt10 DDSHeader10 => throw new NotImplementedException();
+
         public void Dispose()
         {
             _config.Allocator.Return(Data);

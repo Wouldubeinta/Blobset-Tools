@@ -42,9 +42,10 @@ namespace Blobset_Tools
         /// <history>
         /// [Wouldubeinta]		05/07/2025	Created
         /// </history>
-        public static void BlobsetV1(string blobsetfile, BackgroundWorker Extract_bgw)
+        public static bool BlobsetV1(string blobsetfile, BackgroundWorker Extract_bgw)
         {
-
+            bool error = true;
+            return error;
         }
         #endregion
 
@@ -57,9 +58,10 @@ namespace Blobset_Tools
         /// <history>
         /// [Wouldubeinta]		05/07/2025	Created
         /// </history>
-        public static void BlobsetV2(string blobsetfile, BackgroundWorker Extract_bgw)
+        public static bool BlobsetV2(string blobsetfile, BackgroundWorker Extract_bgw)
         {
-
+            bool error = true;
+            return error;
         }
         #endregion
 
@@ -72,9 +74,10 @@ namespace Blobset_Tools
         /// <history>
         /// [Wouldubeinta]		05/07/2025	Created
         /// </history>
-        public static void BlobsetV3(string blobsetfile, BackgroundWorker Extract_bgw)
+        public static bool BlobsetV3(string blobsetfile, BackgroundWorker Extract_bgw)
         {
-
+            bool error = true;
+            return error;
         }
         #endregion
 
@@ -259,7 +262,7 @@ namespace Blobset_Tools
 
                                 blobsetContent_br.Position = 0;
 
-                                if (vramCompressedSize == vramUnCompressedSize) 
+                                if (vramCompressedSize == vramUnCompressedSize)
                                 {
                                     switch (magic)
                                     {
@@ -295,7 +298,7 @@ namespace Blobset_Tools
                                             break;
                                     }
                                 }
-                                else 
+                                else
                                 {
                                     switch (magic)
                                     {

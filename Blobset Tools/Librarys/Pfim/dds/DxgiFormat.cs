@@ -2,7 +2,7 @@
 {
     public enum DxgiFormat : uint
     {
-        UNKNOWN = 0,
+        UnCompressed = 0,
         R32G32B32A32_TYPELESS = 1,
         R32G32B32A32_FLOAT = 2,
         R32G32B32A32_UINT = 3,

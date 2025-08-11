@@ -30,12 +30,14 @@
         private unsafe void LoadImage()
         {
             int mipmapCount = 1;
-            Pfim.ImageFormat fmt = Pfim.ImageFormat.Rgba32;
-            Pfim.PixelFormat ddsFormat = Pfim.PixelFormat.UnCompressed;
 
             Structs.DDSInfo ddsInfo = new();
 
-            Bitmap bitmap = UI.DDStoBitmap(UI.GetDDSData_V3_V4(list), ref ddsInfo);
+            int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+            byte[] ddsData = blobsetVersion >= 2 ? UI.GetDDSData_V3_V4(Global.filelist) : UI.GetDDSData_V1_V2(Global.filelist);
+            Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo);
+
+            string ddsFormat = ddsInfo.isDX10 ? ddsInfo.dxgiFormat.ToString() + " - DX11+" : ddsInfo.CompressionAlgorithm.ToString();
 
             pictureBox1.Image = null;
 
@@ -48,7 +50,7 @@
                 if (mipmapCount == 0)
                     mipmapCount = 1;
 
-                toolStripStatusLabel1.Text = "Format: " + ddsFormat.ToString() + " - " + fmt.ToString() + "    Height: " + bitmap.Height.ToString() + "     Width: " + bitmap.Width.ToString() + "     MipMaps: 1/" + mipmapCount.ToString();
+                toolStripStatusLabel1.Text = "Format: " + ddsFormat + "    Height: " + bitmap.Height.ToString() + "     Width: " + bitmap.Width.ToString() + "     MipMaps: 1/" + mipmapCount.ToString();
             }
         }
 

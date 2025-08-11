@@ -179,7 +179,7 @@ namespace Blobset_Tools
 
                     if (mainCompressedSize == mainUnCompressedSize)
                     {
-                        if (vramCompressedSize == vramUnCompressedSize) 
+                        if (vramCompressedSize == vramUnCompressedSize)
                         {
                             blobsetContent_br.Position = mainFinalOffSet;
 
@@ -225,7 +225,7 @@ namespace Blobset_Tools
                                     break;
                             }
                         }
-                        else 
+                        else
                         {
                             blobsetContent_br.Position = mainFinalOffSet;
                             int chunkCount = blobsetContent_br.ReadInt32();
@@ -253,7 +253,7 @@ namespace Blobset_Tools
 
                             blobsetContent_br.Position = mainFinalOffSet;
 
-                            switch (magic) 
+                            switch (magic)
                             {
                                 case (int)Enums.FileType.TXPK:
                                     string txpkName = @"dds_txpk\" + i.ToString() + ".txpk";
@@ -323,7 +323,7 @@ namespace Blobset_Tools
                         int chunkCount = blobsetContent_br.ReadInt32();
                         int[] chunkCompressedSize = new int[chunkCount];
 
-                        for (int j = 0; j < chunkCount; j++) 
+                        for (int j = 0; j < chunkCount; j++)
                         {
                             chunkCompressedSize[j] = blobsetContent_br.ReadInt32();
                             chunkCompressedSize[j] = chunkCompressedSize[j] -= 4;
@@ -333,11 +333,11 @@ namespace Blobset_Tools
 
                         int magic = 0;
 
-                        if (chunkCompressedSize[0] == chunkUnCompressedSize) 
+                        if (chunkCompressedSize[0] == chunkUnCompressedSize)
                         {
                             magic = blobsetContent_br.ReadInt32();
                         }
-                        else 
+                        else
                         {
                             byte[] firstChunk = blobsetContent_br.ReadBytes(chunkCompressedSize[0]);
                             magic = LZMA_IO.DecompressAndReadMagic(firstChunk, chunkUnCompressedSize);
@@ -345,13 +345,42 @@ namespace Blobset_Tools
 
                         blobsetContent_br.Position = mainFinalOffSet;
 
-                        if (vramCompressedSize != vramUnCompressedSize) 
+                        if (vramCompressedSize != vramUnCompressedSize)
                         {
-                            switch (magic) 
+                            switch (magic)
                             {
                                 case (int)Enums.FileType.BMf:
+                                    string bmfName = @"font\" + i.ToString() + ".bmf";
+
+                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                    bw = new(writer);
+
+                                    bw.Write(i);
+                                    bw.Write(bmfName);
+                                    bw.Write(folderName);
+                                    bw.Write(fileName);
+                                    bw.Flush();
+
+                                    fileMappingSize++;
+
+                                    progress = bmfName;
+                                    if (bw != null) { bw.Close(); bw = null; }
                                     break;
                                 case (int)Enums.FileType.BSB:
+                                    string bsbName = @"bsb\" + i.ToString() + ".bsb";
+
+                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                    bw = new(writer);
+
+                                    bw.Write(i);
+                                    bw.Write(bsbName);
+                                    bw.Write(folderName);
+                                    bw.Write(fileName);
+                                    bw.Flush();
+
+                                    fileMappingSize++;
+
+                                    progress = bsbName;
                                     break;
                                 case (int)Enums.FileType.TXPK:
                                     string txpkName = @"dds_txpk\" + i.ToString() + ".txpk";
@@ -482,13 +511,42 @@ namespace Blobset_Tools
                                     break;
                             }
                         }
-                        else 
+                        else
                         {
-                            switch (magic) 
+                            switch (magic)
                             {
                                 case (int)Enums.FileType.BMf:
+                                    string bmfName = @"font\" + i.ToString() + ".bmf";
+
+                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                    bw = new(writer);
+
+                                    bw.Write(i);
+                                    bw.Write(bmfName);
+                                    bw.Write(folderName);
+                                    bw.Write(fileName);
+                                    bw.Flush();
+
+                                    fileMappingSize++;
+
+                                    progress = bmfName;
+                                    if (bw != null) { bw.Close(); bw = null; }
                                     break;
                                 case (int)Enums.FileType.BSB:
+                                    string bsbName = @"bsb\" + i.ToString() + ".bsb";
+
+                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                    bw = new(writer);
+
+                                    bw.Write(i);
+                                    bw.Write(bsbName);
+                                    bw.Write(folderName);
+                                    bw.Write(fileName);
+                                    bw.Flush();
+
+                                    fileMappingSize++;
+
+                                    progress = bsbName;
                                     break;
                                 case (int)Enums.FileType.M3MP:
                                     string m3mpName = @"m3mp\" + i.ToString() + ".m3mp";
@@ -743,7 +801,7 @@ namespace Blobset_Tools
                         {
                             if (mainCompressedSize == mainUnCompressedSize)
                             {
-                                if (vramCompressedSize == vramUnCompressedSize) 
+                                if (vramCompressedSize == vramUnCompressedSize)
                                 {
                                     blobsetContent_br.Position = 20; // Offset to convant2 string.
 
@@ -891,7 +949,7 @@ namespace Blobset_Tools
                                         }
                                     }
                                 }
-                                else 
+                                else
                                 {
                                     blobsetContent_br.Position = 20; // Offset to convant2 string.
 
@@ -922,7 +980,7 @@ namespace Blobset_Tools
                                         progress = mini_TXPK.DDSFilePath;
                                         if (bw != null) { bw.Close(); bw = null; }
                                     }
-                                    else 
+                                    else
                                     {
                                         blobsetContent_br.Position = 0;
                                         int magic = blobsetContent_br.ReadInt32();
@@ -995,7 +1053,7 @@ namespace Blobset_Tools
 
                                 blobsetContent_br.Position = 0;
 
-                                if (vramCompressedSize == vramUnCompressedSize) 
+                                if (vramCompressedSize == vramUnCompressedSize)
                                 {
                                     switch (magic)
                                     {
@@ -1081,7 +1139,7 @@ namespace Blobset_Tools
                                             break;
                                     }
                                 }
-                                else 
+                                else
                                 {
                                     switch (magic)
                                     {

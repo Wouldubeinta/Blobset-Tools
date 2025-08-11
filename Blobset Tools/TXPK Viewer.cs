@@ -1,6 +1,5 @@
 ﻿using BlobsetIO;
 using PackageIO;
-using Pfim;
 using System.ComponentModel;
 
 namespace Blobset_Tools
@@ -15,8 +14,10 @@ namespace Blobset_Tools
         private BackgroundWorker? TXPKExtract_bgw = null;
         private ImageList myImageList = null;
 
+        private uint MainFinalOffset = 0;
         private uint MainCompressedSize = 0;
         private uint MainUnCompressedSize = 0;
+        private uint VramFinalOffset = 0;
         private uint VramCompressedSize = 0;
         private uint VramUnCompressedSize = 0;
 
@@ -32,8 +33,10 @@ namespace Blobset_Tools
         {
             if (txpkData != null)
             {
+                MainFinalOffset = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
                 MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
                 MainUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+                VramFinalOffset = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramFinalOffSet;
                 VramCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramCompressedSize;
                 VramUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
 
@@ -122,21 +125,18 @@ namespace Blobset_Tools
                 byte[] ddsData = br.ReadBytes((int)txpk.Entries[index].DDSDataSize1);
 
                 int mipmapCount = 1;
-                ImageFormat? fmt = ImageFormat.Rgba32;
-                PixelFormat? ddsFormat = PixelFormat.UnCompressed;
 
                 Structs.DDSInfo ddsInfo = new();
-
-                fmt = ddsInfo.IFormat;
-                ddsFormat = ddsInfo.PFormat;
                 mipmapCount = ddsInfo.MipMap + 1;
 
                 Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo);
 
+                string ddsFormat = ddsInfo.isDX10 ? ddsInfo.dxgiFormat.ToString() + " - DX11+" : ddsInfo.CompressionAlgorithm.ToString();
+
                 if (bitmap != null)
                 {
                     pictureBox1.Image = bitmap;
-                    DDSInfo_SSLabel.Text = "Format: " + ddsFormat.ToString() + " - " + fmt.ToString() + "    Height: " + bitmap.Height.ToString() + "     Width: " + bitmap.Width.ToString() + "     MipMaps: 1/" + mipmapCount.ToString(); ;
+                    DDSInfo_SSLabel.Text = "Format: " + ddsFormat + "    Height: " + bitmap.Height.ToString() + "     Width: " + bitmap.Width.ToString() + "     MipMaps: 1/" + mipmapCount.ToString(); ;
                 }
                 if (br != null) { br.Close(); br = null; }
             }
@@ -179,9 +179,12 @@ namespace Blobset_Tools
             bool errorCheck = false;
 
             if (MainCompressedSize != MainUnCompressedSize && VramCompressedSize != VramUnCompressedSize)
-                errorCheck = TXPX_Decompress(false);
+            {
+                int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+                errorCheck = blobsetVersion >= 2 ? TXPX_DecompressZSTD(false) : TXPX_DecompressLZMA();
+            }
             else
-                errorCheck = TXPX_Decompress(true);
+                errorCheck = TXPX_DecompressZSTD(true);
 
             if (errorCheck)
                 e.Cancel = true;
@@ -205,7 +208,7 @@ namespace Blobset_Tools
             if (TXPKDecompress_bgw != null) { TXPKDecompress_bgw.Dispose(); }
         }
 
-        private bool TXPX_Decompress(bool isVramCompressed)
+        private bool TXPX_DecompressZSTD(bool isMainUnCompressed)
         {
             Reader? br = null;
             FileStream? fsWriter = null;
@@ -218,7 +221,7 @@ namespace Blobset_Tools
                 string txpkName = Path.GetFileName(filename);
                 fsWriter = new FileStream(Global.currentPath + @"\temp\" + txpkName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
 
-                if (isVramCompressed)
+                if (isMainUnCompressed)
                 {
                     byte[] txpkHeader = br.ReadBytes((int)MainUnCompressedSize);
                     fsWriter.Write(txpkHeader, 0, txpkHeader.Length);
@@ -258,6 +261,107 @@ namespace Blobset_Tools
             finally
             {
                 if (br != null) { br.Close(); br = null; }
+            }
+            return error;
+        }
+
+        private bool TXPX_DecompressLZMA()
+        {
+            Reader? br = null;
+            FileStream? fsWriter = null;
+            bool error = false;
+
+            try
+            {
+                br = new Reader(Properties.Settings.Default.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber));
+
+                string txpkName = Path.GetFileName(filename);
+                fsWriter = new FileStream(Global.currentPath + @"\temp\" + txpkName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+
+                br.Position = MainFinalOffset;
+
+                if (MainCompressedSize != MainUnCompressedSize)
+                {
+                    int chunkCount = br.ReadInt32();
+                    int[] chunkCompressedSize = new int[chunkCount];
+
+                    for (int j = 0; j < chunkCount; j++)
+                    {
+                        chunkCompressedSize[j] = br.ReadInt32();
+                        chunkCompressedSize[j] = chunkCompressedSize[j] -= 4;
+                    }
+
+                    for (int j = 0; j < chunkCount; j++)
+                    {
+                        int chunkUnCompressedSize = br.ReadInt32();
+
+                        if (chunkCompressedSize[j] == chunkUnCompressedSize)
+                        {
+                            byte[] txpkHeader = br.ReadBytes(chunkUnCompressedSize);
+                            fsWriter.Write(txpkHeader, 0, txpkHeader.Length);
+                        }
+                        else
+                        {
+                            byte[] compressedTmptxpkData = br.ReadBytes(chunkCompressedSize[j]);
+                            byte[] txpkHeader = LZMA_IO.DecompressAndRead(compressedTmptxpkData, chunkUnCompressedSize);
+                            fsWriter.Write(txpkHeader, 0, txpkHeader.Length);
+                        }
+                    }
+                }
+                else
+                {
+                    byte[] txpkHeader = br.ReadBytes((int)MainUnCompressedSize);
+                    fsWriter.Write(txpkHeader, 0, txpkHeader.Length);
+                }
+
+                br.Position = VramFinalOffset;
+
+                if (VramCompressedSize != VramUnCompressedSize)
+                {
+                    int chunkCount = br.ReadInt32();
+                    int[] chunkCompressedSize = new int[chunkCount];
+
+                    for (int j = 0; j < chunkCount; j++)
+                    {
+                        chunkCompressedSize[j] = br.ReadInt32();
+                        chunkCompressedSize[j] = chunkCompressedSize[j] -= 4;
+                    }
+
+                    for (int j = 0; j < chunkCount; j++)
+                    {
+                        int chunkUnCompressedSize = br.ReadInt32();
+
+                        if (chunkCompressedSize[j] == chunkUnCompressedSize)
+                        {
+                            byte[] txpkData = br.ReadBytes(chunkUnCompressedSize);
+                            fsWriter.Write(txpkData, 0, txpkData.Length);
+                        }
+                        else
+                        {
+                            byte[] compressedTmptxpkData = br.ReadBytes(chunkCompressedSize[j]);
+                            byte[] txpkData = LZMA_IO.DecompressAndRead(compressedTmptxpkData, chunkUnCompressedSize);
+                            fsWriter.Write(txpkData, 0, txpkData.Length);
+                        }
+                    }
+                }
+                else
+                {
+                    byte[] txpkData = br.ReadBytes((int)VramUnCompressedSize);
+                    fsWriter.Write(txpkData, 0, txpkData.Length);
+                }
+
+                if (br != null) { br.Close(); br = null; }
+                if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
+            }
+            catch (Exception ex)
+            {
+                error = true;
+                MessageBox.Show("Error occurred, report it to Wouldy : " + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (br != null) { br.Close(); br = null; }
+                if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
             }
             return error;
         }

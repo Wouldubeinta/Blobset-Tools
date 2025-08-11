@@ -7,10 +7,8 @@ using PackageIO;
 using Pfim;
 using System.Buffers;
 using System.Diagnostics;
-using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using static Blobset_Tools.Structs;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Blobset_Tools
 {
@@ -135,16 +133,19 @@ namespace Blobset_Tools
                 {
                     ms = new(ddsData);
 
-                    byte[] tmp = new byte[4];
-                    ms.Position = 84;
-                    ms.Read(tmp, 0, 4);
-                    ddsInfo.PFormat = (PixelFormat)BitConverter.ToInt32(tmp);
-
-                    ms.Position = 0;
-
                     allocator = new();
                     var config = new PfimConfig(allocator: allocator);
                     image = Pfimage.FromStream(ms, config);
+                    ddsInfo.CompressionAlgorithm = image.DDSHeader.PixelFormat.FourCC;
+
+                    if (image.DDSHeader10 != null)
+                    {
+                        ddsInfo.dxgiFormat = image.DDSHeader10.DxgiFormat;
+                        ddsInfo.isDX10 = true;
+                    }
+                    else
+                        ddsInfo.isDX10 = false;
+
                     System.Drawing.Imaging.PixelFormat format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
                     ddsInfo.Width = image.Width;
                     ddsInfo.Height = image.Height;
@@ -214,11 +215,8 @@ namespace Blobset_Tools
 
             try
             {
-                br = new(Properties.Settings.Default.GameLocation);
+                br = new(Properties.Settings.Default.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber));
 
-                int MainFinalOffset = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
-                int MainCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
-                int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
                 int VramFinalOffset = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramFinalOffSet;
                 int VramCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramCompressedSize;
                 int VramUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
@@ -239,17 +237,17 @@ namespace Blobset_Tools
                         chunkCompressedSize[j] = chunkCompressedSize[j] -= 4;
                     }
 
-                    for (int j = 0; j < chunkCount; j++) 
+                    for (int j = 0; j < chunkCount; j++)
                     {
                         int chunkUnCompressedSize = br.ReadInt32();
 
-                        if (chunkCompressedSize[j] == chunkUnCompressedSize) 
+                        if (chunkCompressedSize[j] == chunkUnCompressedSize)
                         {
                             byte[] tmpddsData = br.ReadBytes(chunkUnCompressedSize);
                             Buffer.BlockCopy(tmpddsData, 0, ddsData, size, tmpddsData.Length);
                             size += tmpddsData.Length;
                         }
-                        else 
+                        else
                         {
                             byte[] compressedTmpddsData = br.ReadBytes(chunkCompressedSize[j]);
                             byte[] tmpddsData = LZMA_IO.DecompressAndRead(compressedTmpddsData, chunkUnCompressedSize);

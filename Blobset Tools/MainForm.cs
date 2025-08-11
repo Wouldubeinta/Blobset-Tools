@@ -34,6 +34,7 @@ namespace Blobset_Tools
         {
             string gameVersion = Utilities.GetGameVersion();
             int gameID = Properties.Settings.Default.GameID;
+            BlobsetVersion blobsetVersion = (BlobsetVersion)Properties.Settings.Default.BlobsetVersion;
             string fileMappingVersion = File.ReadAllText(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\version.txt");
 
             fileInfo_richTextBox.SelectionColor = Color.White;
@@ -63,8 +64,22 @@ namespace Blobset_Tools
             folder_treeView.Nodes.Clear();
             UI.FilesList(folder_treeView);
 
+            if (Global.blobsetHeaderData == null)
+            {
+                MessageBox.Show("There was a problem reading the blobset file, restart Blobset Tools.", "Blobset Reading Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                folder_treeView.Nodes.Clear();
+                return;
+            }
+
             loadGameToolStripMenuItem.Checked = Properties.Settings.Default.LoadGame;
             skipUnknownFilesToolStripMenuItem.Checked = Properties.Settings.Default.SkipUnknown;
+
+            if (blobsetVersion == BlobsetVersion.v1)
+            {
+                loadGameToolStripMenuItem.Visible = false;
+                validateSteamGameFilesToolStripMenuItem.Visible = false;
+                restoreBackupFilesToolStripMenuItem.Visible = false;
+            }
         }
 
         private void folder_treeView_AfterSelect(object sender, TreeViewEventArgs e)
@@ -162,12 +177,19 @@ namespace Blobset_Tools
                 if (Global.fileIndex == -1)
                     return;
 
+                uint MainFinalOffSet = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
                 uint MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
                 uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+                uint VramFinalOffSet = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramFinalOffSet;
                 uint VramCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramCompressedSize;
                 uint VramUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
+                uint blobsetNumber = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].BlobSetNumber;
 
                 string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + Global.filelist[Global.fileIndex].FolderHash + @"\" + Global.filelist[Global.fileIndex].FileHash;
+                int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+
+                if (Properties.Settings.Default.BlobsetVersion != (int)BlobsetVersion.v4)
+                    filePath = Properties.Settings.Default.GameLocation;
 
                 if (!File.Exists(filePath))
                 {
@@ -180,7 +202,6 @@ namespace Blobset_Tools
                 if (type == ".dds")
                 {
                     Structs.DDSInfo ddsInfo = new();
-                    int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
                     byte[] ddsData = blobsetVersion >= 2 ? UI.GetDDSData_V3_V4(Global.filelist) : UI.GetDDSData_V1_V2(Global.filelist);
 
                     if (ddsData == null)
@@ -197,9 +218,25 @@ namespace Blobset_Tools
                     fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
                     fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
                     fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("FileName: " + filePath + Environment.NewLine);
+
+                    if (Properties.Settings.Default.BlobsetVersion == (int)BlobsetVersion.v4)
+                        fileInfo_richTextBox.AppendText("FileName: " + filePath + Environment.NewLine);
+                    else
+                    {
+                        fileInfo_richTextBox.AppendText("FolderHash: " + Global.filelist[Global.fileIndex].FolderHash + Environment.NewLine);
+                        fileInfo_richTextBox.AppendText("FileHash: " + Global.filelist[Global.fileIndex].FileHash + Environment.NewLine);
+                        fileInfo_richTextBox.AppendText("Blobset Number: " + "data-" + blobsetNumber + ".blobset.pc" + Environment.NewLine);
+                    }
+
+                    if (blobsetVersion != (int)BlobsetVersion.v4)
+                        fileInfo_richTextBox.AppendText("MainFinalOffset: " + MainFinalOffSet.ToString() + Environment.NewLine);
+
                     fileInfo_richTextBox.AppendText("MainCompressedSize: " + MainCompressedSize.ToString() + Environment.NewLine);
                     fileInfo_richTextBox.AppendText("MainUnCompressedSize: " + MainUnCompressedSize.ToString() + Environment.NewLine);
+
+                    if (blobsetVersion != (int)BlobsetVersion.v4)
+                        fileInfo_richTextBox.AppendText("VramFinalOffset: " + VramFinalOffSet.ToString() + Environment.NewLine);
+
                     fileInfo_richTextBox.AppendText("VramCompressedSize: " + VramCompressedSize.ToString() + Environment.NewLine);
                     fileInfo_richTextBox.AppendText("VramUnCompressedSize: " + VramUnCompressedSize.ToString() + Environment.NewLine + Environment.NewLine);
 
@@ -211,7 +248,8 @@ namespace Blobset_Tools
                     fileInfo_richTextBox.SelectionColor = Color.White;
                     fileInfo_richTextBox.AppendText("*** DDS Info ***" + Environment.NewLine);
                     fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText("Format: " + ddsInfo.PFormat.ToString() + " " + ddsInfo.IFormat.ToString() + Environment.NewLine);
+                    string ddsFormat = ddsInfo.isDX10 ? ddsInfo.dxgiFormat.ToString() + " - DX11+" : ddsInfo.CompressionAlgorithm.ToString();
+                    fileInfo_richTextBox.AppendText("Format: " + ddsFormat + Environment.NewLine);
                     fileInfo_richTextBox.AppendText("Height: " + ddsInfo.Height.ToString() + Environment.NewLine);
                     fileInfo_richTextBox.AppendText("Width: " + ddsInfo.Width.ToString() + Environment.NewLine);
                     fileInfo_richTextBox.AppendText("MipMaps: 1 / " + ddsInfo.MipMap.ToString() + Environment.NewLine);
@@ -236,7 +274,7 @@ namespace Blobset_Tools
 
                     uint txpkSize = MainUnCompressedSize + VramUnCompressedSize;
 
-                    TXPK txpk = ZSTD_IO.ReadTXPKInfo(filePath);
+                    TXPK txpk = blobsetVersion >= 2 ? ZSTD_IO.ReadTXPKInfo(filePath) : LZMA_IO.ReadTXPKInfo(Global.filelist);
 
                     if (txpk == null)
                         return;
@@ -402,13 +440,24 @@ namespace Blobset_Tools
 
                 string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + Global.filelist[Global.fileIndex].FolderHash + @"\" + Global.filelist[Global.fileIndex].FileHash;
                 string ext = Path.GetExtension(Global.filelist[Global.fileIndex].FilePath);
+                int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+
+                if (Properties.Settings.Default.BlobsetVersion != (int)BlobsetVersion.v4)
+                    filePath = Properties.Settings.Default.GameLocation;
+
+                if (!File.Exists(filePath))
+                {
+                    MessageBox.Show("Can't find the file - " + Global.filelist[Global.fileIndex].FilePath + ". You might need to run the File Mapping Data in the Options.", "File Not Found !!!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                    return;
+                }
 
                 uint MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
                 uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
 
                 if (ext == ".txpk")
                 {
-                    TXPK txpk = ZSTD_IO.ReadTXPKInfo(filePath);
+
+                    TXPK txpk = blobsetVersion >= 2 ? ZSTD_IO.ReadTXPKInfo(filePath) : LZMA_IO.ReadTXPKInfo(Global.filelist);
 
                     TXPK_Viewer form = new(Global.filelist[Global.fileIndex].FilePath, txpk, Global.filelist);
                     bool IsOpen = false;
@@ -519,7 +568,25 @@ namespace Blobset_Tools
         private void Extract_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
             string blobsetFile = Properties.Settings.Default.GameLocation;
-            bool errorCheck = Extract.BlobsetV4(blobsetFile, Extract_bgw);
+            BlobsetVersion blobsetVersion = (BlobsetVersion)Properties.Settings.Default.BlobsetVersion;
+
+            bool errorCheck = true;
+
+            switch (blobsetVersion)
+            {
+                case BlobsetVersion.v1:
+                    errorCheck = Extract.BlobsetV1(blobsetFile, Extract_bgw);
+                    break;
+                case BlobsetVersion.v2:
+                    errorCheck = Extract.BlobsetV2(blobsetFile, Extract_bgw);
+                    break;
+                case BlobsetVersion.v3:
+                    errorCheck = Extract.BlobsetV3(blobsetFile, Extract_bgw);
+                    break;
+                case BlobsetVersion.v4:
+                    errorCheck = Extract.BlobsetV4(blobsetFile, Extract_bgw);
+                    break;
+            }
 
             if (errorCheck)
                 e.Cancel = true;
@@ -587,21 +654,21 @@ namespace Blobset_Tools
         private void FileMapping_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
             string blobsetFile = Properties.Settings.Default.GameLocation;
-            Enums.BlobsetVersion blobsetVersion = (Enums.BlobsetVersion)Properties.Settings.Default.BlobsetVersion;
+            BlobsetVersion blobsetVersion = (BlobsetVersion)Properties.Settings.Default.BlobsetVersion;
             bool errorCheck = true;
 
-            switch (blobsetVersion) 
+            switch (blobsetVersion)
             {
-                case Enums.BlobsetVersion.v1:
+                case BlobsetVersion.v1:
                     errorCheck = FileMapping.WriteV1(blobsetFile, FileMapping_bgw);
                     break;
-                case Enums.BlobsetVersion.v2:
+                case BlobsetVersion.v2:
                     errorCheck = FileMapping.WriteV2(blobsetFile, FileMapping_bgw);
                     break;
-                case Enums.BlobsetVersion.v3:
+                case BlobsetVersion.v3:
                     errorCheck = FileMapping.WriteV3(blobsetFile, FileMapping_bgw);
                     break;
-                case Enums.BlobsetVersion.v4:
+                case BlobsetVersion.v4:
                     errorCheck = FileMapping.WriteV4(blobsetFile, FileMapping_bgw);
                     break;
             }
@@ -690,7 +757,25 @@ namespace Blobset_Tools
         private void Modify_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
             string blobsetFile = Properties.Settings.Default.GameLocation;
-            bool errorCheck = Modify.BlobsetV4(blobsetFile, Modify_bgw);
+            BlobsetVersion blobsetVersion = (BlobsetVersion)Properties.Settings.Default.BlobsetVersion;
+
+            bool errorCheck = true;
+
+            switch (blobsetVersion)
+            {
+                case BlobsetVersion.v1:
+                    errorCheck = Modify.BlobsetV1(blobsetFile, Modify_bgw);
+                    break;
+                case BlobsetVersion.v2:
+                    errorCheck = Modify.BlobsetV2(blobsetFile, Modify_bgw);
+                    break;
+                case BlobsetVersion.v3:
+                    errorCheck = Modify.BlobsetV3(blobsetFile, Modify_bgw);
+                    break;
+                case BlobsetVersion.v4:
+                    errorCheck = Modify.BlobsetV4(blobsetFile, Modify_bgw);
+                    break;
+            }
 
             if (errorCheck)
                 e.Cancel = true;
@@ -815,7 +900,10 @@ namespace Blobset_Tools
 
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
-                File.WriteAllBytes(saveFileDialog.FileName, UI.GetDDSData_V3_V4(list));
+                int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+                byte[] ddsData = blobsetVersion >= 2 ? UI.GetDDSData_V3_V4(Global.filelist) : UI.GetDDSData_V1_V2(Global.filelist);
+
+                File.WriteAllBytes(saveFileDialog.FileName, ddsData);
 
                 fileInfo_richTextBox.Clear();
                 fileInfo_richTextBox.AppendText("DDS File has been saved to - " + saveFileDialog.FileName);
@@ -934,11 +1022,19 @@ namespace Blobset_Tools
 
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
-                string blobsetFilePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash;
-
-                if (Path.GetDirectoryName(path) == @"unknown\uncompressed_no_header")
+                if (Path.GetDirectoryName(path) == @"unknown\mainuncompressed")
                 {
-                    IO.ReadWriteData(blobsetFilePath, saveFileDialog.FileName);
+                    int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+
+                    if (blobsetVersion == (int)BlobsetVersion.v4)
+                    {
+                        string blobsetFilePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash;
+                        IO.ReadWriteData(blobsetFilePath, saveFileDialog.FileName);
+                    }
+                    else
+                    {
+
+                    }
                 }
 
                 fileInfo_richTextBox.Clear();

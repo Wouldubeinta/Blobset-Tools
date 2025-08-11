@@ -310,7 +310,7 @@ namespace Pfim.dds
 
             if (ms_aModeToInfo[uMode] >= 0)
             {
-                bool bSigned = Header10.DxgiFormat == DxgiFormat.BC6H_SF16;
+                bool bSigned = DDSHeader10.DxgiFormat == DxgiFormat.BC6H_SF16;
 
                 Debug.Assert(ms_aModeToInfo[uMode] < ms_aInfo.Length);
                 ModeDescriptor[] desc = ms_aDesc[ms_aModeToInfo[uMode]];

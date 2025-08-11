@@ -84,7 +84,7 @@ namespace Pfim
                 case DxgiFormat.B5G5R5A1_UNORM:
                     return new UncompressedDds(header, config, 16, false);
 
-                case DxgiFormat.UNKNOWN:
+                case DxgiFormat.UnCompressed:
                 case DxgiFormat.R32G32B32A32_TYPELESS:
                 case DxgiFormat.R32G32B32A32_FLOAT:
                 case DxgiFormat.R32G32B32A32_UINT:

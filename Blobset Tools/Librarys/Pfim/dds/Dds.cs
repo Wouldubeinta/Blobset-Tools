@@ -15,23 +15,23 @@ namespace Pfim
         /// </summary>
         protected Dds(DdsHeader header, PfimConfig config)
         {
-            Header = header;
+            DDSHeader = header;
             _config = config;
         }
 
         protected PfimConfig Config => _config;
-        public DdsHeader Header { get; }
+        public DdsHeader DDSHeader { get; }
         public abstract int BitsPerPixel { get; }
         public int BytesPerPixel => BitsPerPixel / 8;
-        public virtual int Stride => Util.Stride((int)Header.Width, BitsPerPixel);
+        public virtual int Stride => Util.Stride((int)DDSHeader.Width, BitsPerPixel);
         public virtual byte[] Data { get; protected set; }
         public int DataLen { get; protected set; }
-        public int Width => (int)Header.Width;
-        public int Height => (int)Header.Height;
+        public int Width => (int)DDSHeader.Width;
+        public int Height => (int)DDSHeader.Height;
         public abstract ImageFormat Format { get; }
         public abstract bool Compressed { get; }
         public abstract void Decompress();
-        public DdsHeaderDxt10 Header10 { get; private set; }
+        public DdsHeaderDxt10 DDSHeader10 { get; private set; }
 
         public static Dds Create(byte[] data, PfimConfig config)
         {
@@ -74,14 +74,14 @@ namespace Pfim
                     dds = new Dxt5Dds(header, config);
                     break;
 
-                case CompressionAlgorithm.None:
+                case CompressionAlgorithm.UnCompressed:
                     dds = new UncompressedDds(header, config);
                     break;
 
                 case CompressionAlgorithm.DX10:
                     var header10 = new DdsHeaderDxt10(stream);
                     dds = header10.NewDecoder(header, config);
-                    dds.Header10 = header10;
+                    dds.DDSHeader10 = header10;
                     break;
 
                 case CompressionAlgorithm.ATI1:

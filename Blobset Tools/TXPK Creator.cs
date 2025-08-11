@@ -147,7 +147,7 @@ namespace Blobset_Tools
 
                 int HeaderSize = (int)Utilities.FileInfo(saveFileDialog1.FileName);
 
-                if (File.Exists(saveFileDialog1.FileName)) 
+                if (File.Exists(saveFileDialog1.FileName))
                     File.Delete(saveFileDialog1.FileName);
 
                 writer = new FileStream(saveFileDialog1.FileName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);

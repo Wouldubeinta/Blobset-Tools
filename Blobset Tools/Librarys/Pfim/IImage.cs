@@ -29,6 +29,12 @@
         /// <summary>The format of the raw data</summary>
         ImageFormat Format { get; }
 
+        /// <summary>The DDS Header</summary>
+        DdsHeader DDSHeader { get; }
+
+        /// <summary>The DDS 10 Header</summary>
+        DdsHeaderDxt10 DDSHeader10 { get; }
+
         /// <summary>If the image format is compressed</summary>
         bool Compressed { get; }
 

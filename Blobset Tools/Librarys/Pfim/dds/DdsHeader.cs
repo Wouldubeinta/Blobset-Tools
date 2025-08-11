@@ -12,7 +12,7 @@
         /// <summary>
         /// No compression was used in the image.
         /// </summary>
-        None = 0,
+        UnCompressed = 0,
 
         /// <summary>
         /// <see cref="Dxt1Dds"/>. Also known as BC1

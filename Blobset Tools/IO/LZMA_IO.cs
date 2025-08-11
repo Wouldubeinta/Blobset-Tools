@@ -546,24 +546,61 @@ namespace Blobset_Tools
         /// <history>
         /// [Wouldubeinta]		16/07/2025	Created
         /// </history>
-        public static TXPK ReadTXPKInfo(string fileIn)
+        public static TXPK ReadTXPKInfo(List<Structs.FileIndexInfo> list)
         {
-            Reader? input = null;
+            Reader? br = null;
             Reader? txpk_br = null;
             TXPK? txpk = null;
 
             try
             {
-                input = new(fileIn);
-                int txpkCompressedChunkSize = input.ReadInt32();
-                int txpkTmp = txpkCompressedChunkSize -= 4;
-                txpkCompressedChunkSize = txpkTmp;
+                br = new(Properties.Settings.Default.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber));
 
-                byte[] txpkData = input.ReadBytes(txpkCompressedChunkSize);
+                int MainFinalOffset = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
+                int MainCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
 
-                byte[] txpkHeader = DecompressAndRead(txpkData, txpkData.Length);
+                byte[] txpkData = new byte[MainUnCompressedSize];
 
-                txpk_br = new(txpkHeader);
+                br.Position = MainFinalOffset;
+
+                if (MainCompressedSize != MainUnCompressedSize)
+                {
+                    int chunkCount = br.ReadInt32();
+                    int[] chunkCompressedSize = new int[chunkCount];
+                    int size = 0;
+
+                    for (int j = 0; j < chunkCount; j++)
+                    {
+                        chunkCompressedSize[j] = br.ReadInt32();
+                        chunkCompressedSize[j] = chunkCompressedSize[j] -= 4;
+                    }
+
+                    for (int j = 0; j < chunkCount; j++)
+                    {
+                        int chunkUnCompressedSize = br.ReadInt32();
+
+                        if (chunkCompressedSize[j] == chunkUnCompressedSize)
+                        {
+                            byte[] tmptxpkData = br.ReadBytes(chunkUnCompressedSize);
+                            Buffer.BlockCopy(tmptxpkData, 0, txpkData, size, tmptxpkData.Length);
+                            size += tmptxpkData.Length;
+                        }
+                        else
+                        {
+                            byte[] compressedTmptxpkData = br.ReadBytes(chunkCompressedSize[j]);
+                            byte[] tmptxpkData = DecompressAndRead(compressedTmptxpkData, chunkUnCompressedSize);
+                            Buffer.BlockCopy(tmptxpkData, 0, txpkData, size, tmptxpkData.Length);
+                            size += tmptxpkData.Length;
+                        }
+                    }
+                }
+                else
+                {
+                    txpkData = br.ReadBytes(MainUnCompressedSize);
+                }
+
+                txpk_br = new(txpkData);
 
                 txpk = new();
                 txpk.Deserialize(txpk_br);
@@ -575,7 +612,7 @@ namespace Blobset_Tools
             }
             finally
             {
-                if (input != null) { input.Close(); input = null; }
+                if (br != null) { br.Close(); br = null; }
                 if (txpk_br != null) { txpk_br.Close(); txpk_br = null; }
             }
             return txpk;

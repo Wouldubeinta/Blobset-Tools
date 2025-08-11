@@ -1,4 +1,5 @@
 ﻿using Blobset_Tools;
+using Pfim;
 
 
 namespace BlobsetIO
@@ -89,6 +90,16 @@ namespace BlobsetIO
             return ChunkS;
         }
 
+        public static string DdsFormat(DdsHeader ddsHeader)
+        {
+            string format = string.Empty;
+            //int pFormat = ddsHeader.PixelFormat.
+
+            //switch()
+
+            return format;
+        }
+
         public static int LinesLength(string file)
         {
             return File.ReadLines(file).Count();
@@ -174,6 +185,7 @@ namespace BlobsetIO
                     break;
                 case (int)Enums.Game.DBC14:
                 case (int)Enums.Game.RLL3:
+                case (int)Enums.Game.RLL4:
                 case (int)Enums.Game.AC:
                     string gv1 = Blobset_Tools.Properties.Settings.Default.GameLocation.Replace(@"data-0.blobset.pc", string.Empty) + "version.txt";
                     if (File.Exists(gv1))

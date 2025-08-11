@@ -38,8 +38,8 @@
 
         public override int Stride => DeflatedStrideBytes;
         private int BytesPerStride => WidthBlocks * CompressedBytesPerBlock;
-        private int WidthBlocks => CalcBlocks((int)Header.Width);
-        private int HeightBlocks => CalcBlocks((int)Header.Height);
+        private int WidthBlocks => CalcBlocks((int)DDSHeader.Width);
+        private int HeightBlocks => CalcBlocks((int)DDSHeader.Height);
         private int StridePixels => WidthBlocks * DivSize;
         private int DeflatedStrideBytes => StridePixels * PixelDepthBytes;
         private int CalcBlocks(int pixels) => Math.Max(1, (pixels + 3) / 4);
@@ -126,18 +126,18 @@
         {
             var len = HeightBlocks * DivSize * DeflatedStrideBytes;
 
-            if (Header.MipMapCount <= 1)
+            if (DDSHeader.MipMapCount <= 1)
             {
                 return len;
             }
 
-            _mipMaps = new MipMapOffset[Header.MipMapCount - 1];
+            _mipMaps = new MipMapOffset[DDSHeader.MipMapCount - 1];
             var totalLen = len;
 
-            for (int i = 1; i < Header.MipMapCount; i++)
+            for (int i = 1; i < DDSHeader.MipMapCount; i++)
             {
-                var width = Math.Max((int)(Header.Width / Math.Pow(2, i)), 1);
-                var height = Math.Max((int)(Header.Height / Math.Pow(2, i)), 1);
+                var width = Math.Max((int)(DDSHeader.Width / Math.Pow(2, i)), 1);
+                var height = Math.Max((int)(DDSHeader.Height / Math.Pow(2, i)), 1);
                 var widthBlocks = CalcBlocks(width);
                 var heightBlocks = CalcBlocks(height);
 
@@ -160,7 +160,7 @@
             var pixelsLeft = totalLen;
             int dataIndex = 0;
 
-            for (int imageIndex = 0; imageIndex < Header.MipMapCount + 1 && pixelsLeft > 0; imageIndex++)
+            for (int imageIndex = 0; imageIndex < DDSHeader.MipMapCount + 1 && pixelsLeft > 0; imageIndex++)
             {
                 int divSize = DivSize;
                 int stride = DeflatedStrideBytes;
@@ -170,8 +170,8 @@
 
                 if (imageIndex != 0)
                 {
-                    var width = Math.Max((int)(Header.Width / Math.Pow(2, imageIndex)), 1);
-                    var height = Math.Max((int)(Header.Height / Math.Pow(2, imageIndex)), 1);
+                    var width = Math.Max((int)(DDSHeader.Width / Math.Pow(2, imageIndex)), 1);
+                    var height = Math.Max((int)(DDSHeader.Height / Math.Pow(2, imageIndex)), 1);
                     var widthBlocks = CalcBlocks(width);
                     var heightBlocks = CalcBlocks(height);
 
@@ -215,10 +215,10 @@
                 var heightBlockAligned = HeightBlocks;
                 long totalSize = WidthBlocks * CompressedBytesPerBlock * heightBlockAligned;
 
-                for (int i = 1; i < Header.MipMapCount; i++)
+                for (int i = 1; i < DDSHeader.MipMapCount; i++)
                 {
-                    var width = Math.Max((int)(Header.Width / Math.Pow(2, i)), 1);
-                    var height = Math.Max((int)(Header.Height / Math.Pow(2, i)), 1);
+                    var width = Math.Max((int)(DDSHeader.Width / Math.Pow(2, i)), 1);
+                    var height = Math.Max((int)(DDSHeader.Height / Math.Pow(2, i)), 1);
                     var widthBlocks = CalcBlocks(width);
                     var heightBlocks = CalcBlocks(height);
                     totalSize += widthBlocks * heightBlocks * CompressedBytesPerBlock;

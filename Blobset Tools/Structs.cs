@@ -51,7 +51,9 @@ namespace Blobset_Tools
             public int Offset;
             public int Length;
             public int MipMap;
-            public PixelFormat PFormat;
+            public bool isDX10;
+            public CompressionAlgorithm CompressionAlgorithm;
+            public DxgiFormat dxgiFormat;
             public ImageFormat IFormat;
         }
     }

@@ -9,32 +9,27 @@
 
         private void affl_button_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Not Implemented yet!!!", "AFL Live", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //MessageBox.Show("Not Implemented yet!!!", "AFL Live", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-            /*
             Properties.Settings.Default.GameID = (int)Enums.Game.AFLL;
             Properties.Settings.Default.GameName = "AFL Live";
             Properties.Settings.Default.SteamGameID = 0;
             Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v1;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Tru Blu Games\AFL Live\data-0.blobset.pc";
-            Properties.Settings.Default.Save();
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
+            if (File.Exists(@"C:\Program Files (x86)\Tru Blu Games\AFL Live\data-0.blobset.pc"))
+                Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Tru Blu Games\AFL Live\data-0.blobset.pc";
+            else
             {
                 if (ofd.ShowDialog() == DialogResult.OK)
-                {
                     Properties.Settings.Default.GameLocation = ofd.FileName;
-                    Properties.Settings.Default.Save();
-                }
                 else
-                {
                     Application.Exit();
-                }
                 ofd.Dispose();
             }
 
+            Properties.Settings.Default.Save();
+
             HideAndCloseForm();
-            */
         }
 
         private void rll2_button_Click(object sender, EventArgs e)
@@ -44,22 +39,20 @@
             /*
             Properties.Settings.Default.GameID = (int)Enums.Game.RLL2;
             Properties.Settings.Default.GameName = "Rugby League Live 2 PS3";
-            Properties.Settings.Default.GameLocation = @"D:\data-0.blobset.pc";
+
+            if (File.Exists(@"D:\data-0.blobset.pc"))
+                Properties.Settings.Default.GameLocation = @"D:\data-0.blobset.pc";
+
             Properties.Settings.Default.SteamGameID = 0;
             Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v1;
-            Properties.Settings.Default.Save();
 
             if (ofd.ShowDialog() == DialogResult.OK)
-            {
                 Properties.Settings.Default.GameLocation = ofd.FileName;
-                Properties.Settings.Default.Save();
-            }
             else
-            {
                 Application.Exit();
-            }
-            ofd.Dispose();
 
+            ofd.Dispose();
+            Properties.Settings.Default.Save();
             HideAndCloseForm();
             */
         }

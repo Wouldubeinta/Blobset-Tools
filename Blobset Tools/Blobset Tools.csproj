@@ -15,11 +15,20 @@
     <ApplicationIcon>Blobset_Tools.ico</ApplicationIcon>
     <Company>Wouldy Mods</Company>
     <Title>$(AssemblyName)</Title>
-    <Version>1.0.2.2</Version>
+    <Version>1.0.2.3</Version>
+    <NuGetAudit>False</NuGetAudit>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <Content Include="Blobset_Tools.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

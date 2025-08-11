@@ -40,9 +40,9 @@
         /// <summary>Determine image info from header</summary>
         public DdsLoadInfo ImageInfo()
         {
-            bool rgbSwapped = _rgbSwapped ?? Header.PixelFormat.RBitMask < Header.PixelFormat.GBitMask;
+            bool rgbSwapped = _rgbSwapped ?? DDSHeader.PixelFormat.RBitMask < DDSHeader.PixelFormat.GBitMask;
 
-            switch (_bitsPerPixel ?? Header.PixelFormat.RGBBitCount)
+            switch (_bitsPerPixel ?? DDSHeader.PixelFormat.RGBBitCount)
             {
                 case 8:
                     return new DdsLoadInfo(false, rgbSwapped, true, 1, 1, 8, ImageFormat.Rgb8);
@@ -54,13 +54,13 @@
                 case 32:
                     return new DdsLoadInfo(false, rgbSwapped, false, 1, 4, 32, ImageFormat.Rgba32);
                 default:
-                    throw new Exception($"Unrecognized rgb bit count: {Header.PixelFormat.RGBBitCount}");
+                    throw new Exception($"Unrecognized rgb bit count: {DDSHeader.PixelFormat.RGBBitCount}");
             }
         }
 
         private ImageFormat SixteenBitImageFormat()
         {
-            var pf = Header.PixelFormat;
+            var pf = DDSHeader.PixelFormat;
 
             if (pf.ABitMask == 0xF000 && pf.RBitMask == 0xF00 && pf.GBitMask == 0xF0 && pf.BBitMask == 0xF)
             {
@@ -78,7 +78,7 @@
         /// <summary>Calculates the number of bytes to hold image data</summary>
         private int CalcSize(DdsLoadInfo info)
         {
-            int height = (int)Math.Max(info.DivSize, Header.Height);
+            int height = (int)Math.Max(info.DivSize, DDSHeader.Height);
             return Stride * height;
         }
 
@@ -86,18 +86,18 @@
         {
             var len = CalcSize(info);
 
-            if (Header.MipMapCount <= 1)
+            if (DDSHeader.MipMapCount <= 1)
             {
                 return len;
             }
 
-            _mipMaps = new MipMapOffset[Header.MipMapCount - 1];
+            _mipMaps = new MipMapOffset[DDSHeader.MipMapCount - 1];
             var totalLen = len;
 
-            for (int i = 0; i < Header.MipMapCount - 1; i++)
+            for (int i = 0; i < DDSHeader.MipMapCount - 1; i++)
             {
-                int width = (int)Math.Max(info.DivSize, (int)(Header.Width / Math.Pow(2, i + 1)));
-                int height = (int)Math.Max(info.DivSize, Header.Height / Math.Pow(2, i + 1));
+                int width = (int)Math.Max(info.DivSize, (int)(DDSHeader.Width / Math.Pow(2, i + 1)));
+                int height = (int)Math.Max(info.DivSize, DDSHeader.Height / Math.Pow(2, i + 1));
                 int stride = Util.Stride(width, BitsPerPixel);
                 len = stride * height;
 
@@ -133,8 +133,8 @@
             var totalLen = AllocateMipMaps(imageInfo);
             byte[] data = config.Allocator.Rent(totalLen);
 
-            var stride = Util.Stride((int)Header.Width, BitsPerPixel);
-            var width = (int)Header.Width;
+            var stride = Util.Stride((int)DDSHeader.Width, BitsPerPixel);
+            var width = (int)DDSHeader.Width;
             var len = DataLen;
 
             if (width * BytesPerPixel == stride)
@@ -164,7 +164,7 @@
                 switch (imageInfo.Format)
                 {
                     case ImageFormat.Rgb24:
-                        SwapLevelRgb24(data, new MipMapOffset(width, (int)Header.Height, stride, 0, 0));
+                        SwapLevelRgb24(data, new MipMapOffset(width, (int)DDSHeader.Height, stride, 0, 0));
                         foreach (var mip in _mipMaps)
                         {
                             SwapLevelRgb24(data, mip);
