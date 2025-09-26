@@ -122,24 +122,6 @@ namespace Blobset_Tools
 
                 BlobsetFile? blobset = Global.blobsetHeaderData;
 
-                /*
-                // For testing purposes
-                string folderName1 = blobset.Entries[62292].FolderHashName;
-                string fileName1 = blobset.Entries[62292].FileHashName;
-                uint mainCompressedSize1 = blobset.Entries[62292].MainCompressedSize;
-                uint mainUnCompressedSize1 = blobset.Entries[62292].MainUnCompressedSize;
-                uint vramCompressedSize1 = blobset.Entries[62292].VramCompressedSize;
-                uint vramUnCompressedSize1 = blobset.Entries[62292].VramUnCompressedSize;
-                List<string> files = new List<string>();
-                files.Add("Folder: " + folderName1);
-                files.Add("File: " + fileName1);
-                files.Add("MainCompressedSize: " +  mainCompressedSize1.ToString());
-                files.Add("MainUnCompressedSize: " + mainUnCompressedSize1.ToString());
-                files.Add("VramCompressedSize: " + vramCompressedSize1.ToString());
-                files.Add("VramUnCompressedSize: " + vramUnCompressedSize1.ToString());
-                File.AppendAllLines(Global.currentPath + @"\test.txt", contents: files);
-                */
-
                 string BlobsetFileMapping = Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\data\BlobsetFileMapping.bin";
                 string TxpkFileList = Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\TXPK_File_List.csv";
                 string M3mpFileList = Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\M3MP_File_List.csv";
@@ -242,9 +224,7 @@ namespace Blobset_Tools
                             int magic = 0;
 
                             if (chunkCompressedSize[0] == chunkUnCompressedSize)
-                            {
                                 magic = blobsetContent_br.ReadInt32();
-                            }
                             else
                             {
                                 byte[] firstChunk = blobsetContent_br.ReadBytes(chunkCompressedSize[0]);
@@ -271,9 +251,7 @@ namespace Blobset_Tools
                                     byte[]? txpkHeader = null;
 
                                     if (txpkChunkCompressedSize[0] == txpkChunkUnCompressedSize)
-                                    {
                                         txpkHeader = blobsetContent_br.ReadBytes(txpkChunkUnCompressedSize);
-                                    }
                                     else
                                     {
                                         byte[] txpkData = blobsetContent_br.ReadBytes(txpkChunkCompressedSize[0]);
@@ -334,9 +312,7 @@ namespace Blobset_Tools
                         int magic = 0;
 
                         if (chunkCompressedSize[0] == chunkUnCompressedSize)
-                        {
                             magic = blobsetContent_br.ReadInt32();
-                        }
                         else
                         {
                             byte[] firstChunk = blobsetContent_br.ReadBytes(chunkCompressedSize[0]);
@@ -398,9 +374,7 @@ namespace Blobset_Tools
                                     byte[]? txpkHeader = null;
 
                                     if (txpkChunkCompressedSize[0] == txpkChunkUnCompressedSize)
-                                    {
                                         txpkHeader = blobsetContent_br.ReadBytes(txpkChunkUnCompressedSize);
-                                    }
                                     else
                                     {
                                         byte[] txpkData = blobsetContent_br.ReadBytes(txpkChunkCompressedSize[0]);
@@ -455,9 +429,7 @@ namespace Blobset_Tools
                                     byte[]? miniTxpkHeader = null;
 
                                     if (miniTxpkChunkCompressedSize[0] == miniTxpkChunkUnCompressedSize)
-                                    {
                                         miniTxpkHeader = blobsetContent_br.ReadBytes(miniTxpkChunkUnCompressedSize);
-                                    }
                                     else
                                     {
                                         byte[] miniTxpkData = blobsetContent_br.ReadBytes(miniTxpkChunkCompressedSize[0]);
@@ -568,9 +540,7 @@ namespace Blobset_Tools
                                         int m3mpChunkUnCompressedSize = blobsetContent_br.ReadInt32();
 
                                         if (m3mpChunkCompressedSize[j] == m3mpChunkUnCompressedSize)
-                                        {
                                             m3mpHeaderChunk.Add(blobsetContent_br.ReadBytes(m3mpChunkUnCompressedSize));
-                                        }
                                         else
                                         {
                                             byte[] m3mpData = blobsetContent_br.ReadBytes(m3mpChunkCompressedSize[j]);
@@ -649,8 +619,6 @@ namespace Blobset_Tools
                 bw.BaseStream.Position = 0;
                 bw.Write(fileMappingSize);
                 if (bw != null) { bw.Close(); bw = null; }
-
-                CreateModFolders();
             }
             catch (Exception ex)
             {
@@ -660,6 +628,7 @@ namespace Blobset_Tools
             finally
             {
                 if (writer != null) { writer.Dispose(); writer = null; }
+                CreateModFolders();
             }
             return error;
         }
@@ -1276,8 +1245,6 @@ namespace Blobset_Tools
                 bw.BaseStream.Position = 0;
                 bw.Write(fileMappingSize);
                 if (bw != null) { bw.Close(); bw = null; }
-
-                CreateModFolders();
             }
             catch (Exception ex)
             {
@@ -1287,6 +1254,7 @@ namespace Blobset_Tools
             finally
             {
                 if (writer != null) { writer.Dispose(); writer = null; }
+                CreateModFolders();
             }
             return error;
         }
@@ -1302,6 +1270,7 @@ namespace Blobset_Tools
         private static void CreateModFolders()
         {
             Reader? br = null;
+            Writer? bw = null;
             FileMapping? fileMapping = null;
 
             try
@@ -1315,11 +1284,32 @@ namespace Blobset_Tools
                     fileMapping = new();
                     fileMapping.Read(br);
 
-                    if (fileMapping == null | fileMapping.FilesCount == 0)
+                    if (fileMapping == null || fileMapping.FilesCount == 0)
                         return;
 
                     foreach (var entry in fileMapping.Entries)
                         Directory.CreateDirectory(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\mods\" + Path.GetDirectoryName(entry.FilePath));
+
+                    // Put File Mapping in alphabetical order.
+
+                    IOrderedEnumerable<Entry> fm = fileMapping.Entries.OrderBy(fm => fm.FilePath);
+
+                    if (br != null) { br.Close(); br = null; }
+
+                    bw = new(BlobsetFileMapping);
+                    bw.Position = 0;
+                    bw.WriteInt32(fileMapping.FilesCount);
+
+                    foreach (var item in fm) 
+                    {
+                        bw.WriteInt32(item.Index, Endian.Little);
+                        bw.WriteUInt8(Convert.ToByte(item.FilePath.Length), Endian.Little);
+                        bw.WriteString(item.FilePath);
+                        bw.WriteUInt8(Convert.ToByte(item.FolderHash.Length));
+                        bw.WriteString(item.FolderHash);
+                        bw.WriteUInt8(Convert.ToByte(item.FileNameHash.Length));
+                        bw.WriteString(item.FileNameHash);
+                    }
                 }
                 else
                     return;
@@ -1331,6 +1321,7 @@ namespace Blobset_Tools
             finally
             {
                 if (br != null) { br.Close(); br = null; }
+                if (bw != null) { bw.Close(); bw = null; }
                 if (fileMapping != null) { fileMapping = null; }
             }
         }

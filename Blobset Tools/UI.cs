@@ -122,7 +122,6 @@ namespace Blobset_Tools
             IImage? image = null;
             ArrayPoolAllocator? allocator = null;
             Bitmap? bitmap = null;
-            ddsInfo.MipMap = 1;
             ddsInfo.IFormat = ImageFormat.Rgba32;
 
             try
@@ -136,6 +135,10 @@ namespace Blobset_Tools
                     allocator = new();
                     var config = new PfimConfig(allocator: allocator);
                     image = Pfimage.FromStream(ms, config);
+
+                    if (image == null)
+                        return bitmap;
+
                     ddsInfo.CompressionAlgorithm = image.DDSHeader.PixelFormat.FourCC;
 
                     if (image.DDSHeader10 != null)
@@ -150,7 +153,7 @@ namespace Blobset_Tools
                     ddsInfo.Width = image.Width;
                     ddsInfo.Height = image.Height;
                     ddsInfo.IFormat = image.Format;
-                    ddsInfo.MipMap = image.MipMaps.Length + 1;
+                    ddsInfo.MipMap = (int)image.DDSHeader.MipMapCount + 1;
 
                     // Convert from Pfim's backend agnostic image format into GDI+'s image format
                     switch (image.Format)

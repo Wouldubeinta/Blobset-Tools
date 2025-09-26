@@ -238,7 +238,6 @@
             MainMenuStrip = menuStrip1;
             Name = "TXPK_Viewer";
             Text = "TXPK Viewer";
-            FormClosing += TXPK_Viewer_FormClosing;
             Load += TXPK_Viewer_Load;
             flipImage_contextMenuStrip.ResumeLayout(false);
             extractDDS_contextMenuStrip.ResumeLayout(false);

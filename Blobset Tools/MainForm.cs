@@ -1,4 +1,5 @@
 using BlobsetIO;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
 using WEMSharp;
@@ -33,7 +34,6 @@ namespace Blobset_Tools
         private void MainForm_Load(object sender, EventArgs e)
         {
             string gameVersion = Utilities.GetGameVersion();
-            int gameID = Properties.Settings.Default.GameID;
             BlobsetVersion blobsetVersion = (BlobsetVersion)Properties.Settings.Default.BlobsetVersion;
             string fileMappingVersion = File.ReadAllText(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\version.txt");
 
@@ -61,8 +61,28 @@ namespace Blobset_Tools
             foreach (string line in UI.LoadingText)
                 fileInfo_richTextBox.AppendText(line);
 
-            folder_treeView.Nodes.Clear();
-            UI.FilesList(folder_treeView);
+            if (gameVersion == fileMappingVersion) 
+            {
+                folder_treeView.Nodes.Clear();
+                UI.FilesList(folder_treeView);
+            }
+            else 
+            {
+                DialogResult result = MessageBox.Show("You need to update the filemapping, click Yes to continue", "Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+                switch (result)
+                {
+                    case DialogResult.Yes:
+                        fileInfo_richTextBox.Clear();
+                        fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
+                        fileInfo_richTextBox.AppendText("Mapping files, please wait..........");
+                        FileMappingMain();
+                        break;
+                    case DialogResult.No:
+                        Environment.Exit(Environment.ExitCode);
+                        break;
+                }
+            }
 
             if (Global.blobsetHeaderData == null)
             {
@@ -322,7 +342,7 @@ namespace Blobset_Tools
                     if (MainCompressedSize != MainUnCompressedSize)
                         isCompressed = true;
 
-                    M3MP m3mp = ZSTD_IO.ReadM3MPInfo(filePath, isCompressed);
+                    M3MP m3mp = blobsetVersion >= 2 ? ZSTD_IO.ReadM3MPInfo(filePath, isCompressed) : LZMA_IO.ReadM3MPInfo(Global.filelist);
 
                     if (m3mp == null)
                         return;
@@ -1167,7 +1187,17 @@ namespace Blobset_Tools
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            Environment.Exit(Environment.ExitCode);
+            foreach (string f in Directory.EnumerateFiles(Global.currentPath + @"\temp\", "*.*"))
+                File.Delete(f);
+
+            if (Extract_bgw != null)
+                Environment.Exit(Environment.ExitCode);
+
+            if (FileMapping_bgw != null)
+                Environment.Exit(Environment.ExitCode);
+
+            if (Modify_bgw != null)
+                Environment.Exit(Environment.ExitCode);
         }
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1178,7 +1208,7 @@ namespace Blobset_Tools
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Application.Exit();
+            Environment.Exit(Environment.ExitCode);
         }
     }
 }

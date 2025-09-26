@@ -627,43 +627,65 @@ namespace Blobset_Tools
         /// <history>
         /// [Wouldubeinta]		16/07/2025	Created
         /// </history>
-        public static M3MP ReadM3MPInfo(string fileIn, bool isCompressed)
+        public static M3MP ReadM3MPInfo(List<Structs.FileIndexInfo> list)
         {
-            Reader? input = null;
+            Reader? br = null;
             Reader? m3mp_br = null;
             M3MP? m3mp = null;
 
             try
             {
-                if (!File.Exists(fileIn))
-                    return m3mp;
+                br = new(Properties.Settings.Default.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber));
 
-                input = new(fileIn);
+                int MainFinalOffset = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
+                int MainCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+
+                br.Position = MainFinalOffset;
+
                 m3mp = new();
 
-                if (isCompressed)
+                if (MainCompressedSize != MainUnCompressedSize)
                 {
-                    List<byte[]> m3mpHeaderChunk = new(3);
+                    int chunkCount = br.ReadInt32();
+                    int[] chunkCompressedSize = new int[chunkCount];
+
+                    for (int j = 0; j < chunkCount; j++)
+                    {
+                        chunkCompressedSize[j] = br.ReadInt32();
+                        chunkCompressedSize[j] = chunkCompressedSize[j] -= 4;
+                    }
+
+                    List<byte[]> m3mpHeaderChunk = new(chunkCount);
                     int m3mpHeaderSize = 0;
 
-                    for (int j = 0; j < 3; j++)
+                    for (int j = 0; j < chunkCount; j++)
                     {
-                        int m3mpCompressedSize = input.ReadInt32();
-                        int m3mpTmp = m3mpCompressedSize -= 4;
-                        m3mpCompressedSize = m3mpTmp;
+                        int chunkUnCompressedSize = br.ReadInt32();
 
-                        byte[] m3mpData = input.ReadBytes(m3mpCompressedSize);
-
-                        m3mpHeaderChunk.Add(DecompressAndRead(m3mpData, m3mpData.Length));
-                        m3mpHeaderSize += 262144;
+                        if (chunkCompressedSize[j] == chunkUnCompressedSize)
+                        {
+                            byte[] m3mpData = br.ReadBytes(chunkUnCompressedSize);
+                            m3mpHeaderChunk.Add(m3mpData);
+                            m3mpHeaderSize += m3mpData.Length;
+                        }
+                        else
+                        {
+                            byte[] m3mpData = br.ReadBytes(chunkCompressedSize[j]);
+                            m3mpHeaderChunk.Add(DecompressAndRead(m3mpData, chunkUnCompressedSize));
+                            m3mpHeaderSize += chunkUnCompressedSize;
+                        }
                     }
 
                     byte[] m3mpHeader = IO.CombineDataChunks(m3mpHeaderChunk, m3mpHeaderSize);
                     m3mp_br = new Reader(m3mpHeader);
                     m3mp.Deserialize(m3mp_br);
                 }
-                else
-                    m3mp.Deserialize(input);
+                else 
+                {
+                    m3mp.Deserialize(br);
+                }
+                    
             }
             catch (Exception error)
             {
@@ -671,7 +693,7 @@ namespace Blobset_Tools
             }
             finally
             {
-                if (input != null) { input.Close(); input = null; }
+                if (br != null) { br.Close(); br = null; }
                 if (m3mp_br != null) { m3mp_br.Close(); m3mp_br = null; }
             }
             return m3mp;

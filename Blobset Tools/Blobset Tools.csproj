@@ -18,6 +18,8 @@
     <Version>1.0.2.3</Version>
     <NuGetAudit>False</NuGetAudit>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <AssemblyVersion>1.0.2.10</AssemblyVersion>
+    <FileVersion>1.0.2.10</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>

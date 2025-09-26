@@ -56,7 +56,7 @@ namespace Pfim
 
         private static Dds DecodeDds(Stream stream, PfimConfig config, DdsHeader header)
         {
-            Dds dds;
+            Dds? dds = null;
             switch (header.PixelFormat.FourCC)
             {
                 case CompressionAlgorithm.D3DFMT_DXT1:
@@ -101,10 +101,11 @@ namespace Pfim
                     break;
 
                 default:
-                    throw new ArgumentException($"FourCC: {header.PixelFormat.FourCC} not supported.");
+                    MessageBox.Show($"FourCC: {header.PixelFormat.FourCC} not supported by Pfim library, but you can still extract the dds file by right clicking it.", "DDS Not Supported Yet", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    break;
             }
-
-            dds.Decode(stream, config);
+            if (dds != null)
+                dds.Decode(stream, config);
             return dds;
         }
 

@@ -44,7 +44,48 @@ namespace Blobset_Tools
         /// </history>
         public static bool BlobsetV1(string blobsetfile, BackgroundWorker Extract_bgw)
         {
-            bool error = true;
+            Reader? blobsetContent_br = null;
+            FileStream? writer = null;
+            string progress = string.Empty;
+            string _filePath = string.Empty;
+            bool error = false;
+
+            try 
+            {
+                if (Global.blobsetHeaderData == null)
+                {
+                    error = true;
+                    MessageBox.Show("Something went wrong reading the blobset", "Blobset Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return error;
+                }
+
+                BlobsetFile blobset = Global.blobsetHeaderData;
+                string folder = Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\data-0.blobset\";
+
+                if (Directory.Exists(folder))
+                {
+                    Directory.Delete(folder, true);
+                    Directory.CreateDirectory(folder);
+                }
+                else
+                    Directory.CreateDirectory(folder);
+            }
+            catch (Exception arg)
+            {
+                error = true;
+                MessageBox.Show("Error occurred, report it to Wouldy : \n\nFile: " + _filePath + "\n\n" + arg, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (writer != null) { writer.Dispose(); writer = null; }
+
+                if (File.Exists(Global.currentPath + @"\temp\m3mpData.tmp"))
+                    File.Delete(Global.currentPath + @"\temp\m3mpData.tmp");
+
+                if (File.Exists(Global.currentPath + @"\temp\txpkData.tmp"))
+                    File.Delete(Global.currentPath + @"\temp\txpkData.tmp");
+            }
+
             return error;
         }
         #endregion
@@ -398,7 +439,5 @@ namespace Blobset_Tools
             return error;
         }
         #endregion
-
-
     }
 }

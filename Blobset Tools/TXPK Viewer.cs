@@ -64,8 +64,8 @@ namespace Blobset_Tools
 
                 string txpkName = Path.GetFileName(filename);
 
-                if (File.Exists(Global.currentPath + @"\temp\" + txpkName))
-                    File.Delete(Global.currentPath + @"\temp" + txpkName);
+                foreach (string f in Directory.EnumerateFiles(Global.currentPath + @"\temp\", "*.*"))
+                    File.Delete(f);
 
                 TXPKDecompressBgw();
             }
@@ -124,10 +124,7 @@ namespace Blobset_Tools
                 br.Position = br.Position + txpk.Entries[index].DDSDataOffset;
                 byte[] ddsData = br.ReadBytes((int)txpk.Entries[index].DDSDataSize1);
 
-                int mipmapCount = 1;
-
                 Structs.DDSInfo ddsInfo = new();
-                mipmapCount = ddsInfo.MipMap + 1;
 
                 Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo);
 
@@ -136,7 +133,7 @@ namespace Blobset_Tools
                 if (bitmap != null)
                 {
                     pictureBox1.Image = bitmap;
-                    DDSInfo_SSLabel.Text = "Format: " + ddsFormat + "    Height: " + bitmap.Height.ToString() + "     Width: " + bitmap.Width.ToString() + "     MipMaps: 1/" + mipmapCount.ToString(); ;
+                    DDSInfo_SSLabel.Text = "Format: " + ddsFormat + "    Height: " + bitmap.Height.ToString() + "     Width: " + bitmap.Width.ToString() + "     MipMaps: 1/" + ddsInfo.MipMap.ToString();
                 }
                 if (br != null) { br.Close(); br = null; }
             }
@@ -552,14 +549,6 @@ namespace Blobset_Tools
         private void extractDDSToolStripMenuItem_Click(object sender, EventArgs e)
         {
 
-        }
-
-        private void TXPK_Viewer_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            string txpkName = Path.GetFileName(filename);
-
-            if (File.Exists(Global.currentPath + @"\temp\" + txpkName))
-                File.Delete(Global.currentPath + @"\temp\" + txpkName);
         }
     }
 }

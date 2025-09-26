@@ -29,8 +29,6 @@
 
         private unsafe void LoadImage()
         {
-            int mipmapCount = 1;
-
             Structs.DDSInfo ddsInfo = new();
 
             int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
@@ -47,10 +45,7 @@
                 pictureBox1.Height = bitmap.Height;
                 pictureBox1.Image = bitmap;
 
-                if (mipmapCount == 0)
-                    mipmapCount = 1;
-
-                toolStripStatusLabel1.Text = "Format: " + ddsFormat + "    Height: " + bitmap.Height.ToString() + "     Width: " + bitmap.Width.ToString() + "     MipMaps: 1/" + mipmapCount.ToString();
+                toolStripStatusLabel1.Text = "Format: " + ddsFormat + "    Height: " + bitmap.Height.ToString() + "     Width: " + bitmap.Width.ToString() + "     MipMaps: 1/" + ddsInfo.MipMap.ToString();
             }
         }
 

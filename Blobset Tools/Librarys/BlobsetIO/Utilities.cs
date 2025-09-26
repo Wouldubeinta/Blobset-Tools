@@ -181,6 +181,8 @@ namespace BlobsetIO
             switch (gameID)
             {
                 case (int)Enums.Game.AFLL:
+                    gameVersion = "BAVersion:604";
+                    break;
                 case (int)Enums.Game.RLL2:
                     break;
                 case (int)Enums.Game.DBC14:
