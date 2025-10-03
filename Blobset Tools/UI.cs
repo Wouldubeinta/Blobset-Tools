@@ -565,7 +565,10 @@ namespace Blobset_Tools
 
                     if (steamPath != null)
                     {
-                        string libararyFoldersPath = steamPath.ToString() + @"\config\libraryfolders.vdf";
+                        string libararyFoldersPath = steamPath.ToString() + @"\steamapps\libraryfolders.vdf";
+
+                        if (!File.Exists(libararyFoldersPath))
+                            libararyFoldersPath = steamPath.ToString() + @"\config\libraryfolders.vdf";
 
                         if (File.Exists(libararyFoldersPath))
                         {
