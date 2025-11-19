@@ -4,6 +4,8 @@
 
 Extract and Modify BigAnt games blobset files.
 
+![Download Count](https://img.shields.io/github/downloads/Wouldubeinta/Blobset-Tools/total.svg)
+
 # How to Use:
 
 **Important:** 
@@ -16,7 +18,7 @@ Extract and Modify BigAnt games blobset files.
 
 Ok, Pick your game that you want to mod.
 
-![Title Image](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/1.jpg?raw=true)
+![Image 1](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/1.jpg?raw=true)
 
 First time use, run the **Update File Mapping Data** in the Options, just let it do it's thing.
 
