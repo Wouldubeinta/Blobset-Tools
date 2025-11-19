@@ -28,7 +28,7 @@ namespace OggSharp
     {
         public csorbisException()
         : base() { }
-        public csorbisException(String s)
+        public csorbisException(string s)
         : base("csorbis: " + s) { }
     }
 }

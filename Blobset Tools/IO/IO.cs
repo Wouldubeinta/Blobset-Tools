@@ -72,6 +72,43 @@ namespace Blobset_Tools
         /// Read data from a Binary Reader and writes to file in chunks.
         /// </summary>
         /// <param name="reader">Input Binary Reader stream.</param>
+        /// <param name="fileOut">Output file path.</param>
+        /// <param name="size">File size.</param>
+        /// <param name="chunkSize">Chunk size to write to file.</param>
+        /// <history>
+        /// [Wouldubeinta]		18/11/2025	Created
+        /// </history>
+        public static void ReadWriteCunkData(Reader reader, string fileOut, int size, int chunkSize = 262144)
+        {
+            FileStream? writer = null;
+
+            try
+            {
+                writer = new(fileOut, FileMode.OpenOrCreate, FileAccess.Write);
+
+                int chunkCount = Utilities.ChunkAmount(size);
+                long[] chunkSizes = Utilities.ChunkSizes(size, chunkCount);
+
+                for (int j = 0; j < chunkCount; j++)
+                {
+                    byte[] tmpData = reader.ReadBytes((int)chunkSizes[j]);
+                    ReadWriteData(tmpData, writer, (int)chunkSizes[j]);
+                }
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (writer != null) { writer.Dispose(); writer = null; }
+            }
+        }
+
+        /// <summary>
+        /// Read data from a Binary Reader and writes to file in chunks.
+        /// </summary>
+        /// <param name="reader">Input Binary Reader stream.</param>
         /// <param name="writer">Output FileStream writer.</param>
         /// <param name="chunkSize">Chunk size to write to file.</param>
         /// <history>

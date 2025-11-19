@@ -29,14 +29,17 @@
         {
             BMf = 543575362, // Used in AFLL.
             BSB = 1112752672, // Used in AFLL.
+            BANK = 1179011410,
             FEV1 = 827737414, // Used in AFLL.
-            FSB = 876761926,
+            FSB = 1179861557,
             M3MP = 1347236685,
             MINI = 1229867341,
             MOB = 557993805, //Used in RLL4 and some cricket games.
+            PNG = -1991225785,
             TXPK = 1415073867,
             WiseBNK = 1145588546,
             WiseWEM = 1179011410,
+            WAV = 1380533830
         }
 
         public enum Game
@@ -57,7 +60,8 @@
             TB, // Tiebreak
             R25, // Rugby 25
             AFL26, // AFL 26
-            RL26 // Rugby League 26
+            RL26, // Rugby League 26
+            C26 // Cricket 26
         }
 
         public enum BlobsetVersion

@@ -28,14 +28,14 @@ namespace OggSharp
     {
         public static FuncFloor[] floor_P = { new Floor0(), new Floor1() };
 
-        public abstract void pack(Object i, csBuffer opb);
-        public abstract Object unpack(Info vi, csBuffer opb);
-        public abstract Object look(DspState vd, InfoMode mi, Object i);
-        public abstract void free_info(Object i);
-        public abstract void free_look(Object i);
-        public abstract void free_state(Object vs);
-        public abstract int forward(Block vb, Object i, float[] fin, float[] fout, Object vs);
-        public abstract Object inverse1(Block vb, Object i, Object memo);
-        public abstract int inverse2(Block vb, Object i, Object memo, float[] fout);
+        public abstract void pack(object i, csBuffer opb);
+        public abstract object unpack(Info vi, csBuffer opb);
+        public abstract object look(DspState vd, InfoMode mi, object i);
+        public abstract void free_info(object i);
+        public abstract void free_look(object i);
+        public abstract void free_state(object vs);
+        public abstract int forward(Block vb, object i, float[] fin, float[] fout, object vs);
+        public abstract object inverse1(Block vb, object i, object memo);
+        public abstract int inverse2(Block vb, object i, object memo, float[] fout);
     }
 }

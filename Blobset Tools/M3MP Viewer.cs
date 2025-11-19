@@ -14,6 +14,10 @@ namespace Blobset_Tools
         private BackgroundWorker? M3MPExtract_bgw = null;
         private ImageList? myImageList = null;
         private bool isCompressed = false;
+        private int blobsetVersion = 4;
+        private uint MainFinalOffset = 0;
+        private uint MainCompressedSize = 0;
+        private uint MainUnCompressedSize = 0;
 
         public M3MP_Viewer(string _filename, M3MP _m3mpData, List<Structs.FileIndexInfo> _list)
         {
@@ -25,12 +29,16 @@ namespace Blobset_Tools
 
         private void M3MP_Viewer_Load(object sender, EventArgs e)
         {
-            Reader br = null;
-
             try
             {
                 if (m3mpData != null)
                 {
+                    MainFinalOffset = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
+                    MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                    MainUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+
+                    blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+
                     Text = Text + " - " + filename;
                     myImageList = new ImageList();
                     myImageList.Images.Add(Properties.Resources.folder_32);
@@ -40,16 +48,6 @@ namespace Blobset_Tools
 
                     m3mpXmlIn = new ExtractFileInfo();
                     m3mpXmlIn.Index = Convert.ToInt32(Path.GetFileNameWithoutExtension(filename));
-
-                    br = new(Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash);
-
-                    int magic = br.ReadInt32();
-
-                    if (magic != (int)Enums.FileType.M3MP)
-                    {
-                        isCompressed = true;
-                        m3mpXmlIn.IsCompressed = isCompressed;
-                    }
 
                     string[] filePaths = new string[m3mpData.FilesCount];
 
@@ -73,7 +71,7 @@ namespace Blobset_Tools
 
                     string m3mpName = Path.GetFileName(filename);
 
-                    if (isCompressed)
+                    if (isCompressed || blobsetVersion <= 1)
                     {
                         if (File.Exists(Global.currentPath + @"\temp\" + m3mpName))
                             File.Delete(Global.currentPath + @"\temp" + m3mpName);
@@ -85,10 +83,6 @@ namespace Blobset_Tools
             catch (Exception error)
             {
                 MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
-            }
-            finally
-            {
-                if (br != null) { br.Close(); br = null; }
             }
         }
 
@@ -138,6 +132,14 @@ namespace Blobset_Tools
 
         private void M3MPDecompress_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
+            bool errorCheck = blobsetVersion >= 3 ? M3MP_DecompressZSTD() : M3MP_DecompressLZMA();
+
+            if (errorCheck)
+                e.Cancel = true;
+        }
+
+        private bool M3MP_DecompressZSTD()
+        {
             Reader? br = null;
             FileStream? fsWriter = null;
 
@@ -178,12 +180,75 @@ namespace Blobset_Tools
             catch (Exception error)
             {
                 MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                return true;
             }
             finally
             {
                 if (br != null) { br.Close(); br = null; }
                 if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
             }
+            return false;
+        }
+
+        private bool M3MP_DecompressLZMA() 
+        {
+            Reader? br = null;
+            FileStream? fsWriter = null;
+
+            try 
+            {
+                br = new Reader(Properties.Settings.Default.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber));
+                string m3mpName = Global.currentPath + @"\temp\" + Path.GetFileName(filename);
+                fsWriter = new(m3mpName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+
+                br.Position = MainFinalOffset;
+
+                if (MainCompressedSize != MainUnCompressedSize) 
+                {
+                    int m3mpChunkCount = br.ReadInt32();
+                    int[] m3mpChunkCompressedSize = new int[m3mpChunkCount];
+
+                    for (int j = 0; j < m3mpChunkCount; j++)
+                    {
+                        m3mpChunkCompressedSize[j] = br.ReadInt32();
+                        m3mpChunkCompressedSize[j] = m3mpChunkCompressedSize[j] -= 4;
+                    }
+
+                    for (int j = 0; j < m3mpChunkCount; j++)
+                    {
+                        int m3mpChunkUnCompressedSize = br.ReadInt32();
+
+                        if (m3mpChunkCompressedSize[j] == m3mpChunkUnCompressedSize) 
+                        {
+                            byte[] m3mpTempData = br.ReadBytes(m3mpChunkUnCompressedSize, Endian.Little);
+                            fsWriter.Write(m3mpTempData, 0, m3mpChunkUnCompressedSize);
+                        }    
+                        else
+                        {
+                            byte[] m3mpCompressedData = br.ReadBytes(m3mpChunkCompressedSize[j], Endian.Little);
+                            byte[] m3mpData = LZMA_IO.DecompressAndRead(m3mpCompressedData, m3mpChunkCompressedSize[j]);
+                            fsWriter.Write(m3mpData, 0, m3mpData.Length);
+                        }
+                    }
+                    fsWriter.Flush();
+                }
+                else
+                {
+                    byte[] m3mpData = br.ReadBytes((int)MainUnCompressedSize);
+                    fsWriter.Write(m3mpData, 0, m3mpData.Length);
+                }
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                return true;
+            }
+            finally
+            {
+                if (br != null) { br.Close(); br = null; }
+                if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
+            }
+            return false;
         }
 
         private void M3MPDecompress_bgw_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -223,19 +288,26 @@ namespace Blobset_Tools
 
         private void M3MPExtract_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
+            string m3mpName = Global.currentPath + @"\temp\" + Path.GetFileName(filename);
+
             if (isCompressed)
             {
-                string m3mpName = Global.currentPath + @"\temp\" + Path.GetFileName(filename);
-
                 if (!File.Exists(m3mpName))
                     return;
 
-                ZSTD_IO.M3MPDecompressAndWrite(m3mpName, extractM3MP_fbd.SelectedPath + @"\", M3MPExtract_bgw);
+                if (blobsetVersion > 1)
+                    ZSTD_IO.M3MPDecompressAndWrite(m3mpName, extractM3MP_fbd.SelectedPath + @"\", M3MPExtract_bgw);
+                else
+                    LZMA_IO.M3MPDecompressAndWrite(m3mpName, extractM3MP_fbd.SelectedPath + @"\", M3MPExtract_bgw);
             }
             else
             {
                 string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash;
-                ZSTD_IO.M3MPDecompressAndWrite(filePath, extractM3MP_fbd.SelectedPath + @"\", M3MPExtract_bgw);
+
+                if (blobsetVersion > 1)
+                    ZSTD_IO.M3MPDecompressAndWrite(filePath, extractM3MP_fbd.SelectedPath + @"\", M3MPExtract_bgw);
+                else
+                    LZMA_IO.M3MPDecompressAndWrite(m3mpName, extractM3MP_fbd.SelectedPath + @"\", M3MPExtract_bgw);
             }
 
             IO.XmlSerialize(extractM3MP_fbd.SelectedPath + @"\M3MP_List.xml", m3mpXmlIn);

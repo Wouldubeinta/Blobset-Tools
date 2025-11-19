@@ -81,16 +81,16 @@ namespace OggSharp
         internal InfoMode[] mode_param = null;
 
         internal int[] map_type = null;
-        internal Object[] map_param = null;
+        internal object[] map_param = null;
 
         internal int[] time_type = null;
-        internal Object[] time_param = null;
+        internal object[] time_param = null;
 
         internal int[] floor_type = null;
-        internal Object[] floor_param = null;
+        internal object[] floor_param = null;
 
         internal int[] residue_type = null;
-        internal Object[] residue_param = null;
+        internal object[] residue_param = null;
 
         internal StaticCodeBook[] book_param = null;
 
@@ -225,7 +225,7 @@ namespace OggSharp
             if (time_type == null || time_type.Length != times) { time_type = new int[times]; }
             if (time_param == null || time_param.Length != times)
             {
-                time_param = new Object[times];
+                time_param = new object[times];
             }
             for (int i = 0; i < times; i++)
             {
@@ -253,7 +253,7 @@ namespace OggSharp
             }
             if (floor_param == null || floor_param.Length != floors)
             {
-                floor_param = new Object[floors];
+                floor_param = new object[floors];
             }
 
             for (int i = 0; i < floors; i++)
@@ -285,7 +285,7 @@ namespace OggSharp
 
             if (residue_param == null || residue_param.Length != residues)
             {
-                residue_param = new Object[residues];
+                residue_param = new object[residues];
             }
 
             for (int i = 0; i < residues; i++)
@@ -309,7 +309,7 @@ namespace OggSharp
             // map backend settings
             maps = opb.read(6) + 1;
             if (map_type == null || map_type.Length != maps) { map_type = new int[maps]; }
-            if (map_param == null || map_param.Length != maps) { map_param = new Object[maps]; }
+            if (map_param == null || map_param.Length != maps) { map_param = new object[maps]; }
             for (int i = 0; i < maps; i++)
             {
                 map_type[i] = opb.read(16);
@@ -578,7 +578,7 @@ namespace OggSharp
             return (ret);
         }
 
-        public String toString()
+        public string toString()
         {
             return "version:" + version.ToString() +
                    ", channels:" + channels.ToString() +

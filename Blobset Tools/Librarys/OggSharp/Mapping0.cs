@@ -27,19 +27,19 @@ namespace OggSharp
     internal class Mapping0 : FuncMapping
     {
         //static int seq=0;
-        public override void free_info(Object imap) { }
-        public override void free_look(Object imap) { }
+        public override void free_info(object imap) { }
+        public override void free_look(object imap) { }
 
-        public override Object look(DspState vd, InfoMode vm, Object m)
+        public override object look(DspState vd, InfoMode vm, object m)
         {
             Info vi = vd.vi;
             LookMapping0 looks = new();
             InfoMapping0 info = looks.map = (InfoMapping0)m;
             looks.mode = vm;
 
-            looks.time_look = new Object[info.submaps];
-            looks.floor_look = new Object[info.submaps];
-            looks.residue_look = new Object[info.submaps];
+            looks.time_look = new object[info.submaps];
+            looks.floor_look = new object[info.submaps];
+            looks.residue_look = new object[info.submaps];
 
             looks.time_func = new FuncTime[info.submaps];
             looks.floor_func = new FuncFloor[info.submaps];
@@ -72,7 +72,7 @@ namespace OggSharp
             return (looks);
         }
 
-        public override void pack(Info vi, Object imap, csBuffer opb)
+        public override void pack(Info vi, object imap, csBuffer opb)
         {
             InfoMapping0 info = (InfoMapping0)imap;
 
@@ -126,7 +126,7 @@ namespace OggSharp
             }
         }
 
-        public override Object unpack(Info vi, csBuffer opb)
+        public override object unpack(Info vi, csBuffer opb)
         {
             // also responsible for range checking
             InfoMapping0 info = new();
@@ -219,9 +219,9 @@ namespace OggSharp
         private float[][] pcmbundle = null;
         private int[] zerobundle = null;
         private int[] nonzero = null;
-        private Object[] floormemo = null;
+        private object[] floormemo = null;
 
-        public override int inverse(Block vb, Object l)
+        public override int inverse(Block vb, object l)
         {
             lock (this)
             {
@@ -241,7 +241,7 @@ namespace OggSharp
                     pcmbundle = new float[vi.channels][];
                     nonzero = new int[vi.channels];
                     zerobundle = new int[vi.channels];
-                    floormemo = new Object[vi.channels];
+                    floormemo = new object[vi.channels];
                 }
 
                 // time domain information decode (note that applying the
@@ -438,10 +438,10 @@ namespace OggSharp
     {
         internal InfoMode mode;
         internal InfoMapping0 map;
-        internal Object[] time_look;
-        internal Object[] floor_look;
+        internal object[] time_look;
+        internal object[] floor_look;
         //Object[] floor_state;
-        internal Object[] residue_look;
+        internal object[] residue_look;
         //PsyLook[] psy_look;
 
         internal FuncTime[] time_func;

@@ -62,7 +62,7 @@ namespace Blobset_Tools
 
         #region Read
         /// <summary>
-        /// Read's the BlobsetFileMapping.bin for file mapping v4.
+        /// Read's the BlobsetFileMapping.bin for file mapping.
         /// </summary>
         /// <param name="br">Binary Reader Stream</param>
         /// <history>
@@ -99,7 +99,7 @@ namespace Blobset_Tools
         /// <param name="blobsetfile">File path to blobset file</param>
         /// <param name="FileMapping_bgw">The extract Background Worker</param>
         /// <history>
-        /// [Wouldubeinta]		01/07/2025	Created
+        /// [Wouldubeinta]		19/11/2025	Created
         /// </history>
         public static bool WriteV1(string blobsetfile, BackgroundWorker FileMapping_bgw)
         {
@@ -108,49 +108,43 @@ namespace Blobset_Tools
             BinaryWriter? bw = null;
             string progress = string.Empty;
             int fileMappingSize = 0;
-            string _filePath = string.Empty;
-            bool error = false;
 
             try
             {
                 if (Global.blobsetHeaderData == null)
                 {
-                    error = true;
                     MessageBox.Show("Something went wrong reading the blobset", "Blobset Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return error;
+                    return true; // Indicate an error occurred
                 }
 
                 BlobsetFile? blobset = Global.blobsetHeaderData;
 
-                string BlobsetFileMapping = Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\data\BlobsetFileMapping.bin";
-                string TxpkFileList = Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\TXPK_File_List.csv";
-                string M3mpFileList = Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\M3MP_File_List.csv";
+                string blobsetFileMapping = Path.Combine(Global.currentPath, "games", Properties.Settings.Default.GameName, "data", "BlobsetFileMapping.bin");
+                string txpkFileList = Path.Combine(Global.currentPath, "games", Properties.Settings.Default.GameName, "TXPK_File_List.csv");
+                string m3mpFileList = Path.Combine(Global.currentPath, "games", Properties.Settings.Default.GameName, "M3MP_File_List.csv");
 
-                if (File.Exists(BlobsetFileMapping))
-                    File.Delete(BlobsetFileMapping);
+                // Delete existing files
+                DeleteFileIfExists(blobsetFileMapping);
+                DeleteFileIfExists(txpkFileList);
+                DeleteFileIfExists(m3mpFileList);
 
-                writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                 bw = new(writer);
 
                 bw.Write(fileMappingSize);
                 bw.Flush();
                 if (bw != null) { bw.Close(); bw = null; }
 
-                if (File.Exists(TxpkFileList))
-                    File.Delete(TxpkFileList);
-
-                if (File.Exists(M3mpFileList))
-                    File.Delete(M3mpFileList);
+                int gameId = Properties.Settings.Default.GameID;
+                Endian endian = gameId == (int)Enums.Game.RLL2 ? Endian.Big : Endian.Little;
 
                 for (int i = 0; i < blobset.FilesCount; i++)
                 {
                     string folderName = blobset.Entries[i].FolderHashName;
                     string fileName = blobset.Entries[i].FileHashName;
                     string filePath = blobsetfile.Replace("0.blob", blobset.Entries[i].BlobSetNumber + ".blob"); ;
-                    _filePath = filePath;
 
-                    FileStream blobsetContentFs = new(filePath, FileMode.Open, FileAccess.ReadWrite);
-                    blobsetContent_br = new(blobsetContentFs);
+                    blobsetContent_br = new(filePath, endian);
 
                     uint mainFinalOffSet = blobset.Entries[i].MainFinalOffSet;
                     uint mainCompressedSize = blobset.Entries[i].MainCompressedSize;
@@ -163,135 +157,175 @@ namespace Blobset_Tools
                     {
                         if (vramCompressedSize == vramUnCompressedSize)
                         {
-                            blobsetContent_br.Position = mainFinalOffSet;
+                            blobsetContent_br.Position = mainFinalOffSet + 20;  // Offset to check Mini DDS TXPK signature.
 
-                            int magic = blobsetContent_br.ReadInt32();
-
-                            blobsetContent_br.Position = mainFinalOffSet;
-
-                            switch (magic)
+                            if (blobsetContent_br.ReadUInt32(Endian.Little) == 1986948963) // Makes sure it's a Mini DDS TXPK.
                             {
-                                case (int)Enums.FileType.FSB:
-                                    string fsbName = @"sound\" + i.ToString() + ".fsb";
+                                blobsetContent_br.Position = mainFinalOffSet;
 
-                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                                    bw = new(writer);
+                                Mini_TXPK mini_TXPK = new();
+                                mini_TXPK.Deserialize(blobsetContent_br);
+                                mini_TXPK.DDSFilePath = mini_TXPK.DDSFilePath.Replace("convant2-temp-intermediate/", "").Replace("/", @"\");
 
-                                    bw.Write(i);
-                                    bw.Write(fsbName);
-                                    bw.Write(folderName);
-                                    bw.Write(fileName);
-                                    bw.Flush();
+                                writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                bw = new(writer);
+                                WriteMapping(bw, i, mini_TXPK.DDSFilePath, folderName, fileName);
 
-                                    fileMappingSize++;
+                                fileMappingSize++;
+                                progress = mini_TXPK.DDSFilePath;
+                            }
+                            else
+                            {
+                                blobsetContent_br.Position = mainFinalOffSet;
+                                int magic = blobsetContent_br.ReadInt32();
+                                blobsetContent_br.Position = mainFinalOffSet;
 
-                                    progress = fsbName;
-                                    if (bw != null) { bw.Close(); bw = null; }
-                                    break;
-                                case (int)Enums.FileType.FEV1:
-                                    string fevName = @"sound\AFLL.fev";
+                                switch (magic)
+                                {
+                                    case (int)Enums.FileType.M3MP:
+                                        string m3mpName = Path.Combine("m3mp", "uncompressed", $"{i}.m3mp");
 
-                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                                    bw = new(writer);
+                                        M3MP m3mp = new();
+                                        m3mp.Deserialize(blobsetContent_br);
 
-                                    bw.Write(i);
-                                    bw.Write(fevName);
-                                    bw.Write(folderName);
-                                    bw.Write(fileName);
-                                    bw.Flush();
+                                        StreamWriter? m3mp_sw = File.AppendText(m3mpFileList);
 
-                                    fileMappingSize++;
+                                        foreach (var entry in m3mp.UnCompressedEntries)
+                                        {
+                                            m3mp_sw.WriteLine(entry.FilePath.Replace("/", @"\") + "," + i.ToString());
+                                            m3mp_sw.Flush();
+                                        }
 
-                                    progress = fevName;
-                                    if (bw != null) { bw.Close(); bw = null; }
-                                    break;
+                                        m3mp_sw.WriteLine(string.Empty);
+                                        m3mp_sw.Flush();
+
+                                        writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                        bw = new(writer);
+                                        WriteMapping(bw, i, m3mpName, folderName, fileName);
+
+                                        fileMappingSize++;
+                                        progress = m3mpName;
+                                        if (m3mp_sw != null) { m3mp_sw.Dispose(); m3mp_sw = null; }
+                                        break;
+                                    case (int)Enums.FileType.BANK:
+                                        string bankName = Path.Combine("sound", "bank", $"{i}.bank");
+
+                                        writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                        bw = new(writer);
+                                        WriteMapping(bw, i, bankName, folderName, fileName);
+
+                                        fileMappingSize++;
+                                        progress = bankName;
+                                        break;
+                                    case (int)Enums.FileType.FSB:
+                                        string fsbName = Path.Combine("sound", "fsb", $"{i}.fsb");
+
+                                        writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                        bw = new(writer);
+                                        WriteMapping(bw, i, fsbName, folderName, fileName);
+
+                                        fileMappingSize++;
+                                        progress = fsbName;
+                                        break;
+                                    case (int)Enums.FileType.FEV1:
+                                        string fevName = Path.Combine("sound", "fsb", "AFLL.fev");
+
+                                        writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                        bw = new(writer);
+                                        WriteMapping(bw, i, fevName, folderName, fileName);
+
+                                        fileMappingSize++;
+                                        progress = fevName;
+                                        break;
+                                    case (int)Enums.FileType.WAV:
+                                        string wavName = Path.Combine("sound", "wav", $"{i}.wav");
+
+                                        writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                        bw = new(writer);
+                                        WriteMapping(bw, i, wavName, folderName, fileName);
+
+                                        fileMappingSize++;
+                                        progress = wavName;
+                                        break;
+                                    case (int)Enums.FileType.PNG:
+                                        string pngName = Path.Combine("png", $"{i}.png");
+
+                                        writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                        bw = new(writer);
+                                        WriteMapping(bw, i, pngName, folderName, fileName);
+
+                                        fileMappingSize++;
+                                        progress = pngName;
+                                        break;
+                                    default:
+                                        if (!Properties.Settings.Default.SkipUnknown)
+                                        {
+                                            string unknownFileName = Path.Combine("unknown", "mainuncompressed_vramuncompressed", $"{i}.dat");
+
+                                            writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                            bw = new(writer);
+                                            WriteMapping(bw, i, unknownFileName, folderName, fileName);
+
+                                            fileMappingSize++;
+                                            progress = unknownFileName;
+                                        }
+                                        break;
+                                }
                             }
                         }
                         else
                         {
-                            blobsetContent_br.Position = mainFinalOffSet;
-                            int chunkCount = blobsetContent_br.ReadInt32();
-                            int[] chunkCompressedSize = new int[chunkCount];
+                            blobsetContent_br.Position = mainFinalOffSet + 20;
 
-                            for (int j = 0; j < chunkCount; j++)
+                            if (blobsetContent_br.ReadUInt32(Endian.Little) == 1986948963) // Makes sure it's a Mini DDS TXPK.
                             {
-                                chunkCompressedSize[j] = blobsetContent_br.ReadInt32();
-                                chunkCompressedSize[j] = chunkCompressedSize[j] -= 4;
+                                blobsetContent_br.Position = mainFinalOffSet;
+
+                                Mini_TXPK mini_TXPK = new();
+                                mini_TXPK.Deserialize(blobsetContent_br);
+                                mini_TXPK.DDSFilePath = mini_TXPK.DDSFilePath.Replace("convant2-temp-intermediate/", "").Replace("/", @"\");
+
+                                writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                bw = new(writer);
+                                WriteMapping(bw, i, mini_TXPK.DDSFilePath, folderName, fileName);
+
+                                fileMappingSize++;
+                                progress = mini_TXPK.DDSFilePath;
                             }
-
-                            int chunkUnCompressedSize = blobsetContent_br.ReadInt32();
-
-                            int magic = 0;
-
-                            if (chunkCompressedSize[0] == chunkUnCompressedSize)
-                                magic = blobsetContent_br.ReadInt32();
                             else
                             {
-                                byte[] firstChunk = blobsetContent_br.ReadBytes(chunkCompressedSize[0]);
-                                magic = LZMA_IO.DecompressAndReadMagic(firstChunk, chunkUnCompressedSize);
-                            }
+                                blobsetContent_br.Position = mainFinalOffSet;
+                                int magic = blobsetContent_br.ReadInt32();
 
-                            blobsetContent_br.Position = mainFinalOffSet;
+                                switch (magic)
+                                {
+                                    case (int)Enums.FileType.TXPK:
 
-                            switch (magic)
-                            {
-                                case (int)Enums.FileType.TXPK:
-                                    string txpkName = @"dds_txpk\" + i.ToString() + ".txpk";
+                                        blobsetContent_br.Position = mainFinalOffSet;
 
-                                    int txpkChunkCount = blobsetContent_br.ReadInt32();
-                                    int[] txpkChunkCompressedSize = new int[txpkChunkCount];
+                                        string txpkFileName = Path.Combine("dds_txpk", $"{i}.txpk");
 
-                                    for (int j = 0; j < txpkChunkCount; j++)
-                                    {
-                                        txpkChunkCompressedSize[j] = blobsetContent_br.ReadInt32();
-                                        txpkChunkCompressedSize[j] = txpkChunkCompressedSize[j] -= 4;
-                                    }
+                                        writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                        bw = new(writer);
+                                        WriteMapping(bw, i, txpkFileName, folderName, fileName);
 
-                                    int txpkChunkUnCompressedSize = blobsetContent_br.ReadInt32();
-                                    byte[]? txpkHeader = null;
+                                        fileMappingSize++;
+                                        progress = txpkFileName;
+                                        break;
+                                    default:
+                                        if (!Properties.Settings.Default.SkipUnknown)
+                                        {
+                                            string unknownFileName = Path.Combine("unknown", "mainuncompressed_vramcompressed", $"{i}.dat");
 
-                                    if (txpkChunkCompressedSize[0] == txpkChunkUnCompressedSize)
-                                        txpkHeader = blobsetContent_br.ReadBytes(txpkChunkUnCompressedSize);
-                                    else
-                                    {
-                                        byte[] txpkData = blobsetContent_br.ReadBytes(txpkChunkCompressedSize[0]);
-                                        txpkHeader = LZMA_IO.DecompressAndRead(txpkData, txpkChunkUnCompressedSize);
-                                    }
+                                            writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                            bw = new(writer);
+                                            WriteMapping(bw, i, unknownFileName, folderName, fileName);
 
-                                    Reader? txpk_br = new(txpkHeader);
-
-                                    TXPK txpk = new();
-                                    txpk.Deserialize(txpk_br);
-
-                                    StreamWriter? txpk_sw = File.AppendText(TxpkFileList);
-
-                                    foreach (var entry in txpk.Entries)
-                                    {
-                                        string DDSFilePath = entry.DDSFilePath.Replace("/", @"\");
-                                        txpk_sw.WriteLine(DDSFilePath + ".dds" + "," + i.ToString());
-                                        txpk_sw.Flush();
-                                    }
-
-                                    txpk_sw.WriteLine(string.Empty);
-                                    txpk_sw.Flush();
-
-                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                                    bw = new(writer);
-
-                                    bw.Write(i);
-                                    bw.Write(txpkName);
-                                    bw.Write(folderName);
-                                    bw.Write(fileName);
-                                    bw.Flush();
-
-                                    fileMappingSize++;
-
-                                    progress = txpkName;
-                                    if (txpk_br != null) { txpk_br.Close(); txpk_br = null; }
-                                    if (txpk_sw != null) { txpk_sw.Dispose(); txpk_sw = null; }
-                                    if (bw != null) { bw.Close(); bw = null; }
-                                    break;
-
+                                            fileMappingSize++;
+                                            progress = unknownFileName;
+                                        }
+                                        break;
+                                }
                             }
                         }
                     }
@@ -315,214 +349,18 @@ namespace Blobset_Tools
                             magic = blobsetContent_br.ReadInt32();
                         else
                         {
-                            byte[] firstChunk = blobsetContent_br.ReadBytes(chunkCompressedSize[0]);
+                            byte[] firstChunk = blobsetContent_br.ReadBytes(chunkCompressedSize[0], Endian.Little);
                             magic = LZMA_IO.DecompressAndReadMagic(firstChunk, chunkUnCompressedSize);
                         }
 
                         blobsetContent_br.Position = mainFinalOffSet;
 
-                        if (vramCompressedSize != vramUnCompressedSize)
+                        if (vramCompressedSize == vramUnCompressedSize)
                         {
                             switch (magic)
                             {
-                                case (int)Enums.FileType.BMf:
-                                    string bmfName = @"font\" + i.ToString() + ".bmf";
-
-                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                                    bw = new(writer);
-
-                                    bw.Write(i);
-                                    bw.Write(bmfName);
-                                    bw.Write(folderName);
-                                    bw.Write(fileName);
-                                    bw.Flush();
-
-                                    fileMappingSize++;
-
-                                    progress = bmfName;
-                                    if (bw != null) { bw.Close(); bw = null; }
-                                    break;
-                                case (int)Enums.FileType.BSB:
-                                    string bsbName = @"bsb\" + i.ToString() + ".bsb";
-
-                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                                    bw = new(writer);
-
-                                    bw.Write(i);
-                                    bw.Write(bsbName);
-                                    bw.Write(folderName);
-                                    bw.Write(fileName);
-                                    bw.Flush();
-
-                                    fileMappingSize++;
-
-                                    progress = bsbName;
-                                    break;
-                                case (int)Enums.FileType.TXPK:
-                                    string txpkName = @"dds_txpk\" + i.ToString() + ".txpk";
-
-                                    int txpkChunkCount = blobsetContent_br.ReadInt32();
-                                    int[] txpkChunkCompressedSize = new int[txpkChunkCount];
-
-                                    for (int j = 0; j < txpkChunkCount; j++)
-                                    {
-                                        txpkChunkCompressedSize[j] = blobsetContent_br.ReadInt32();
-                                        txpkChunkCompressedSize[j] = txpkChunkCompressedSize[j] -= 4;
-                                    }
-
-                                    int txpkChunkUnCompressedSize = blobsetContent_br.ReadInt32();
-                                    byte[]? txpkHeader = null;
-
-                                    if (txpkChunkCompressedSize[0] == txpkChunkUnCompressedSize)
-                                        txpkHeader = blobsetContent_br.ReadBytes(txpkChunkUnCompressedSize);
-                                    else
-                                    {
-                                        byte[] txpkData = blobsetContent_br.ReadBytes(txpkChunkCompressedSize[0]);
-                                        txpkHeader = LZMA_IO.DecompressAndRead(txpkData, txpkChunkUnCompressedSize);
-                                    }
-
-                                    Reader? txpk_br = new(txpkHeader);
-
-                                    TXPK txpk = new();
-                                    txpk.Deserialize(txpk_br);
-
-                                    StreamWriter? txpk_sw = File.AppendText(TxpkFileList);
-
-                                    foreach (var entry in txpk.Entries)
-                                    {
-                                        string DDSFilePath = entry.DDSFilePath.Replace("/", @"\");
-                                        txpk_sw.WriteLine(DDSFilePath + ".dds" + "," + i.ToString());
-                                        txpk_sw.Flush();
-                                    }
-
-                                    txpk_sw.WriteLine(string.Empty);
-                                    txpk_sw.Flush();
-
-                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                                    bw = new(writer);
-
-                                    bw.Write(i);
-                                    bw.Write(txpkName);
-                                    bw.Write(folderName);
-                                    bw.Write(fileName);
-                                    bw.Flush();
-
-                                    fileMappingSize++;
-
-                                    progress = txpkName;
-                                    if (txpk_br != null) { txpk_br.Close(); txpk_br = null; }
-                                    if (txpk_sw != null) { txpk_sw.Dispose(); txpk_sw = null; }
-                                    if (bw != null) { bw.Close(); bw = null; }
-                                    break;
-                                case (int)Enums.FileType.MINI:
-                                    int miniTxpkChunkCount = blobsetContent_br.ReadInt32();
-                                    int[] miniTxpkChunkCompressedSize = new int[miniTxpkChunkCount];
-
-                                    for (int j = 0; j < miniTxpkChunkCount; j++)
-                                    {
-                                        miniTxpkChunkCompressedSize[j] = blobsetContent_br.ReadInt32();
-                                        miniTxpkChunkCompressedSize[j] = miniTxpkChunkCompressedSize[j] -= 4;
-                                    }
-
-                                    int miniTxpkChunkUnCompressedSize = blobsetContent_br.ReadInt32();
-
-                                    byte[]? miniTxpkHeader = null;
-
-                                    if (miniTxpkChunkCompressedSize[0] == miniTxpkChunkUnCompressedSize)
-                                        miniTxpkHeader = blobsetContent_br.ReadBytes(miniTxpkChunkUnCompressedSize);
-                                    else
-                                    {
-                                        byte[] miniTxpkData = blobsetContent_br.ReadBytes(miniTxpkChunkCompressedSize[0]);
-                                        miniTxpkHeader = LZMA_IO.DecompressAndRead(miniTxpkData, miniTxpkChunkUnCompressedSize);
-                                    }
-
-                                    Reader? minTxpk_br = new(miniTxpkHeader);
-
-                                    Mini_TXPK mini_TXPK = new();
-                                    mini_TXPK.Deserialize(minTxpk_br);
-
-                                    if (minTxpk_br != null) { minTxpk_br.Close(); minTxpk_br = null; }
-
-                                    string ddsFilePath = mini_TXPK.DDSFilePath.Replace("convant2-temp-intermediate/", "").Replace("/", @"\");
-
-                                    mini_TXPK.DDSFilePath = ddsFilePath;
-
-                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                                    bw = new(writer);
-
-                                    bw.Write(i);
-                                    bw.Write(mini_TXPK.DDSFilePath);
-                                    bw.Write(folderName);
-                                    bw.Write(fileName);
-                                    bw.Flush();
-
-                                    fileMappingSize++;
-
-                                    progress = mini_TXPK.DDSFilePath;
-                                    if (bw != null) { bw.Close(); bw = null; }
-                                    break;
-                                default:
-                                    if (!Properties.Settings.Default.SkipUnknown)
-                                    {
-                                        string unknownFileName = @"unknown\maincompressed_vramcompressed\" + i.ToString() + ".dat";
-
-                                        writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                                        bw = new(writer);
-
-                                        bw.Write(i);
-                                        bw.Write(unknownFileName);
-                                        bw.Write(folderName);
-                                        bw.Write(fileName);
-                                        bw.Flush();
-
-                                        fileMappingSize++;
-
-                                        progress = unknownFileName;
-                                        if (bw != null) { bw.Close(); bw = null; }
-                                    }
-                                    break;
-                            }
-                        }
-                        else
-                        {
-                            switch (magic)
-                            {
-                                case (int)Enums.FileType.BMf:
-                                    string bmfName = @"font\" + i.ToString() + ".bmf";
-
-                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                                    bw = new(writer);
-
-                                    bw.Write(i);
-                                    bw.Write(bmfName);
-                                    bw.Write(folderName);
-                                    bw.Write(fileName);
-                                    bw.Flush();
-
-                                    fileMappingSize++;
-
-                                    progress = bmfName;
-                                    if (bw != null) { bw.Close(); bw = null; }
-                                    break;
-                                case (int)Enums.FileType.BSB:
-                                    string bsbName = @"bsb\" + i.ToString() + ".bsb";
-
-                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                                    bw = new(writer);
-
-                                    bw.Write(i);
-                                    bw.Write(bsbName);
-                                    bw.Write(folderName);
-                                    bw.Write(fileName);
-                                    bw.Flush();
-
-                                    fileMappingSize++;
-
-                                    progress = bsbName;
-                                    break;
                                 case (int)Enums.FileType.M3MP:
-                                    string m3mpName = @"m3mp\" + i.ToString() + ".m3mp";
-
+                                    string m3mpName = Path.Combine("m3mp", "compressed", $"{i}.m3mp");
                                     List<byte[]> m3mpHeaderChunk = new(3);
                                     int m3mpHeaderSize = 0;
 
@@ -540,10 +378,10 @@ namespace Blobset_Tools
                                         int m3mpChunkUnCompressedSize = blobsetContent_br.ReadInt32();
 
                                         if (m3mpChunkCompressedSize[j] == m3mpChunkUnCompressedSize)
-                                            m3mpHeaderChunk.Add(blobsetContent_br.ReadBytes(m3mpChunkUnCompressedSize));
+                                            m3mpHeaderChunk.Add(blobsetContent_br.ReadBytes(m3mpChunkUnCompressedSize, Endian.Little));
                                         else
                                         {
-                                            byte[] m3mpData = blobsetContent_br.ReadBytes(m3mpChunkCompressedSize[j]);
+                                            byte[] m3mpData = blobsetContent_br.ReadBytes(m3mpChunkCompressedSize[j], Endian.Little);
                                             m3mpHeaderChunk.Add(LZMA_IO.DecompressAndRead(m3mpData, m3mpChunkUnCompressedSize));
                                         }
 
@@ -557,51 +395,184 @@ namespace Blobset_Tools
                                     M3MP m3mp = new();
                                     m3mp.Deserialize(m3mp_br);
 
-                                    StreamWriter? m3mp_sw = File.AppendText(M3mpFileList);
+                                    StreamWriter? m3mp_sw = File.AppendText(m3mpFileList);
 
                                     foreach (var entry in m3mp.UnCompressedEntries)
                                     {
-                                        m3mp_sw.WriteLine(entry.FilePath.Replace("/", @"\") + "," + i.ToString());
+                                        m3mp_sw.WriteLine($"{entry.FilePath.Replace("/", @"\")},{i}");
                                         m3mp_sw.Flush();
                                     }
 
                                     m3mp_sw.WriteLine(string.Empty);
                                     m3mp_sw.Flush();
 
-                                    writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                    writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                                     bw = new(writer);
-
-                                    bw.Write(i);
-                                    bw.Write(m3mpName);
-                                    bw.Write(folderName);
-                                    bw.Write(fileName);
-                                    bw.Flush();
+                                    WriteMapping(bw, i, m3mpName, folderName, fileName);
 
                                     fileMappingSize++;
-
                                     progress = m3mpName;
                                     if (m3mp_br != null) { m3mp_br.Close(); m3mp_br = null; }
                                     if (m3mp_sw != null) { m3mp_sw.Dispose(); m3mp_sw = null; }
-                                    if (bw != null) { bw.Close(); bw = null; }
+                                    break;
+                                case (int)Enums.FileType.BMf:
+                                    string bmfName = Path.Combine("font", $"{i}.bmf");
+
+                                    writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                    bw = new(writer);
+                                    WriteMapping(bw, i, bmfName, folderName, fileName);
+
+                                    fileMappingSize++;
+                                    progress = bmfName;
+                                    break;
+                                case (int)Enums.FileType.BSB:
+                                    string bsbName = Path.Combine("bsb", $"{i}.bsb");
+
+                                    writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                    bw = new(writer);
+                                    WriteMapping(bw, i, bsbName, folderName, fileName);
+
+                                    fileMappingSize++;
+                                    progress = bsbName;
                                     break;
                                 default:
                                     if (!Properties.Settings.Default.SkipUnknown)
                                     {
-                                        string unknownFileName = @"unknown\maincompressed\" + i.ToString() + ".dat";
+                                        string unknownFileName = Path.Combine("unknown", "maincompressed", $"{i}.dat");
 
-                                        writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                        writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                                         bw = new(writer);
-
-                                        bw.Write(i);
-                                        bw.Write(unknownFileName);
-                                        bw.Write(folderName);
-                                        bw.Write(fileName);
-                                        bw.Flush();
+                                        WriteMapping(bw, i, unknownFileName, folderName, fileName);
 
                                         fileMappingSize++;
-
                                         progress = unknownFileName;
-                                        if (bw != null) { bw.Close(); bw = null; }
+                                    }
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            switch (magic)
+                            {
+                                case (int)Enums.FileType.MINI:
+                                    int miniTxpkChunkCount = blobsetContent_br.ReadInt32();
+                                    int[] miniTxpkChunkCompressedSize = new int[miniTxpkChunkCount];
+
+                                    for (int j = 0; j < miniTxpkChunkCount; j++)
+                                    {
+                                        miniTxpkChunkCompressedSize[j] = blobsetContent_br.ReadInt32();
+                                        miniTxpkChunkCompressedSize[j] = miniTxpkChunkCompressedSize[j] -= 4;
+                                    }
+
+                                    int miniTxpkChunkUnCompressedSize = blobsetContent_br.ReadInt32();
+
+                                    byte[]? miniTxpkHeader = null;
+
+                                    if (miniTxpkChunkCompressedSize[0] == miniTxpkChunkUnCompressedSize)
+                                        miniTxpkHeader = blobsetContent_br.ReadBytes(miniTxpkChunkUnCompressedSize, Endian.Little);
+                                    else
+                                    {
+                                        byte[] miniTxpkData = blobsetContent_br.ReadBytes(miniTxpkChunkCompressedSize[0], Endian.Little);
+                                        miniTxpkHeader = LZMA_IO.DecompressAndRead(miniTxpkData, miniTxpkChunkUnCompressedSize);
+                                    }
+
+                                    Reader? minTxpk_br = new(miniTxpkHeader);
+
+                                    Mini_TXPK mini_TXPK = new();
+                                    mini_TXPK.Deserialize(minTxpk_br);
+
+                                    if (minTxpk_br != null) { minTxpk_br.Close(); minTxpk_br = null; }
+
+                                    mini_TXPK.DDSFilePath = mini_TXPK.DDSFilePath.Replace("convant2-temp-intermediate/", string.Empty).Replace("/", @"\");
+
+                                    writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                    bw = new(writer);
+                                    WriteMapping(bw, i, mini_TXPK.DDSFilePath, folderName, fileName);
+
+                                    fileMappingSize++;
+                                    progress = mini_TXPK.DDSFilePath;
+                                    break;
+                                case (int)Enums.FileType.TXPK:
+                                    string txpkName = Path.Combine("dds_txpk", $"{i}.txpk");
+
+                                    int txpkChunkCount = blobsetContent_br.ReadInt32();
+                                    int[] txpkChunkCompressedSize = new int[txpkChunkCount];
+
+                                    for (int j = 0; j < txpkChunkCount; j++)
+                                    {
+                                        txpkChunkCompressedSize[j] = blobsetContent_br.ReadInt32();
+                                        txpkChunkCompressedSize[j] = txpkChunkCompressedSize[j] -= 4;
+                                    }
+
+                                    int txpkChunkUnCompressedSize = blobsetContent_br.ReadInt32();
+                                    byte[]? txpkHeader = null;
+
+                                    if (txpkChunkCompressedSize[0] == txpkChunkUnCompressedSize)
+                                        txpkHeader = blobsetContent_br.ReadBytes(txpkChunkUnCompressedSize, Endian.Little);
+                                    else
+                                    {
+                                        byte[] txpkData = blobsetContent_br.ReadBytes(txpkChunkCompressedSize[0], Endian.Little);
+                                        txpkHeader = LZMA_IO.DecompressAndRead(txpkData, txpkChunkUnCompressedSize);
+                                    }
+
+                                    Reader? txpk_br = new(txpkHeader);
+
+                                    TXPK txpk = new();
+                                    txpk.Deserialize(txpk_br);
+
+                                    StreamWriter? txpk_sw = File.AppendText(txpkFileList);
+
+                                    foreach (var entry in txpk.Entries)
+                                    {
+                                        string DDSFilePath = entry.DDSFilePath.Replace("/", @"\");
+                                        txpk_sw.WriteLine($"{DDSFilePath}.dds,{i}");
+                                        txpk_sw.Flush();
+                                    }
+
+                                    txpk_sw.WriteLine(string.Empty);
+                                    txpk_sw.Flush();
+
+                                    writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                    bw = new(writer);
+                                    WriteMapping(bw, i, txpkName, folderName, fileName);
+
+                                    fileMappingSize++;
+                                    progress = txpkName;
+                                    if (txpk_br != null) { txpk_br.Close(); txpk_br = null; }
+                                    if (txpk_sw != null) { txpk_sw.Dispose(); txpk_sw = null; }
+                                    break;
+                                case (int)Enums.FileType.BMf:
+                                    string bmfName = Path.Combine("font", $"{i}.bmf");
+
+                                    writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                    bw = new(writer);
+                                    WriteMapping(bw, i, bmfName, folderName, fileName);
+
+                                    fileMappingSize++;
+                                    progress = bmfName;
+                                    break;
+                                case (int)Enums.FileType.BSB:
+                                    string bsbName = Path.Combine("bsb", $"{i}.bsb");
+
+                                    writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                    bw = new(writer);
+                                    WriteMapping(bw, i, bsbName, folderName, fileName);
+
+                                    fileMappingSize++;
+
+                                    progress = bsbName;
+                                    break;
+                                default:
+                                    if (!Properties.Settings.Default.SkipUnknown)
+                                    {
+                                        string unknownFileName = Path.Combine("unknown", "maincompressed_vramcompressed", $"{i}.dat");
+
+                                        writer = new(blobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                                        bw = new(writer);
+                                        WriteMapping(bw, i, unknownFileName, folderName, fileName);
+
+                                        fileMappingSize++;
+                                        progress = unknownFileName;
                                     }
                                     break;
                             }
@@ -613,7 +584,7 @@ namespace Blobset_Tools
                     if (blobsetContent_br != null) { blobsetContent_br.Close(); blobsetContent_br = null; }
                 }
 
-                writer = new(BlobsetFileMapping, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
+                writer = new(blobsetFileMapping, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
                 bw = new(writer);
 
                 bw.BaseStream.Position = 0;
@@ -622,15 +593,15 @@ namespace Blobset_Tools
             }
             catch (Exception ex)
             {
-                error = true;
-                MessageBox.Show("Error occurred, report it to Wouldy : \n\nFile: " + _filePath + "\n\n" + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show("Error occurred, report it to Wouldy : " + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                return true;
             }
             finally
             {
                 if (writer != null) { writer.Dispose(); writer = null; }
                 CreateModFolders();
             }
-            return error;
+            return false;
         }
         #endregion
 
@@ -645,8 +616,7 @@ namespace Blobset_Tools
         /// </history>
         public static bool WriteV2(string blobsetfile, BackgroundWorker FileMapping_bgw)
         {
-            bool error = false;
-            return error;
+            return false;
         }
         #endregion
 
@@ -661,8 +631,7 @@ namespace Blobset_Tools
         /// </history>
         public static bool WriteV3(string blobsetfile, BackgroundWorker FileMapping_bgw)
         {
-            bool error = false;
-            return error;
+            return false;
         }
         #endregion
 
@@ -774,7 +743,7 @@ namespace Blobset_Tools
                                 {
                                     blobsetContent_br.Position = 20; // Offset to convant2 string.
 
-                                    if (blobsetContent_br.ReadString(4) == "conv") // Makes sure it's a mini DDS TXPK.
+                                    if (blobsetContent_br.ReadUInt32(Endian.Little) == 1986948963) // Makes sure it's a mini DDS TXPK.
                                     {
                                         blobsetContent_br.Position = 0;
 
@@ -789,17 +758,10 @@ namespace Blobset_Tools
 
                                         writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                                         bw = new(writer);
-
-                                        bw.Write(i);
-                                        bw.Write(mini_TXPK.DDSFilePath);
-                                        bw.Write(folderName);
-                                        bw.Write(fileName);
-                                        bw.Flush();
+                                        WriteMapping(bw, i, mini_TXPK.DDSFilePath, folderName, fileName);
 
                                         fileMappingSize++;
-
                                         progress = mini_TXPK.DDSFilePath;
-                                        if (bw != null) { bw.Close(); bw = null; }
                                     }
                                     else
                                     {
@@ -810,7 +772,7 @@ namespace Blobset_Tools
                                         switch (magic)
                                         {
                                             case (int)Enums.FileType.M3MP:
-                                                string m3mpName = @"m3mp\uncompressed\" + i.ToString() + ".m3mp";
+                                                string m3mpName = Path.Combine("m3mp", "uncompressed", $"{i}.m3mp");
 
                                                 M3MP m3mp = new();
                                                 m3mp.Deserialize(blobsetContent_br);
@@ -828,91 +790,53 @@ namespace Blobset_Tools
 
                                                 writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                                                 bw = new(writer);
-
-                                                bw.Write(i);
-                                                bw.Write(m3mpName);
-                                                bw.Write(folderName);
-                                                bw.Write(fileName);
-                                                bw.Flush();
+                                                WriteMapping(bw, i, m3mpName, folderName, fileName);
 
                                                 fileMappingSize++;
-
                                                 progress = m3mpName;
                                                 if (m3mp_sw != null) { m3mp_sw.Dispose(); m3mp_sw = null; }
-                                                if (bw != null) { bw.Close(); bw = null; }
                                                 break;
                                             case (int)Enums.FileType.WiseBNK:
-                                                string bnkName = @"sound\bnk\" + i.ToString() + ".bnk";
+                                                string bnkName = Path.Combine("sound", "bnk", $"{i}.bnk");
 
                                                 writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                                                 bw = new(writer);
-
-                                                bw.Write(i);
-                                                bw.Write(bnkName);
-                                                bw.Write(folderName);
-                                                bw.Write(fileName);
-                                                bw.Flush();
+                                                WriteMapping(bw, i, bnkName, folderName, fileName);
 
                                                 fileMappingSize++;
-
                                                 progress = bnkName;
-                                                if (bw != null) { bw.Close(); bw = null; }
                                                 break;
                                             case (int)Enums.FileType.WiseWEM:
-                                                string wemName = @"sound\wem\" + i.ToString() + ".wem";
+                                                string wemName = Path.Combine("sound", "wem", $"{i}.wem");
 
                                                 writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                                                 bw = new(writer);
-
-                                                bw.Write(i);
-                                                bw.Write(wemName);
-                                                bw.Write(folderName);
-                                                bw.Write(fileName);
-                                                bw.Flush();
+                                                WriteMapping(bw, i, wemName, folderName, fileName);
 
                                                 fileMappingSize++;
-
                                                 progress = wemName;
-                                                if (bw != null) { bw.Close(); bw = null; }
                                                 break;
                                             case (int)Enums.FileType.TXPK:
-
-                                                blobsetContent_br.Position = 0;
-
-                                                string txpkFileName = @"dds_txpk\" + i.ToString() + ".txpk";
+                                                string txpkName = Path.Combine("dds_txpk", $"{i}.txpk");
 
                                                 writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                                                 bw = new(writer);
-
-                                                bw.Write(i);
-                                                bw.Write(txpkFileName);
-                                                bw.Write(folderName);
-                                                bw.Write(fileName);
-                                                bw.Flush();
+                                                WriteMapping(bw, i, txpkName, folderName, fileName);
 
                                                 fileMappingSize++;
-
-                                                progress = txpkFileName;
-                                                if (bw != null) { bw.Close(); bw = null; }
+                                                progress = txpkName;
                                                 break;
                                             default:
                                                 if (!Properties.Settings.Default.SkipUnknown)
                                                 {
-                                                    string unknownFileName = @"unknown\mainuncompressed_vramuncompressed\" + i.ToString() + ".dat";
+                                                    string unknownName = Path.Combine("unknown", "mainuncompressed_vramuncompressed", $"{i}.dat");
 
                                                     writer = new(BlobsetFileMapping, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                                                     bw = new(writer);
-
-                                                    bw.Write(i);
-                                                    bw.Write(unknownFileName);
-                                                    bw.Write(folderName);
-                                                    bw.Write(fileName);
-                                                    bw.Flush();
+                                                    WriteMapping(bw, i, unknownName, folderName, fileName);
 
                                                     fileMappingSize++;
-
-                                                    progress = unknownFileName;
-                                                    if (bw != null) { bw.Close(); bw = null; }
+                                                    progress = unknownName;
                                                 }
                                                 break;
                                         }
@@ -922,7 +846,7 @@ namespace Blobset_Tools
                                 {
                                     blobsetContent_br.Position = 20; // Offset to convant2 string.
 
-                                    if (blobsetContent_br.ReadString(4) == "conv") // Makes sure it's a mini DDS TXPK.
+                                    if (blobsetContent_br.ReadUInt32(Endian.Little) == 1986948963) // Makes sure it's a mini DDS TXPK.
                                     {
                                         blobsetContent_br.Position = 0;
 
@@ -1259,6 +1183,24 @@ namespace Blobset_Tools
             return error;
         }
         #endregion
+
+        private static void WriteMapping(BinaryWriter bw, int index, string assetName, string folderName, string fileName)
+        {
+            bw.Write(index);
+            bw.Write(assetName);
+            bw.Write(folderName);
+            bw.Write(fileName);
+            bw.Flush();
+            if (bw != null) { bw.Close(); bw = null; }
+        }
+
+        private static void DeleteFileIfExists(string filePath)
+        {
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+        }
 
         #region Create Mod Folders
         /// <summary>

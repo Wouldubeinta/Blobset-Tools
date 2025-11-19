@@ -29,7 +29,7 @@ namespace OggSharp
 {
     internal class Residue0 : FuncResidue
     {
-        public override void pack(Object vr, csBuffer opb)
+        public override void pack(object vr, csBuffer opb)
         {
             InfoResidue0 info = (InfoResidue0)vr;
             int acc = 0;
@@ -65,7 +65,7 @@ namespace OggSharp
             }
         }
 
-        public override Object unpack(Info vi, csBuffer opb)
+        public override object unpack(Info vi, csBuffer opb)
         {
             int acc = 0;
             InfoResidue0 info = new();
@@ -113,7 +113,7 @@ namespace OggSharp
             //    return(NULL);
         }
 
-        public override Object look(DspState vd, InfoMode vm, Object vr)
+        public override object look(DspState vd, InfoMode vm, object vr)
         {
             InfoResidue0 info = (InfoResidue0)vr;
             LookResidue0 look = new();
@@ -168,9 +168,9 @@ namespace OggSharp
             return (look);
         }
 
-        public override void free_info(Object i) { }
-        public override void free_look(Object i) { }
-        public override int forward(Block vb, Object vl, float[][] fin, int ch)
+        public override void free_info(object i) { }
+        public override void free_look(object i) { }
+        public override int forward(Block vb, object vl, float[][] fin, int ch)
         {
             return 0;
         }
@@ -178,7 +178,7 @@ namespace OggSharp
         private static int[][][] partword = new int[2][][];
 
         [MethodImpl(MethodImplOptions.Synchronized)]
-        internal static int _01inverse(Block vb, Object vl, float[][] fin, int ch, int decodepart)
+        internal static int _01inverse(Block vb, object vl, float[][] fin, int ch, int decodepart)
         {
             {
                 int i, j, k, l, s;
@@ -274,7 +274,7 @@ namespace OggSharp
             }
         }
 
-        internal static int _2inverse(Block vb, Object vl, float[][] fin, int ch)
+        internal static int _2inverse(Block vb, object vl, float[][] fin, int ch)
         {
             int i, k, l, s;
             LookResidue0 look = (LookResidue0)vl;
@@ -334,7 +334,7 @@ namespace OggSharp
             return (0);
         }
 
-        public override int inverse(Block vb, Object vl, float[][] fin, int[] nonzero, int ch)
+        public override int inverse(Block vb, object vl, float[][] fin, int[] nonzero, int ch)
         {
             //System.err.println("Residue0.inverse");
             int used = 0;

@@ -1,4 +1,5 @@
-﻿using PackageIO;
+﻿using Blobset_Tools;
+using PackageIO;
 using System.Text;
 
 namespace BlobsetIO
@@ -85,6 +86,14 @@ namespace BlobsetIO
         /// <param name="input">TXPK input stream</param>
         public void Deserialize(Reader input)
         {
+            int gameId = Blobset_Tools.Properties.Settings.Default.GameID;
+            Endian endian = Endian.Little;
+
+            if (gameId == (int)Enums.Game.RLL2)
+                endian = Endian.Big;
+
+            input.CurrentEndian = endian;
+
             Magic = input.ReadUInt32();
 
             if (Magic != 1415073867) // KPXT

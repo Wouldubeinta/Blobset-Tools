@@ -60,9 +60,9 @@ namespace OggSharp
                                 int maptype, int q_min, int q_delta,
                                 int q_quant, int q_sequencep, int[] quantlist,
                                 //EncodeAuxNearestmatch nearest_tree,
-                                Object nearest_tree,
+                                object nearest_tree,
                                 // EncodeAuxThreshmatch thresh_tree,
-                                Object thresh_tree
+                                object thresh_tree
                                ) : this()
         {
             this.dim = dim;

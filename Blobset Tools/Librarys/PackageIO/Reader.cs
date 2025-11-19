@@ -9,14 +9,13 @@
     {
         public Endian CurrentEndian;
         public long LastPosition;
-        private readonly Stream OpenStream;
-        private readonly BinaryReader br;
+        private readonly Stream? OpenStream;
+        private readonly BinaryReader? br;
 
-        public Reader(FileStream Package, Endian EndianType = (Endian)1, long Position = 0)
+        public Reader(FileStream Package, Endian EndianType = Endian.Little, long Position = 0)
         {
             OpenStream = null;
             br = null;
-            CurrentEndian = Endian.Little;
             LastPosition = 0;
             OpenStream = Package;
             br = new BinaryReader(OpenStream);
@@ -24,11 +23,10 @@
             CurrentEndian = EndianType;
         }
 
-        public Reader(string Package, Endian EndianType = (Endian)1, long Position = 0)
+        public Reader(string Package, Endian EndianType = Endian.Little, long Position = 0)
         {
             OpenStream = null;
             br = null;
-            CurrentEndian = Endian.Little;
             LastPosition = 0;
             OpenStream = new FileStream(Package, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
             br = new BinaryReader(OpenStream);
@@ -36,11 +34,10 @@
             CurrentEndian = EndianType;
         }
 
-        public Reader(byte[] Package, Endian EndianType = (Endian)1, long Position = 0)
+        public Reader(byte[] Package, Endian EndianType = Endian.Little, long Position = 0)
         {
             OpenStream = null;
             br = null;
-            CurrentEndian = Endian.Little;
             LastPosition = 0;
             OpenStream = new MemoryStream(Package);
             br = new BinaryReader(OpenStream);
@@ -48,11 +45,10 @@
             CurrentEndian = EndianType;
         }
 
-        public Reader(MemoryStream Package, Endian EndianType = (Endian)1, long Position = 0)
+        public Reader(MemoryStream Package, Endian EndianType = Endian.Little, long Position = 0)
         {
             OpenStream = null;
             br = null;
-            CurrentEndian = Endian.Little;
             LastPosition = 0;
             OpenStream = Package;
             br = new BinaryReader(OpenStream);
@@ -60,11 +56,10 @@
             CurrentEndian = EndianType;
         }
 
-        public Reader(Stream Package, Endian EndianType = (Endian)1, long Position = 0)
+        public Reader(Stream Package, Endian EndianType = Endian.Little, long Position = 0)
         {
             OpenStream = null;
             br = null;
-            CurrentEndian = Endian.Little;
             LastPosition = 0;
             OpenStream = Package;
             br = new BinaryReader(OpenStream);

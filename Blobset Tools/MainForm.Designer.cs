@@ -1,4 +1,6 @@
-﻿namespace Blobset_Tools
+﻿using System.Windows.Forms;
+
+namespace Blobset_Tools
 {
     partial class MainForm
     {
@@ -52,7 +54,6 @@
             aboutToolStripMenuItem = new ToolStripMenuItem();
             searchToolStripTextBox = new ToolStripTextBox();
             searchToolStripMenuItem = new ToolStripMenuItem();
-            ofd = new OpenFileDialog();
             splitContainer1 = new SplitContainer();
             splitContainer2 = new SplitContainer();
             folder_treeView = new TreeView();
@@ -216,7 +217,7 @@
             // 
             updateFileMappingDataToolStripMenuItem.Image = Properties.Resources.mapping_32;
             updateFileMappingDataToolStripMenuItem.Name = "updateFileMappingDataToolStripMenuItem";
-            updateFileMappingDataToolStripMenuItem.Size = new Size(215, 26);
+            updateFileMappingDataToolStripMenuItem.Size = new Size(211, 22);
             updateFileMappingDataToolStripMenuItem.Text = "Update File Mapping Data";
             updateFileMappingDataToolStripMenuItem.ToolTipText = "This update's the file mapping files in the data folder.";
             updateFileMappingDataToolStripMenuItem.Click += updateFileMappingDataToolStripMenuItem_Click;
@@ -226,7 +227,7 @@
             loadGameToolStripMenuItem.CheckOnClick = true;
             loadGameToolStripMenuItem.Image = Properties.Resources.loading_32;
             loadGameToolStripMenuItem.Name = "loadGameToolStripMenuItem";
-            loadGameToolStripMenuItem.Size = new Size(215, 26);
+            loadGameToolStripMenuItem.Size = new Size(211, 22);
             loadGameToolStripMenuItem.Text = "Load Game";
             loadGameToolStripMenuItem.ToolTipText = "If ticked, this will load the game after creating the blobset.";
             loadGameToolStripMenuItem.Click += loadGameToolStripMenuItem_Click;
@@ -235,7 +236,7 @@
             // 
             validateSteamGameFilesToolStripMenuItem.Image = (Image)resources.GetObject("validateSteamGameFilesToolStripMenuItem.Image");
             validateSteamGameFilesToolStripMenuItem.Name = "validateSteamGameFilesToolStripMenuItem";
-            validateSteamGameFilesToolStripMenuItem.Size = new Size(215, 26);
+            validateSteamGameFilesToolStripMenuItem.Size = new Size(211, 22);
             validateSteamGameFilesToolStripMenuItem.Text = "Validate Steam Game Files";
             validateSteamGameFilesToolStripMenuItem.ToolTipText = "This will repair game files, If something stuffs up.";
             validateSteamGameFilesToolStripMenuItem.Click += validateSteamGameFilesToolStripMenuItem_Click;
@@ -245,7 +246,7 @@
             skipUnknownFilesToolStripMenuItem.CheckOnClick = true;
             skipUnknownFilesToolStripMenuItem.Image = Properties.Resources.skip_32;
             skipUnknownFilesToolStripMenuItem.Name = "skipUnknownFilesToolStripMenuItem";
-            skipUnknownFilesToolStripMenuItem.Size = new Size(215, 26);
+            skipUnknownFilesToolStripMenuItem.Size = new Size(211, 22);
             skipUnknownFilesToolStripMenuItem.Text = "Skip Unknown Files";
             skipUnknownFilesToolStripMenuItem.ToolTipText = "When ticked, this will skip extracting unknown file types, like meshes and animation files ect...";
             skipUnknownFilesToolStripMenuItem.Click += skipUnknownFilesToolStripMenuItem_Click;
@@ -254,7 +255,7 @@
             // 
             restoreBackupFilesToolStripMenuItem.Image = Properties.Resources.restore_backup_32;
             restoreBackupFilesToolStripMenuItem.Name = "restoreBackupFilesToolStripMenuItem";
-            restoreBackupFilesToolStripMenuItem.Size = new Size(215, 26);
+            restoreBackupFilesToolStripMenuItem.Size = new Size(211, 22);
             restoreBackupFilesToolStripMenuItem.Text = "Restore Backup Files";
             restoreBackupFilesToolStripMenuItem.ToolTipText = "This will restore the backed up files that you replaced with mods.";
             restoreBackupFilesToolStripMenuItem.Click += restoreBackupFilesToolStripMenuItem_Click;
@@ -281,12 +282,6 @@
             searchToolStripMenuItem.Text = "Search";
             searchToolStripMenuItem.ToolTipText = "Searches the selected folder.";
             searchToolStripMenuItem.Click += searchToolStripMenuItem_Click;
-            // 
-            // ofd
-            // 
-            ofd.DefaultExt = "pc";
-            ofd.Filter = "Blobset File|*.pc";
-            ofd.Title = "Select Blobset File";
             // 
             // splitContainer1
             // 
@@ -572,7 +567,6 @@
         private ToolStripMenuItem aboutToolStripMenuItem;
         private ToolStripStatusLabel status_Label;
         private ToolStripProgressBar toolStripProgressBar;
-        private OpenFileDialog ofd;
         private ToolStripStatusLabel progressStripStatusLabel;
         private ToolStripMenuItem skipUnknownFilesToolStripMenuItem;
         private SplitContainer splitContainer1;

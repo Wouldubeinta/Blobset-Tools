@@ -64,10 +64,10 @@ namespace OggSharp
         //float                **window[2][2][2]; // block, leadin, leadout, type
         internal float[][][][][] wnd;                 // block, leadin, leadout, type
         //vorbis_look_transform **transform[2];    // block, type
-        internal Object[][] transform;
+        internal object[][] transform;
         internal CodeBook[] fullbooks;
         // backend lookups are tied to the mode, not the backend or naked mapping
-        internal Object[] mode;
+        internal object[] mode;
 
         // local storage, only used on the encoding side.  This way the
         // application does not need to worry about freeing some packets'
@@ -79,7 +79,7 @@ namespace OggSharp
 
         public DspState()
         {
-            transform = new Object[2][];
+            transform = new object[2][];
             wnd = new float[2][][][][];
             wnd[0] = new float[2][][][];
             wnd[0][0] = new float[2][][];
@@ -162,8 +162,8 @@ namespace OggSharp
             this.vi = vi;
             modebits = ilog2(vi.modes);
 
-            transform[0] = new Object[VI_TRANSFORMB];
-            transform[1] = new Object[VI_TRANSFORMB];
+            transform[0] = new object[VI_TRANSFORMB];
+            transform[1] = new object[VI_TRANSFORMB];
 
             // MDCT is tranform 0
 
@@ -241,7 +241,7 @@ namespace OggSharp
             pcm_current = centerW;
 
             // initialize all the mapping/backend lookups
-            mode = new Object[vi.modes];
+            mode = new object[vi.modes];
 
             for (int i = 0; i < vi.modes; i++)
             {

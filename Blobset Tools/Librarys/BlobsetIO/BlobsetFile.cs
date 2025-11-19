@@ -98,8 +98,16 @@ namespace BlobsetIO
         /// <param name="input">Blobset input stream</param>
         public void Deserialize(Reader input, Enums.BlobsetVersion blobsetVersion)
         {
-            if (blobsetVersion == Enums.BlobsetVersion.v2)
-                SHA1Hash = input.ReadBytes(20);
+            int gameId = Blobset_Tools.Properties.Settings.Default.GameID;
+            Endian endian = Endian.Little;
+
+            if (gameId == (int)Enums.Game.RLL2)
+                endian = Endian.Big;
+
+            input.CurrentEndian = endian;
+
+            if (gameId >= 2 && gameId <= 6 || gameId == (int)Enums.Game.RLL2)
+                SHA1Hash = input.ReadBytes(20, Endian.Little);
 
             Magic = input.ReadUInt32();
 

@@ -23,50 +23,58 @@
                 if (ofd.ShowDialog() == DialogResult.OK)
                     Properties.Settings.Default.GameLocation = ofd.FileName;
                 else
+                {
                     Application.Exit();
+                    return;
+                }
                 ofd.Dispose();
             }
 
             Properties.Settings.Default.Save();
-
             HideAndCloseForm();
         }
 
         private void rll2_button_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Not Implemented yet!!!", "Rugby League Live 2 PS3", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //MessageBox.Show("Not Implemented yet!!!", "Rugby League Live 2 PS3", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-            /*
             Properties.Settings.Default.GameID = (int)Enums.Game.RLL2;
             Properties.Settings.Default.GameName = "Rugby League Live 2 PS3";
-
-            if (File.Exists(@"D:\data-0.blobset.pc"))
-                Properties.Settings.Default.GameLocation = @"D:\data-0.blobset.pc";
-
             Properties.Settings.Default.SteamGameID = 0;
             Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v1;
 
-            if (ofd.ShowDialog() == DialogResult.OK)
-                Properties.Settings.Default.GameLocation = ofd.FileName;
-            else
-                Application.Exit();
+            if (File.Exists(@"F:\GAMES\BLES01472-[Rugby League Live 2]\PS3_GAME\USRDIR\data-0.blobset.ps3")) 
+            {
+                Properties.Settings.Default.GameLocation = @"F:\GAMES\BLES01472-[Rugby League Live 2]\PS3_GAME\USRDIR\data-0.blobset.ps3";
+                Properties.Settings.Default.Save();
+            }
 
-            ofd.Dispose();
+            if (!File.Exists(Properties.Settings.Default.GameLocation)) 
+            {
+                if (ofd.ShowDialog() == DialogResult.OK)
+                    Properties.Settings.Default.GameLocation = ofd.FileName;
+                else
+                {
+                    Application.Exit();
+                    return;
+                }
+
+                ofd.Dispose();
+            }
+
             Properties.Settings.Default.Save();
             HideAndCloseForm();
-            */
         }
 
         private void dbc14_button_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Not Implemented yet!!!", "Don Bradman Cricket 14", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //MessageBox.Show("Not Implemented yet!!!", "Don Bradman Cricket 14", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-            /*
             Properties.Settings.Default.GameID = (int)Enums.Game.DBC14;
             Properties.Settings.Default.GameName = "Don Bradman Cricket 14";
             Properties.Settings.Default.SteamGameID = 216260;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Don Bradman Cricket 14\data-0.blobset.pc"
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v2;
+            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Don Bradman Cricket 14\data-0.blobset.pc";
+            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v1;
             Properties.Settings.Default.Save();
 
             if (!File.Exists(Properties.Settings.Default.GameLocation))
@@ -75,18 +83,36 @@
             }
 
             HideAndCloseForm();
-            */
         }
 
         private void rll3_button_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Not Implemented yet!!!", "Rugby League 3", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            //MessageBox.Show("Not Implemented yet!!!", "Rugby League 3", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-            /*
             Properties.Settings.Default.GameID = (int)Enums.Game.RLL3;
             Properties.Settings.Default.GameName = "Rugby League 3";
             Properties.Settings.Default.SteamGameID = 312920;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Rugby League 3\data-0.blobset.pc"
+            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Rugby League 3\data-0.blobset.pc";
+            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v1;
+            Properties.Settings.Default.Save();
+
+            if (!File.Exists(Properties.Settings.Default.GameLocation))
+            {
+                GetGameLocation(Properties.Settings.Default.GameName + @"\data-0.blobset.pc");
+            }
+
+            HideAndCloseForm();
+        }
+
+        private void db17_button_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Not Implemented yet!!!", "Don Bradman Cricket 17", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            /*
+            Properties.Settings.Default.GameID = (int)Enums.Game.DBC17;
+            Properties.Settings.Default.GameName = "Don Bradman Cricket 17";
+            Properties.Settings.Default.SteamGameID = 464850;
+            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Don Bradman Cricket 17\data-0.blobset.pc";
             Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v2;
             Properties.Settings.Default.Save();
 
@@ -319,6 +345,23 @@
             HideAndCloseForm();
         }
 
+        private void c26_button_Click(object sender, EventArgs e)
+        {
+            Properties.Settings.Default.GameID = (int)Enums.Game.C26;
+            Properties.Settings.Default.GameName = "Cricket 26";
+            Properties.Settings.Default.SteamGameID = 3468650;
+            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Cricket 26\data\data-0.blobset.pc";
+            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v4;
+            Properties.Settings.Default.Save();
+
+            if (!File.Exists(Properties.Settings.Default.GameLocation))
+            {
+                GetGameLocation(Properties.Settings.Default.GameName + @"\data\data-0.blobset.pc");
+            }
+
+            HideAndCloseForm();
+        }
+
         private void GetGameLocation(string game)
         {
             string steamLocation = UI.getSteamLocation();
@@ -344,6 +387,7 @@
                     else
                     {
                         Application.Exit();
+                        return;
                     }
                     ofd.Dispose();
                 }
@@ -358,6 +402,7 @@
                 else
                 {
                     Application.Exit();
+                    return;
                 }
                 ofd.Dispose();
             }

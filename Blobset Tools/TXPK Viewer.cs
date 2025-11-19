@@ -1,6 +1,7 @@
 ﻿using BlobsetIO;
 using PackageIO;
 using System.ComponentModel;
+using static Blobset_Tools.Enums;
 
 namespace Blobset_Tools
 {
@@ -174,14 +175,14 @@ namespace Blobset_Tools
         private void TXPKDecompress_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
             bool errorCheck = false;
+            int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
 
             if (MainCompressedSize != MainUnCompressedSize && VramCompressedSize != VramUnCompressedSize)
             {
-                int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
-                errorCheck = blobsetVersion >= 2 ? TXPX_DecompressZSTD(false) : TXPX_DecompressLZMA();
+                errorCheck = blobsetVersion >= 3 ? TXPX_DecompressZSTD(false) : TXPX_DecompressLZMA();
             }
             else
-                errorCheck = TXPX_DecompressZSTD(true);
+                errorCheck = blobsetVersion >= 3 ? TXPX_DecompressZSTD(true) : TXPX_DecompressLZMA();
 
             if (errorCheck)
                 e.Cancel = true;
@@ -209,7 +210,6 @@ namespace Blobset_Tools
         {
             Reader? br = null;
             FileStream? fsWriter = null;
-            bool error = false;
 
             try
             {
@@ -252,14 +252,14 @@ namespace Blobset_Tools
             }
             catch (Exception ex)
             {
-                error = true;
                 MessageBox.Show("Error occurred, report it to Wouldy : " + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                return true;
             }
             finally
             {
                 if (br != null) { br.Close(); br = null; }
             }
-            return error;
+            return false;
         }
 
         private bool TXPX_DecompressLZMA()

@@ -220,9 +220,17 @@ namespace Blobset_Tools
             {
                 br = new(Properties.Settings.Default.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber));
 
-                int VramFinalOffset = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramFinalOffSet;
-                int VramCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramCompressedSize;
-                int VramUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
+                int gameId = Properties.Settings.Default.GameID;
+                Endian endian = Endian.Little;
+
+                if (gameId == (int)Enums.Game.RLL2)
+                    endian = Endian.Big;
+
+                br.CurrentEndian = endian;
+
+                uint VramFinalOffset = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramFinalOffSet;
+                uint VramCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramCompressedSize;
+                uint VramUnCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
 
                 ddsData = new byte[VramUnCompressedSize];
 
@@ -246,13 +254,13 @@ namespace Blobset_Tools
 
                         if (chunkCompressedSize[j] == chunkUnCompressedSize)
                         {
-                            byte[] tmpddsData = br.ReadBytes(chunkUnCompressedSize);
+                            byte[] tmpddsData = br.ReadBytes(chunkUnCompressedSize, Endian.Little);
                             Buffer.BlockCopy(tmpddsData, 0, ddsData, size, tmpddsData.Length);
                             size += tmpddsData.Length;
                         }
                         else
                         {
-                            byte[] compressedTmpddsData = br.ReadBytes(chunkCompressedSize[j]);
+                            byte[] compressedTmpddsData = br.ReadBytes(chunkCompressedSize[j], Endian.Little);
                             byte[] tmpddsData = LZMA_IO.DecompressAndRead(compressedTmpddsData, chunkUnCompressedSize);
                             Buffer.BlockCopy(tmpddsData, 0, ddsData, size, tmpddsData.Length);
                             size += tmpddsData.Length;
@@ -261,8 +269,9 @@ namespace Blobset_Tools
                 }
                 else
                 {
-                    ddsData = br.ReadBytes(VramUnCompressedSize);
+                    ddsData = br.ReadBytes(Convert.ToInt32(VramUnCompressedSize), Endian.Little);
                 }
+
                 if (br != null) { br.Close(); br = null; }
             }
             catch (Exception error)
@@ -656,7 +665,7 @@ namespace Blobset_Tools
             }
         }
 
-        public static string[] LoadingText =
+        public static readonly string[] LoadingText =
         {
             "Author: Wouldubeinta",
             Environment.NewLine,

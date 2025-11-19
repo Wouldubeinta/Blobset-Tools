@@ -59,9 +59,9 @@ namespace Blobset_Tools
                     throw (new Exception("input .lzma is too short"));
 
                 decoder.SetDecoderProperties(properties);
-
                 long inSize = inStream.Length - inStream.Position;
                 decoder.Code(inStream, outStream, inSize, outSize, null);
+
                 outStream.Position = 0;
                 outStream.Read(buffer, 0, outSize);
             }
@@ -76,6 +76,42 @@ namespace Blobset_Tools
                 if (decoder != null) { decoder = null; }
             }
             return buffer;
+        }
+
+        /// <summary>
+        /// Decompresses chunk and writes the data.
+        /// </summary>
+        /// <param name="br">Binary Reader input.</param>
+        /// <param name="writer">Filestream writer</param>
+        /// <history>
+        /// [Wouldubeinta]	26/07/2025	Created
+        /// </history>
+        public static void DecompressChunkAndWrite(Reader br, FileStream writer)
+        {
+            int chunkCount = br.ReadInt32();
+            int[] chunkCompressedSize = new int[chunkCount];
+
+            for (int j = 0; j < chunkCount; j++)
+            {
+                chunkCompressedSize[j] = br.ReadInt32();
+                chunkCompressedSize[j] = chunkCompressedSize[j] -= 4;
+            }
+
+            for (int j = 0; j < chunkCount; j++)
+            {
+                int chunkUnCompressedSize = br.ReadInt32();
+
+                if (chunkCompressedSize[j] == chunkUnCompressedSize) 
+                {
+                    byte[] chunkUnCompressedData = br.ReadBytes(chunkUnCompressedSize, Endian.Little);
+                    DecompressAndWrite(chunkUnCompressedData, writer, chunkUnCompressedSize, false);
+                }
+                else
+                {
+                    byte[] chunkCompressedData = br.ReadBytes(chunkCompressedSize[j], Endian.Little);
+                    DecompressAndWrite(chunkCompressedData, writer, chunkUnCompressedSize, true);
+                }
+            }
         }
 
         /// <summary>
@@ -99,6 +135,7 @@ namespace Blobset_Tools
                 outStream = new();
                 inStream = new MemoryStream(input);
                 encoder.Code(inStream, outStream, input.Length, -1, null);
+
                 buffer = new byte[outStream.Length];
 
                 if (outStream != null)
@@ -126,7 +163,7 @@ namespace Blobset_Tools
         /// <history>
         /// [Wouldubeinta]		16/07/2025	Created
         /// </history>
-        public static void DecompressAndWrite(byte[] input, FileStream writer, int outSize)
+        public static void DecompressAndWrite(byte[] input, FileStream writer, int outSize, bool isCompressed)
         {
             Decoder? decoder = null;
             MemoryStream? inStream = null;
@@ -134,23 +171,33 @@ namespace Blobset_Tools
 
             try
             {
-                inStream = new(input);
-                outStream = new();
-                decoder = new();
+                if (isCompressed)
+                {
+                    inStream = new(input);
+                    outStream = new();
+                    decoder = new();
 
-                byte[] buffer = new byte[outSize];
+                    byte[] buffer = new byte[outSize];
 
-                byte[] properties = new byte[5];
-                if (inStream.Read(properties, 0, 5) != 5)
-                    throw (new Exception("input .lzma is too short"));
+                    byte[] properties = new byte[5];
+                    if (inStream.Read(properties, 0, 5) != 5)
+                        throw (new Exception("input .lzma is too short"));
 
-                decoder.SetDecoderProperties(properties);
+                    decoder.SetDecoderProperties(properties);
 
-                long inSize = inStream.Length - inStream.Position;
-                decoder.Code(inStream, outStream, inSize, outSize, null);
-                outStream.Position = 0;
-                outStream.Read(buffer, 0, outSize);
-                writer.Write(buffer, 0, buffer.Length);
+                    long inSize = inStream.Length - inStream.Position;
+                    decoder.Code(inStream, outStream, inSize, outSize, null);
+
+                    outStream.Position = 0;
+                    outStream.Read(buffer, 0, outSize);
+                    writer.Write(buffer, 0, buffer.Length);
+                    writer.Flush();
+                }
+                else 
+                {
+                    writer.Write(input, 0, input.Length);
+                    writer.Flush();
+                }
             }
             catch (Exception error)
             {
@@ -195,6 +242,7 @@ namespace Blobset_Tools
                 {
                     offset = (int)writer.Position;
                     encoder.Code(inStream, outStream, input.Length, -1, null);
+
                     byte[]? output = new byte[outStream.Length];
                     outStream.Write(output, 0, output.Length);
                     writer.Write(output, 0, output.Length);
@@ -234,6 +282,7 @@ namespace Blobset_Tools
                 inStream = new(input);
                 outStream = new();
                 encoder = new();
+
                 encoder.Code(inStream, outStream, input.Length, -1, null);
 
                 byte[]? output = new byte[outStream.Length];
@@ -288,7 +337,9 @@ namespace Blobset_Tools
                 decoder.SetDecoderProperties(properties);
 
                 long inSize = inStream.Length - inStream.Position;
+
                 decoder.Code(inStream, outStream, inSize, outSize, null);
+
                 outStream.Position = 0;
                 outStream.Read(buffer, 0, outSize);
 
@@ -326,60 +377,6 @@ namespace Blobset_Tools
         /// </summary>
         /// <param name="m3mpTempFile">Temporary m3mp file path.</param>
         /// <param name="folderPath">Output folder location.</param>
-        /// <returns>Returns the extracted data file path progress.</returns>
-        /// <history>
-        /// [Wouldubeinta]		30/06/2025	Created
-        /// </history>
-        public static string M3MPDecompressAndWrite(string m3mpTempFile, string folderPath)
-        {
-            FileStream? fsReader = null;
-            FileStream? fsWriter = null;
-            Reader? br = null;
-            string progressFile = string.Empty;
-
-            try
-            {
-                fsReader = new(m3mpTempFile, FileMode.Open, FileAccess.Read);
-                br = new(fsReader);
-
-                M3MP m3mp = new();
-                m3mp.Deserialize(br);
-
-                foreach (var entry in m3mp.UnCompressedEntries)
-                {
-                    string filePath = entry.FilePath.Replace("/", @"\");
-                    string outputFilePath = folderPath + filePath;
-                    Directory.CreateDirectory(Path.GetDirectoryName(outputFilePath));
-                    fsWriter = new(outputFilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-
-                    for (int i = 0; i < m3mp.ChunksCount; i++)
-                    {
-                        br.Position = m3mp.CompressedEntries[i].CompressedDataInfo.Offset;
-                        byte[] compressedChunkData = br.ReadBytes((int)m3mp.CompressedEntries[i].CompressedDataInfo.CompressedSize);
-                        DecompressAndWrite(compressedChunkData, fsWriter, (int)m3mp.CompressedEntries[i].CompressedDataInfo.UnCompressedSize);
-                    }
-
-                    if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
-                    progressFile = filePath;
-                }
-            }
-            catch (Exception error)
-            {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
-            }
-            finally
-            {
-                if (br != null) { br.Close(); br = null; }
-                if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
-            }
-            return progressFile;
-        }
-
-        /// <summary>
-        /// M3MP Decompress extracts all the files from a decompressed tmp m3mp file.
-        /// </summary>
-        /// <param name="m3mpTempFile">Temporary m3mp file path.</param>
-        /// <param name="folderPath">Output folder location.</param>
         /// <param name="bgw">Background Worker</param>
         /// <history>
         /// [Wouldubeinta]		16/07/2025	Created
@@ -407,8 +404,8 @@ namespace Blobset_Tools
                 {
                     br.Position = m3mp.CompressedEntries[i].CompressedDataInfo.Offset;
 
-                    byte[] compressedChunkData = br.ReadBytes((int)m3mp.CompressedEntries[i].CompressedDataInfo.CompressedSize);
-                    DecompressAndWrite(compressedChunkData, fsWriter, (int)m3mp.CompressedEntries[i].CompressedDataInfo.UnCompressedSize);
+                    byte[] compressedChunkData = br.ReadBytes((int)m3mp.CompressedEntries[i].CompressedDataInfo.CompressedSize, Endian.Little);
+                    DecompressAndWrite(compressedChunkData, fsWriter, (int)m3mp.CompressedEntries[i].CompressedDataInfo.UnCompressedSize, true);
 
                     int percentProgress = 100 * i / (int)m3mp.ChunksCount;
                     bgw.ReportProgress(percentProgress, "Extracting Chunk Data - " + (i + 1).ToString());
@@ -433,7 +430,7 @@ namespace Blobset_Tools
 
                     for (int i = 0; i < chunkCount; i++)
                     {
-                        byte[] tmpData = br.ReadBytes((int)chunkSizes[i]);
+                        byte[] tmpData = br.ReadBytes((int)chunkSizes[i], Endian.Little);
                         IO.ReadWriteData(tmpData, fsWriter, (int)chunkSizes[i]);
                     }
 
@@ -462,83 +459,6 @@ namespace Blobset_Tools
         }
 
         /// <summary>
-        /// M3MP Decompress extracts all the files from a decompressed tmp m3mp file.
-        /// </summary>
-        /// <param name="br">Binary Reader stream.</param>
-        /// <returns>Returns the extracted data file path progress.</returns>
-        /// <history>
-        /// [Wouldubeinta]		16/07/2025	Created
-        /// </history>
-        public static string M3MPDecompressAndWrite(Reader br)
-        {
-            FileStream? fsWriter = null;
-            Reader? tmpBr = null;
-            string progressFile = string.Empty;
-
-            try
-            {
-                if (File.Exists(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp"))
-                    File.Delete(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp");
-
-                M3MP m3mp = new();
-                m3mp.Deserialize(br);
-
-                fsWriter = new(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp", FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-
-                for (int i = 0; i < m3mp.ChunksCount; i++)
-                {
-                    br.Position = m3mp.CompressedEntries[i].CompressedDataInfo.Offset;
-
-                    byte[] compressedChunkData = br.ReadBytes((int)m3mp.CompressedEntries[i].CompressedDataInfo.CompressedSize);
-                    DecompressAndWrite(compressedChunkData, fsWriter, (int)m3mp.CompressedEntries[i].CompressedDataInfo.UnCompressedSize);
-                }
-
-                if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
-
-                int index = 0;
-                tmpBr = new(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp");
-
-                string outputFilePath = Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\data-0.blobset\";
-
-                foreach (var entry in m3mp.UnCompressedEntries)
-                {
-                    string filePath = entry.FilePath.Replace("/", @"\");
-                    Directory.CreateDirectory(Path.GetDirectoryName(outputFilePath + filePath));
-
-                    int chunkCount = Utilities.ChunkAmount((int)m3mp.UnCompressedEntries[index].UncompressedDataInfo.Size);
-                    long[] chunkSizes = Utilities.ChunkSizes((int)m3mp.UnCompressedEntries[index].UncompressedDataInfo.Size, chunkCount);
-
-                    for (int i = 0; i < chunkCount; i++)
-                    {
-                        byte[] tmpData = tmpBr.ReadBytes((int)chunkSizes[i]);
-                        fsWriter = new(outputFilePath + filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
-                        IO.ReadWriteData(tmpData, fsWriter);
-                    }
-
-                    progressFile = filePath;
-
-                    if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
-                }
-
-                if (tmpBr != null) { tmpBr.Close(); tmpBr = null; }
-                if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
-
-                if (File.Exists(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp"))
-                    File.Delete(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp");
-            }
-            catch (Exception error)
-            {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
-            }
-            finally
-            {
-                if (tmpBr != null) { tmpBr.Close(); tmpBr = null; }
-                if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
-            }
-            return progressFile;
-        }
-
-        /// <summary>
         /// Get's TXPK header info.
         /// </summary>
         /// <param name="fileIn">File path to txpk.</param>
@@ -556,9 +476,9 @@ namespace Blobset_Tools
             {
                 br = new(Properties.Settings.Default.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber));
 
-                int MainFinalOffset = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
-                int MainCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
-                int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+                uint MainFinalOffset = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
+                uint MainCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
 
                 byte[] txpkData = new byte[MainUnCompressedSize];
 
@@ -597,7 +517,7 @@ namespace Blobset_Tools
                 }
                 else
                 {
-                    txpkData = br.ReadBytes(MainUnCompressedSize);
+                    txpkData = br.ReadBytes(Convert.ToInt32(MainUnCompressedSize));
                 }
 
                 txpk_br = new(txpkData);
@@ -637,9 +557,9 @@ namespace Blobset_Tools
             {
                 br = new(Properties.Settings.Default.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber));
 
-                int MainFinalOffset = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
-                int MainCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
-                int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+                uint MainFinalOffset = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
+                uint MainCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
 
                 br.Position = MainFinalOffset;
 

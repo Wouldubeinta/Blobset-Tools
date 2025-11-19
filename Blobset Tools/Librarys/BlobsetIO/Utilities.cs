@@ -184,9 +184,11 @@ namespace BlobsetIO
                     gameVersion = "BAVersion:604";
                     break;
                 case (int)Enums.Game.RLL2:
+                    gameVersion = "1";
                     break;
                 case (int)Enums.Game.DBC14:
                 case (int)Enums.Game.RLL3:
+                case (int)Enums.Game.DBC17:
                 case (int)Enums.Game.RLL4:
                 case (int)Enums.Game.AC:
                     string gv1 = Blobset_Tools.Properties.Settings.Default.GameLocation.Replace(@"data-0.blobset.pc", string.Empty) + "version.txt";

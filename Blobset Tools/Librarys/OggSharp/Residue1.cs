@@ -26,12 +26,12 @@ namespace OggSharp
 {
     internal class Residue1 : Residue0
     {
-        private new int forward(Block vb, Object vl, float[][] fin, int ch)
+        private new int forward(Block vb, object vl, float[][] fin, int ch)
         {
             return 0;
         }
 
-        public override int inverse(Block vb, Object vl, float[][] fin, int[] nonzero, int ch)
+        public override int inverse(Block vb, object vl, float[][] fin, int[] nonzero, int ch)
         {
             //System.err.println("Residue0.inverse");
             int used = 0;

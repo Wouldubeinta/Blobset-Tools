@@ -8,14 +8,13 @@
     {
         public Endian CurrentEndian;
         public long LastPosition;
-        private readonly Stream OpenStream;
-        private readonly BinaryWriter bw;
+        private readonly Stream? OpenStream;
+        private readonly BinaryWriter? bw;
 
-        public Writer(FileStream Package, Endian EndianType = (Endian)1, long Position = 0)
+        public Writer(FileStream Package, Endian EndianType = Endian.Little, long Position = 0)
         {
             OpenStream = null;
             bw = null;
-            CurrentEndian = Endian.Little;
             LastPosition = 0;
             OpenStream = Package;
             bw = new BinaryWriter(OpenStream);
@@ -23,11 +22,10 @@
             CurrentEndian = EndianType;
         }
 
-        public Writer(string Package, Endian EndianType = (Endian)1, long Position = 0)
+        public Writer(string Package, Endian EndianType = Endian.Little, long Position = 0)
         {
             OpenStream = null;
             bw = null;
-            CurrentEndian = Endian.Little;
             LastPosition = 0;
             OpenStream = new FileStream(Package, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write);
             bw = new BinaryWriter(OpenStream);
@@ -35,11 +33,10 @@
             CurrentEndian = EndianType;
         }
 
-        public Writer(byte[] Package, Endian EndianType = (Endian)1, long Position = 0)
+        public Writer(byte[] Package, Endian EndianType = Endian.Little, long Position = 0)
         {
             OpenStream = null;
             bw = null;
-            CurrentEndian = Endian.Little;
             LastPosition = 0;
             OpenStream = new MemoryStream(Package);
             bw = new BinaryWriter(OpenStream);
@@ -47,11 +44,10 @@
             CurrentEndian = EndianType;
         }
 
-        public Writer(MemoryStream Package, Endian EndianType = (Endian)1, long Position = 0L)
+        public Writer(MemoryStream Package, Endian EndianType = Endian.Little, long Position = 0L)
         {
             OpenStream = null;
             bw = null;
-            CurrentEndian = Endian.Little;
             LastPosition = 0L;
             OpenStream = Package;
             bw = new BinaryWriter(OpenStream);
@@ -59,11 +55,10 @@
             CurrentEndian = EndianType;
         }
 
-        public Writer(Stream Package, Endian EndianType = (Endian)1, long Position = 0)
+        public Writer(Stream Package, Endian EndianType = Endian.Little, long Position = 0)
         {
             OpenStream = null;
             bw = null;
-            CurrentEndian = Endian.Little;
             LastPosition = 0;
             OpenStream = Package;
             bw = new BinaryWriter(OpenStream);
@@ -71,7 +66,7 @@
             CurrentEndian = EndianType;
         }
 
-        public Writer(string Package, FileMode Mode, Endian EndianType = (Endian)1, long Position = 0)
+        public Writer(string Package, FileMode Mode, Endian EndianType = Endian.Little, long Position = 0)
             : this(new FileStream(Package, Mode, FileAccess.ReadWrite, FileShare.ReadWrite), EndianType, Position)
         {
         }

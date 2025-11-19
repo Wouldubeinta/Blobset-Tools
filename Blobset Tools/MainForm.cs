@@ -1,8 +1,6 @@
 using BlobsetIO;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
-using WEMSharp;
 using static Blobset_Tools.Enums;
 
 namespace Blobset_Tools
@@ -13,8 +11,8 @@ namespace Blobset_Tools
         private BackgroundWorker? Modify_bgw = null;
         private BackgroundWorker? FileMapping_bgw = null;
         private System.Media.SoundPlayer? player = null;
-        private byte[] oggData = null;
-        private byte[] wavData = null;
+        private byte[]? oggData = null;
+        private byte[]? wavData = null;
         public MainForm()
         {
             InitializeComponent();
@@ -79,7 +77,7 @@ namespace Blobset_Tools
                         FileMappingMain();
                         break;
                     case DialogResult.No:
-                        Environment.Exit(Environment.ExitCode);
+                        //Environment.Exit(Environment.ExitCode);
                         break;
                 }
             }
@@ -133,16 +131,27 @@ namespace Blobset_Tools
                 int icon = 0;
                 string ext = Path.GetExtension(Global.filelist[i].FileName);
 
-                if (ext == ".txpk")
-                    icon = 1;
-                if (ext == ".m3mp")
-                    icon = 2;
-                else if (ext == ".wem")
-                    icon = 3;
-                else if (ext == ".bnk")
-                    icon = 4;
-                else if (ext == ".dat")
-                    icon = 5;
+                switch(ext) 
+                {
+                    case ".txpk":
+                        icon = 1;
+                        break;
+                    case ".m3mp":
+                        icon = 2;
+                        break;
+                    case ".wem":
+                        icon = 3;
+                        break;
+                    case ".bnk":
+                        icon = 4;
+                        break;
+                    case ".dat":
+                        icon = 5;
+                        break;
+                    default:
+                        icon = 0;
+                        break;
+                }
 
                 lvi[i] = new ListViewItem { ImageIndex = icon, Text = Global.filelist[i].FileName };
             }
@@ -197,14 +206,6 @@ namespace Blobset_Tools
                 if (Global.fileIndex == -1)
                     return;
 
-                uint MainFinalOffSet = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
-                uint MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
-                uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
-                uint VramFinalOffSet = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramFinalOffSet;
-                uint VramCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramCompressedSize;
-                uint VramUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
-                uint blobsetNumber = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].BlobSetNumber;
-
                 string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + Global.filelist[Global.fileIndex].FolderHash + @"\" + Global.filelist[Global.fileIndex].FileHash;
                 int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
 
@@ -219,230 +220,30 @@ namespace Blobset_Tools
 
                 string type = Path.GetExtension(Global.filelist[Global.fileIndex].FilePath);
 
-                if (type == ".dds")
+                switch (type) 
                 {
-                    Structs.DDSInfo ddsInfo = new();
-                    byte[] ddsData = blobsetVersion >= 2 ? UI.GetDDSData_V3_V4(Global.filelist) : UI.GetDDSData_V1_V2(Global.filelist);
-
-                    if (ddsData == null)
-                        return;
-
-                    Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo);
-
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** DDS Location ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath + Environment.NewLine + Environment.NewLine);
-
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex + Environment.NewLine);
-
-                    if (Properties.Settings.Default.BlobsetVersion == (int)BlobsetVersion.v4)
-                        fileInfo_richTextBox.AppendText("FileName: " + filePath + Environment.NewLine);
-                    else
-                    {
-                        fileInfo_richTextBox.AppendText("FolderHash: " + Global.filelist[Global.fileIndex].FolderHash + Environment.NewLine);
-                        fileInfo_richTextBox.AppendText("FileHash: " + Global.filelist[Global.fileIndex].FileHash + Environment.NewLine);
-                        fileInfo_richTextBox.AppendText("Blobset Number: " + "data-" + blobsetNumber + ".blobset.pc" + Environment.NewLine);
-                    }
-
-                    if (blobsetVersion != (int)BlobsetVersion.v4)
-                        fileInfo_richTextBox.AppendText("MainFinalOffset: " + MainFinalOffSet.ToString() + Environment.NewLine);
-
-                    fileInfo_richTextBox.AppendText("MainCompressedSize: " + MainCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("MainUnCompressedSize: " + MainUnCompressedSize.ToString() + Environment.NewLine);
-
-                    if (blobsetVersion != (int)BlobsetVersion.v4)
-                        fileInfo_richTextBox.AppendText("VramFinalOffset: " + VramFinalOffSet.ToString() + Environment.NewLine);
-
-                    fileInfo_richTextBox.AppendText("VramCompressedSize: " + VramCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("VramUnCompressedSize: " + VramUnCompressedSize.ToString() + Environment.NewLine + Environment.NewLine);
-
-                    if (bitmap == null)
-                        return;
-
-                    dds_pictureBox.Image = bitmap;
-
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** DDS Info ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    string ddsFormat = ddsInfo.isDX10 ? ddsInfo.dxgiFormat.ToString() + " - DX11+" : ddsInfo.CompressionAlgorithm.ToString();
-                    fileInfo_richTextBox.AppendText("Format: " + ddsFormat + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("Height: " + ddsInfo.Height.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("Width: " + ddsInfo.Width.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("MipMaps: 1 / " + ddsInfo.MipMap.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("Size: " + Utilities.FormatSize((ulong)ddsInfo.Size).ToString());
-                }
-                else if (type == ".txpk")
-                {
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** TXPK Location ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath + Environment.NewLine + Environment.NewLine);
-
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("FileName: " + filePath + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("MainCompressedSize: " + MainCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("MainUnCompressedSize: " + MainUnCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("VramCompressedSize: " + VramCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("VramUnCompressedSize: " + VramUnCompressedSize.ToString() + Environment.NewLine + Environment.NewLine);
-
-                    uint txpkSize = MainUnCompressedSize + VramUnCompressedSize;
-
-                    TXPK txpk = blobsetVersion >= 2 ? ZSTD_IO.ReadTXPKInfo(filePath) : LZMA_IO.ReadTXPKInfo(Global.filelist);
-
-                    if (txpk == null)
-                        return;
-
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** TXPK Info ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-
-                    fileInfo_richTextBox.AppendText("DDS File Count: " + txpk.FilesCount.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("TXPK File Size: " + Utilities.FormatSize(txpkSize) + Environment.NewLine + Environment.NewLine);
-
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** TXPK DDS File List ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-
-                    if (txpk.Entries == null)
-                        return;
-
-                    int i = 0;
-
-                    foreach (var entry in txpk.Entries)
-                    {
-                        fileInfo_richTextBox.AppendText(i.ToString() + " - " + entry.DDSFilePath.Replace("/", @"\") + ".dds" + Environment.NewLine);
-                        i++;
-                    }
-                }
-                else if (type == ".m3mp")
-                {
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** M3MP Location ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath + Environment.NewLine + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("FileName: " + filePath + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("MainCompressedSize: " + MainCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("MainUnCompressedSize: " + MainUnCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("VramCompressedSize: " + VramCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("VramUnCompressedSize: " + VramUnCompressedSize.ToString() + Environment.NewLine + Environment.NewLine);
-
-                    bool isCompressed = false;
-
-                    if (MainCompressedSize != MainUnCompressedSize)
-                        isCompressed = true;
-
-                    M3MP m3mp = blobsetVersion >= 2 ? ZSTD_IO.ReadM3MPInfo(filePath, isCompressed) : LZMA_IO.ReadM3MPInfo(Global.filelist);
-
-                    if (m3mp == null)
-                        return;
-
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** M3MP Info ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText("M3MP File Count: " + m3mp.FilesCount.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("M3MP File Size: " + Utilities.FormatSize(MainUnCompressedSize) + Environment.NewLine + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** M3MP File List ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-
-                    if (m3mp.UnCompressedEntries == null)
-                        return;
-
-                    int i = 0;
-
-                    foreach (var entry in m3mp.UnCompressedEntries)
-                    {
-                        fileInfo_richTextBox.AppendText(i.ToString() + " - " + entry.FilePath.Replace("/", @"\") + Environment.NewLine);
-                        i++;
-                    }
-                }
-                else if (type == ".wem")
-                {
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** Wise Audio WEM Location ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath + Environment.NewLine + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("FileName: " + filePath + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("MainCompressedSize: " + MainCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("MainUnCompressedSize: " + MainUnCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("VramCompressedSize: " + VramCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("VramUnCompressedSize: " + VramUnCompressedSize.ToString() + Environment.NewLine + Environment.NewLine);
-
-                    if (player != null) { player.Stop(); player.Stream.Dispose(); player.Dispose(); player = null; }
-                    WEMFile? wem = new(filePath, WEMForcePacketFormat.NoForcePacketFormat);
-                    MemoryStream wem_Ms = new();
-                    wem.GenerateOGG(wem_Ms, Global.currentPath + @"\packed_codebooks_aoTuV_603.bin", false, false);
-                    oggData = wem_Ms.ToArray();
-                    MemoryStream wav_ms = IO.WriteVorbisOggWAVData(wem_Ms, wem.SampleRate, wem.Channels, wem.SampleCount);
-                    wavData = wav_ms.ToArray();
-                    player = new System.Media.SoundPlayer(wav_ms);
-                    player.Play();
-
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** Wise Audio WEM Info ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText("WEM Channel Count: " + wem.Channels + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("WEM Sample Rate: " + wem.SampleRate + " Hz" + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("WEM Average Bytes Per Second: " + Utilities.FormatSize(wem.AverageBytesPerSecond) + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("WEM File Size: " + Utilities.FormatSize((ulong)Utilities.FileInfo(filePath)));
-
-                    if (wem._wemFile != null) { wem._wemFile.Dispose(); wem = null; }
-                    if (wem_Ms != null) { wem_Ms.Dispose(); wem = null; }
-                }
-                else if (type == ".bnk")
-                {
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** Wise Audio BNK Location ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath + Environment.NewLine + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("FileName: " + filePath + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("MainCompressedSize: " + MainCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("MainUnCompressedSize: " + MainUnCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("VramCompressedSize: " + VramCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("VramUnCompressedSize: " + VramUnCompressedSize.ToString() + Environment.NewLine + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** Wise Audio BNK Info ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText("BNK File Size: " + Utilities.FormatSize(MainUnCompressedSize));
-                }
-                else if (type == ".dat")
-                {
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** Unknown File DAT Location ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath + Environment.NewLine + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("FileName: " + filePath + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("MainCompressedSize: " + MainCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("MainUnCompressedSize: " + MainUnCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("VramCompressedSize: " + VramCompressedSize.ToString() + Environment.NewLine);
-                    fileInfo_richTextBox.AppendText("VramUnCompressedSize: " + VramUnCompressedSize.ToString() + Environment.NewLine + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.White;
-                    fileInfo_richTextBox.AppendText("*** Unknown File DAT Info ***" + Environment.NewLine);
-                    fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                    fileInfo_richTextBox.AppendText("DAT File Size: " + Utilities.FormatSize(MainUnCompressedSize));
+                    case ".dds":
+                        UiFileTypes.DDS(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion);
+                        break;
+                    case ".txpk":
+                        UiFileTypes.TXPK(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion);
+                        break;
+                    case ".m3mp":
+                        UiFileTypes.M3MP(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion);
+                        break;
+                    case ".wem":
+                        UiFileTypes.Wise_WEM(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion, player, oggData, wavData);
+                        break;
+                    case ".bnk":
+                        UiFileTypes.Wise_BNK(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion);
+                        break;
+                    case ".dat":
+                        UiFileTypes.DAT(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion);
+                        break;
+                    case ".bank":
+                        break;
+                    case ".fsb":
+                        break;
                 }
             }
             catch (Exception error)
@@ -477,7 +278,7 @@ namespace Blobset_Tools
                 if (ext == ".txpk")
                 {
 
-                    TXPK txpk = blobsetVersion >= 2 ? ZSTD_IO.ReadTXPKInfo(filePath) : LZMA_IO.ReadTXPKInfo(Global.filelist);
+                    TXPK txpk = blobsetVersion >= 3 ? ZSTD_IO.ReadTXPKInfo(filePath) : LZMA_IO.ReadTXPKInfo(Global.filelist);
 
                     TXPK_Viewer form = new(Global.filelist[Global.fileIndex].FilePath, txpk, Global.filelist);
                     bool IsOpen = false;
@@ -502,7 +303,7 @@ namespace Blobset_Tools
                     if (MainCompressedSize != MainUnCompressedSize)
                         isCompressed = true;
 
-                    M3MP? m3mp = ZSTD_IO.ReadM3MPInfo(filePath, isCompressed);
+                    M3MP? m3mp = blobsetVersion >= 3 ? ZSTD_IO.ReadM3MPInfo(filePath, isCompressed) : LZMA_IO.ReadM3MPInfo(Global.filelist);
 
                     M3MP_Viewer form = new(Global.filelist[Global.fileIndex].FilePath, m3mp, Global.filelist);
                     bool IsOpen = false;
@@ -595,7 +396,13 @@ namespace Blobset_Tools
             switch (blobsetVersion)
             {
                 case BlobsetVersion.v1:
-                    errorCheck = Extract.BlobsetV1(blobsetFile, Extract_bgw);
+                    Thread thread = new Thread(() =>
+                    {
+                        errorCheck = Extract.BlobsetV1(blobsetFile, Extract_bgw);
+                    });
+
+                    thread.Start();
+                    thread.Join();
                     break;
                 case BlobsetVersion.v2:
                     errorCheck = Extract.BlobsetV2(blobsetFile, Extract_bgw);
@@ -680,7 +487,13 @@ namespace Blobset_Tools
             switch (blobsetVersion)
             {
                 case BlobsetVersion.v1:
-                    errorCheck = FileMapping.WriteV1(blobsetFile, FileMapping_bgw);
+                    Thread thread = new Thread(() =>
+                    {
+                        errorCheck = FileMapping.WriteV1(blobsetFile, FileMapping_bgw);
+                    });
+
+                    thread.Start();
+                    thread.Join();
                     break;
                 case BlobsetVersion.v2:
                     errorCheck = FileMapping.WriteV2(blobsetFile, FileMapping_bgw);
@@ -784,7 +597,13 @@ namespace Blobset_Tools
             switch (blobsetVersion)
             {
                 case BlobsetVersion.v1:
-                    errorCheck = Modify.BlobsetV1(blobsetFile, Modify_bgw);
+                    Thread thread = new Thread(() =>
+                    {
+                        errorCheck = Modify.BlobsetV1(blobsetFile, Modify_bgw);
+                    });
+
+                    thread.Start();
+                    thread.Join();
                     break;
                 case BlobsetVersion.v2:
                     errorCheck = Modify.BlobsetV2(blobsetFile, Modify_bgw);
@@ -1187,14 +1006,22 @@ namespace Blobset_Tools
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            foreach (string f in Directory.EnumerateFiles(Global.currentPath + @"\temp\", "*.*"))
-                File.Delete(f);
+            if (Extract_bgw != null) 
+            {
+                foreach (string f in Directory.EnumerateFiles(Global.currentPath + @"\temp\", "*.*"))
+                    File.Delete(f);
 
-            if (Extract_bgw != null)
                 Environment.Exit(Environment.ExitCode);
+            }
+                
 
-            if (FileMapping_bgw != null)
+            if (FileMapping_bgw != null) 
+            {
+                foreach (string f in Directory.EnumerateFiles(Global.currentPath + @"\temp\", "*.*"))
+                    File.Delete(f);
+
                 Environment.Exit(Environment.ExitCode);
+            }
 
             if (Modify_bgw != null)
                 Environment.Exit(Environment.ExitCode);

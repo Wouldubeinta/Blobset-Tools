@@ -27,7 +27,7 @@ namespace OggSharp
     internal class Floor0 : FuncFloor
     {
 
-        public override void pack(Object i, csBuffer opb)
+        public override void pack(object i, csBuffer opb)
         {
             InfoFloor0 info = (InfoFloor0)i;
             opb.write(info.order, 8);
@@ -42,7 +42,7 @@ namespace OggSharp
             }
         }
 
-        public override Object unpack(Info vi, csBuffer opb)
+        public override object unpack(Info vi, csBuffer opb)
         {
             InfoFloor0 info = new();
             info.order = opb.read(8);
@@ -75,7 +75,7 @@ namespace OggSharp
             //    free_info(info);
             //    return(NULL);
         }
-        public override Object look(DspState vd, InfoMode mi, Object i)
+        public override object look(DspState vd, InfoMode mi, object i)
         {
             float scale;
 
@@ -132,13 +132,13 @@ namespace OggSharp
             state.frameno = -1;
             return (state);
         }
-        public override void free_info(Object i) { }
-        public override void free_look(Object i) { }
-        public override void free_state(Object vs) { }
-        public override int forward(Block vb, Object i, float[] fin, float[] fout, Object vs) { return 0; }
+        public override void free_info(object i) { }
+        public override void free_look(object i) { }
+        public override void free_state(object vs) { }
+        public override int forward(Block vb, object i, float[] fin, float[] fout, object vs) { return 0; }
 
         private float[] lsp = null;
-        private int inverse(Block vb, Object i, float[] fout)
+        private int inverse(Block vb, object i, float[] fout)
         {
             //System.err.println("Floor0.inverse "+i.getClass()+"]");
             LookFloor0 look = (LookFloor0)i;
@@ -206,7 +206,7 @@ namespace OggSharp
             return (0);
         }
 
-        public override Object inverse1(Block vb, Object i, Object memo)
+        public override object inverse1(Block vb, object i, object memo)
         {
             //System.err.println("Floor0.inverse "+i.getClass()+"]");
             LookFloor0 look = (LookFloor0)i;
@@ -261,7 +261,7 @@ namespace OggSharp
             return (null);
         }
 
-        public override int inverse2(Block vb, Object i, Object memo, float[] fout)
+        public override int inverse2(Block vb, object i, object memo, float[] fout)
         {
             //System.err.println("Floor0.inverse "+i.getClass()+"]");
             LookFloor0 look = (LookFloor0)i;
@@ -354,7 +354,7 @@ namespace OggSharp
         }
 
         private static void lpc_to_curve(float[] curve, float[] lpc, float amp,
-                                 LookFloor0 l, String name, int frameno)
+                                 LookFloor0 l, string name, int frameno)
         {
             // l->m+1 must be less than l->ln, but guard in case we get a bad stream
             float[] lcurve = new float[Math.Max(l.ln * 2, l.m * 2 + 2)];

@@ -29,7 +29,7 @@ namespace OggSharp
         private static readonly int floor1_rangedb = 140;
         private static readonly int VIF_POSIT = 63;
 
-        public override void pack(Object i, csBuffer opb)
+        public override void pack(object i, csBuffer opb)
         {
             InfoFloor1 info = (InfoFloor1)i;
 
@@ -79,7 +79,7 @@ namespace OggSharp
             }
         }
 
-        public override Object unpack(Info vi, csBuffer opb)
+        public override object unpack(Info vi, csBuffer opb)
         {
             int count = 0, maxclass = -1, rangebits;
             InfoFloor1 info = new();
@@ -155,7 +155,7 @@ namespace OggSharp
             //    return(null);
         }
 
-        public override Object look(DspState vd, InfoMode mi, Object i)
+        public override object look(DspState vd, InfoMode mi, object i)
         {
             int _n = 0;
 
@@ -270,13 +270,13 @@ namespace OggSharp
             return look;
         }
 
-        public override void free_info(Object i) { }
-        public override void free_look(Object i) { }
-        public override void free_state(Object vs) { }
+        public override void free_info(object i) { }
+        public override void free_look(object i) { }
+        public override void free_state(object vs) { }
 
-        public override int forward(Block vb, Object i, float[] fin, float[] fout, Object vs) { return 0; }
+        public override int forward(Block vb, object i, float[] fin, float[] fout, object vs) { return 0; }
 
-        public override Object inverse1(Block vb, Object ii, Object memo)
+        public override object inverse1(Block vb, object ii, object memo)
         {
             LookFloor1 look = (LookFloor1)ii;
             InfoFloor1 info = look.vi;
@@ -414,7 +414,7 @@ namespace OggSharp
             }
         }
 
-        public override int inverse2(Block vb, Object i, Object memo, float[] fout)
+        public override int inverse2(Block vb, object i, object memo, float[] fout)
         {
             LookFloor1 look = (LookFloor1)i;
             InfoFloor1 info = look.vi;
@@ -627,7 +627,7 @@ namespace OggSharp
             postlist = null;
         }
 
-        internal Object copy_info()
+        internal object copy_info()
         {
             InfoFloor1 info = this;
             InfoFloor1 ret = new();

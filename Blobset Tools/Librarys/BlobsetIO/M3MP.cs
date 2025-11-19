@@ -1,4 +1,5 @@
-﻿using PackageIO;
+﻿using Blobset_Tools;
+using PackageIO;
 
 namespace BlobsetIO
 {
@@ -117,6 +118,14 @@ namespace BlobsetIO
         /// <param name="input">M3MP input stream</param>
         public void Deserialize(Reader input)
         {
+            int gameId = Blobset_Tools.Properties.Settings.Default.GameID;
+            Endian endian = Endian.Little;
+
+            if (gameId == (int)Enums.Game.RLL2)
+                endian = Endian.Big;
+
+            input.CurrentEndian = endian;
+
             Magic = input.ReadUInt32();
 
             if (Magic != 1347236685) // M3MP
