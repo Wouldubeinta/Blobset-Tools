@@ -192,7 +192,7 @@ namespace Blobset_Tools
             // 
             tXPKCreatorToolStripMenuItem.Image = (Image)resources.GetObject("tXPKCreatorToolStripMenuItem.Image");
             tXPKCreatorToolStripMenuItem.Name = "tXPKCreatorToolStripMenuItem";
-            tXPKCreatorToolStripMenuItem.Size = new Size(151, 22);
+            tXPKCreatorToolStripMenuItem.Size = new Size(184, 26);
             tXPKCreatorToolStripMenuItem.Text = "TXPK Creator";
             tXPKCreatorToolStripMenuItem.ToolTipText = "To create DDS TXPK files.";
             tXPKCreatorToolStripMenuItem.Click += txpkCreatorToolStripMenuItem_Click;
@@ -201,7 +201,7 @@ namespace Blobset_Tools
             // 
             m3MPCreatorToolStripMenuItem.Image = (Image)resources.GetObject("m3MPCreatorToolStripMenuItem.Image");
             m3MPCreatorToolStripMenuItem.Name = "m3MPCreatorToolStripMenuItem";
-            m3MPCreatorToolStripMenuItem.Size = new Size(151, 22);
+            m3MPCreatorToolStripMenuItem.Size = new Size(184, 26);
             m3MPCreatorToolStripMenuItem.Text = "M3MP Creator";
             m3MPCreatorToolStripMenuItem.ToolTipText = "To Create M3MP files.";
             m3MPCreatorToolStripMenuItem.Click += m3mpCreatorToolStripMenuItem_Click;
@@ -217,7 +217,7 @@ namespace Blobset_Tools
             // 
             updateFileMappingDataToolStripMenuItem.Image = Properties.Resources.mapping_32;
             updateFileMappingDataToolStripMenuItem.Name = "updateFileMappingDataToolStripMenuItem";
-            updateFileMappingDataToolStripMenuItem.Size = new Size(211, 22);
+            updateFileMappingDataToolStripMenuItem.Size = new Size(215, 26);
             updateFileMappingDataToolStripMenuItem.Text = "Update File Mapping Data";
             updateFileMappingDataToolStripMenuItem.ToolTipText = "This update's the file mapping files in the data folder.";
             updateFileMappingDataToolStripMenuItem.Click += updateFileMappingDataToolStripMenuItem_Click;
@@ -227,16 +227,16 @@ namespace Blobset_Tools
             loadGameToolStripMenuItem.CheckOnClick = true;
             loadGameToolStripMenuItem.Image = Properties.Resources.loading_32;
             loadGameToolStripMenuItem.Name = "loadGameToolStripMenuItem";
-            loadGameToolStripMenuItem.Size = new Size(211, 22);
+            loadGameToolStripMenuItem.Size = new Size(215, 26);
             loadGameToolStripMenuItem.Text = "Load Game";
-            loadGameToolStripMenuItem.ToolTipText = "If ticked, this will load the game after creating the blobset.";
+            loadGameToolStripMenuItem.ToolTipText = "If ticked, this will load the game after modifing the blobset.";
             loadGameToolStripMenuItem.Click += loadGameToolStripMenuItem_Click;
             // 
             // validateSteamGameFilesToolStripMenuItem
             // 
             validateSteamGameFilesToolStripMenuItem.Image = (Image)resources.GetObject("validateSteamGameFilesToolStripMenuItem.Image");
             validateSteamGameFilesToolStripMenuItem.Name = "validateSteamGameFilesToolStripMenuItem";
-            validateSteamGameFilesToolStripMenuItem.Size = new Size(211, 22);
+            validateSteamGameFilesToolStripMenuItem.Size = new Size(215, 26);
             validateSteamGameFilesToolStripMenuItem.Text = "Validate Steam Game Files";
             validateSteamGameFilesToolStripMenuItem.ToolTipText = "This will repair game files, If something stuffs up.";
             validateSteamGameFilesToolStripMenuItem.Click += validateSteamGameFilesToolStripMenuItem_Click;
@@ -246,7 +246,7 @@ namespace Blobset_Tools
             skipUnknownFilesToolStripMenuItem.CheckOnClick = true;
             skipUnknownFilesToolStripMenuItem.Image = Properties.Resources.skip_32;
             skipUnknownFilesToolStripMenuItem.Name = "skipUnknownFilesToolStripMenuItem";
-            skipUnknownFilesToolStripMenuItem.Size = new Size(211, 22);
+            skipUnknownFilesToolStripMenuItem.Size = new Size(215, 26);
             skipUnknownFilesToolStripMenuItem.Text = "Skip Unknown Files";
             skipUnknownFilesToolStripMenuItem.ToolTipText = "When ticked, this will skip extracting unknown file types, like meshes and animation files ect...";
             skipUnknownFilesToolStripMenuItem.Click += skipUnknownFilesToolStripMenuItem_Click;
@@ -255,7 +255,7 @@ namespace Blobset_Tools
             // 
             restoreBackupFilesToolStripMenuItem.Image = Properties.Resources.restore_backup_32;
             restoreBackupFilesToolStripMenuItem.Name = "restoreBackupFilesToolStripMenuItem";
-            restoreBackupFilesToolStripMenuItem.Size = new Size(211, 22);
+            restoreBackupFilesToolStripMenuItem.Size = new Size(215, 26);
             restoreBackupFilesToolStripMenuItem.Text = "Restore Backup Files";
             restoreBackupFilesToolStripMenuItem.ToolTipText = "This will restore the backed up files that you replaced with mods.";
             restoreBackupFilesToolStripMenuItem.Click += restoreBackupFilesToolStripMenuItem_Click;

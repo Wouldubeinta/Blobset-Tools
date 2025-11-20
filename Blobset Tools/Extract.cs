@@ -96,7 +96,7 @@ namespace Blobset_Tools
                         {
                             blobsetContent_br.Position = mainFinalOffSet + 20; // Offset to convant2 string.
 
-                            if (blobsetContent_br.ReadUInt32(Endian.Little) == 1986948963) // Makes sure it's a mini DDS TXPK.
+                            if (blobsetContent_br.ReadString(4) == "conv") // Makes sure it's a mini DDS TXPK.
                             {
                                 blobsetContent_br.Position = mainFinalOffSet;
 
@@ -152,7 +152,7 @@ namespace Blobset_Tools
                         {
                             blobsetContent_br.Position = mainFinalOffSet + 20; // Offset to convant2 string.
 
-                            if (blobsetContent_br.ReadUInt32(Endian.Little) == 1986948963) // Makes sure it's a mini DDS TXPK.
+                            if (blobsetContent_br.ReadString(4) == "conv") // Makes sure it's a mini DDS TXPK.
                             {
                                 blobsetContent_br.Position = mainFinalOffSet;
 
@@ -453,7 +453,7 @@ namespace Blobset_Tools
                                 {
                                     blobsetContent_br.Position = 20; // Offset to convant2 string.
 
-                                    if (blobsetContent_br.ReadUInt32(Endian.Little) == 1986948963) // Makes sure it's a mini DDS TXPK.
+                                    if (blobsetContent_br.ReadString(4) == "conv") // Makes sure it's a mini DDS TXPK.
                                     {
                                         blobsetContent_br.Position = 0;
 
@@ -481,24 +481,24 @@ namespace Blobset_Tools
                                                 ZSTD_IO.M3MPDecompressAndWrite(filePath, folder, Extract_bgw);
                                                 break;
                                             case (int)Enums.FileType.WiseBNK:
-                                                string bnkName = folder + @"\sound\bnk\" + i.ToString() + ".bnk";
+                                                string bnkName = Path.Combine(folder, "sound", "bnk", $"{i}.bnk");
                                                 Directory.CreateDirectory(Path.GetDirectoryName(bnkName));
                                                 IO.ReadWriteData(blobsetContent_br, bnkName);
-                                                progress = @"sound\bnk\" + i.ToString() + ".bnk";
+                                                progress = Path.Combine("sound", "bnk", $"{i}.bnk");
                                                 break;
                                             case (int)Enums.FileType.WiseWEM:
-                                                string wemName = folder + @"\sound\wem\" + i.ToString() + ".wem";
+                                                string wemName = Path.Combine(folder, "sound", "wem", $"{i}.wem");
                                                 Directory.CreateDirectory(Path.GetDirectoryName(wemName));
                                                 IO.ReadWriteData(blobsetContent_br, wemName);
-                                                progress = @"sound\wem\" + i.ToString() + ".wem";
+                                                progress = Path.Combine("sound", "wem", $"{i}.wem");
                                                 break;
                                             default:
                                                 if (!Properties.Settings.Default.SkipUnknown)
                                                 {
-                                                    string unknownName = folder + @"\unknown\mainuncompressed_vramuncompressed\" + i.ToString() + ".dat";
+                                                    string unknownName = Path.Combine(folder, "unknown", "mainuncompressed_vramuncompressed", $"{i}.dat");
                                                     Directory.CreateDirectory(Path.GetDirectoryName(unknownName));
                                                     IO.ReadWriteData(blobsetContent_br, unknownName);
-                                                    progress = @"\unknown\mainuncompressed_vramuncompressed\" + i.ToString() + ".dat";
+                                                    progress = Path.Combine("unknown", "mainuncompressed_vramuncompressed", $"{i}.dat");
                                                 }
                                                 break;
                                         }
@@ -508,7 +508,7 @@ namespace Blobset_Tools
                                 {
                                     blobsetContent_br.Position = 20; // Offset to convant2 string.
 
-                                    if (blobsetContent_br.ReadUInt32(Endian.Little) == 1986948963) // Makes sure it's a mini DDS TXPK.
+                                    if (blobsetContent_br.ReadString(4) == "conv") // Makes sure it's a mini DDS TXPK.
                                     {
                                         blobsetContent_br.Position = 0;
 
@@ -533,7 +533,7 @@ namespace Blobset_Tools
                                     {
                                         blobsetContent_br.Position = 0;
 
-                                        string txpkTempPath = Global.currentPath + @"\temp\" + i.ToString() + ".txpk";
+                                        string txpkTempPath = Path.Combine(Global.currentPath, "temp", $"{i}.txpk");
 
                                         if (File.Exists(txpkTempPath)) { File.Delete(txpkTempPath); }
 
@@ -576,7 +576,7 @@ namespace Blobset_Tools
                                     switch (magic)
                                     {
                                         case (int)Enums.FileType.M3MP:
-                                            string m3mpTempPath = Global.currentPath + @"\temp\" + i.ToString() + ".m3mp";
+                                            string m3mpTempPath = Path.Combine(Global.currentPath, "temp", $"{i}.m3mp");
 
                                             if (File.Exists(m3mpTempPath)) { File.Delete(m3mpTempPath); }
 
@@ -593,14 +593,14 @@ namespace Blobset_Tools
                                         default:
                                             if (!Properties.Settings.Default.SkipUnknown)
                                             {
-                                                string unknownName = folder + @"\unknown\maincompressed\" + i.ToString() + ".dat";
+                                                string unknownName = Path.Combine(folder, "unknown", "maincompressed", $"{i}.dat");
                                                 Directory.CreateDirectory(Path.GetDirectoryName(unknownName));
 
                                                 writer = new(unknownName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
                                                 ZSTD_IO.DecompressChunk(blobsetContent_br, writer);
 
-                                                progress = @"unknown\maincompressed\" + i.ToString() + ".dat";
+                                                progress = Path.Combine("unknown", "maincompressed", $"{i}.dat");
 
                                                 if (writer != null) { writer.Dispose(); writer = null; }
                                             }
@@ -651,7 +651,7 @@ namespace Blobset_Tools
                                             progress = mini_TXPK.DDSFilePath.Replace("/", @"\");
                                             break;
                                         case (int)Enums.FileType.TXPK:
-                                            string txpkTempPath = Global.currentPath + @"\temp\" + i.ToString() + ".txpk";
+                                            string txpkTempPath = Path.Combine(Global.currentPath, "temp", $"{i}.txpk");
 
                                             if (File.Exists(txpkTempPath)) { File.Delete(txpkTempPath); }
 
@@ -667,14 +667,14 @@ namespace Blobset_Tools
                                         default:
                                             if (!Properties.Settings.Default.SkipUnknown)
                                             {
-                                                string unknownName = folder + @"\unknown\maincompressed_vramcompressed\" + i.ToString() + ".dat";
+                                                string unknownName = Path.Combine(folder, "unknown", "maincompressed_vramcompressed", $"{i}.dat");
                                                 Directory.CreateDirectory(Path.GetDirectoryName(unknownName));
 
                                                 writer = new(unknownName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
                                                 ZSTD_IO.DecompressChunk(blobsetContent_br, writer);
 
-                                                progress = @"unknown\maincompressed_vramcompressed\" + i.ToString() + ".dat";
+                                                progress = Path.Combine("unknown", "maincompressed_vramcompressed", $"{i}.dat");
 
                                                 if (writer != null) { writer.Dispose(); writer = null; }
                                             }
@@ -682,6 +682,17 @@ namespace Blobset_Tools
                                     }
                                 }
                             }
+                        }
+                        else 
+                        {
+                            if (!Properties.Settings.Default.SkipUnknown)
+                            {
+                                string unknownName = Path.Combine(folder, "unknown", "mainuncompressed", $"{i}.dat");
+                                Directory.CreateDirectory(Path.GetDirectoryName(unknownName));
+                                IO.ReadWriteData(blobsetContent_br, unknownName);
+                                progress = Path.Combine("unknown", "mainuncompressed", $"{i}.dat");
+                            }
+                            break;
                         }
                     }
 
