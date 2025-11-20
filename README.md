@@ -7,14 +7,24 @@ Extract and Modify BigAnt games blobset files.
 ![Download Count](https://img.shields.io/github/downloads/Wouldubeinta/Blobset-Tools/total.svg)
 
 # How to Use:
-
-**Important:** 
-
-> Before use, make sure you make a steam backup of the game if you have
-> enough space on your hard drive. It just saves time doing a **Verify
-> Integrity Of Game Files** just in case something goes wrong with the
-> Blobset Tools. If it's the older games from AFL Live to RLL4, then you
-> don't need to do this.
+ 
+> # **$$\color{red}Important:$$**
+> 
+> **Make sure u have a fresh game installation without mods and do the following.**
+> 
+> Now I've added a Restore Backup Files, used for restoring the original files. You will need to use this before updating the game, if there is a game update.
+> 
+> This will only work properly if u do the following -
+> 
+> In Steam click on **(Steam)** on the top left corner, click on **(Settings)** then go to Downloads. Where it's got **(Update to installed games)** change it to **(Only update at game launch)**.
+> 
+> From now on, only run the game from inside steam, not the desktop icon, this will prevent the game from updating automatically.
+>
+> If you load up Steam and the game has a **(Update)**, Open the Blobset Tools go to **(Options)** and click on **(Restore Backup Files)**. Now you can update the game and then in the Blobset Tools, go to **(Options->Update File Mapping Data)**.
+>
+> If that fails, u need to run **(Verify Integrity Of Game Files)** so the games is fresh and start again.
+>
+> If it's the older games from AFL Live to RLL4, then you don't need to do this.
 
 Ok, Pick your game that you want to mod.
 
