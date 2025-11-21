@@ -750,7 +750,7 @@ namespace Blobset_Tools
                                         Mini_TXPK mini_TXPK = new();
                                         mini_TXPK.Deserialize(blobsetContent_br);
 
-                                        if (Properties.Settings.Default.GameID == (int)Enums.Game.RL26)
+                                        if (Properties.Settings.Default.GameID > 15)
                                             mini_TXPK.DDSFilePath = mini_TXPK.DDSFilePath.Replace(".badds", ".dds");
 
                                         string ddsFilePath = mini_TXPK.DDSFilePath.Replace("convant2-temp-intermediate/", "").Replace("/", @"\");
@@ -853,7 +853,7 @@ namespace Blobset_Tools
                                         Mini_TXPK mini_TXPK = new();
                                         mini_TXPK.Deserialize(blobsetContent_br);
 
-                                        if (Properties.Settings.Default.GameID == (int)Enums.Game.RL26)
+                                        if (Properties.Settings.Default.GameID > 15)
                                             mini_TXPK.DDSFilePath = mini_TXPK.DDSFilePath.Replace(".badds", ".dds");
 
                                         string ddsFilePath = mini_TXPK.DDSFilePath.Replace("convant2-temp-intermediate/", "").Replace("/", @"\");
@@ -1071,7 +1071,7 @@ namespace Blobset_Tools
 
                                             if (minTxpk_br != null) { minTxpk_br.Close(); minTxpk_br = null; }
 
-                                            if (Properties.Settings.Default.GameID == (int)Enums.Game.RL26)
+                                            if (Properties.Settings.Default.GameID > 15)
                                                 mini_TXPK.DDSFilePath = mini_TXPK.DDSFilePath.Replace(".badds", ".dds");
 
                                             string ddsFilePath = mini_TXPK.DDSFilePath.Replace("convant2-temp-intermediate/", "").Replace("/", @"\");

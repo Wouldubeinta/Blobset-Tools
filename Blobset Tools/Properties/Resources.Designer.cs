@@ -63,6 +63,16 @@ namespace Blobset_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap bank_32 {
+            get {
+                object obj = ResourceManager.GetObject("bank_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap Blobset_Tools {
             get {
                 object obj = ResourceManager.GetObject("Blobset_Tools", resourceCulture);
@@ -73,9 +83,29 @@ namespace Blobset_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap bmf_32 {
+            get {
+                object obj = ResourceManager.GetObject("bmf_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap bnk_32 {
             get {
                 object obj = ResourceManager.GetObject("bnk_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap bsb_32 {
+            get {
+                object obj = ResourceManager.GetObject("bsb_32", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -133,6 +163,16 @@ namespace Blobset_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap fev1_32 {
+            get {
+                object obj = ResourceManager.GetObject("fev1_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap file_32 {
             get {
                 object obj = ResourceManager.GetObject("file_32", resourceCulture);
@@ -156,6 +196,16 @@ namespace Blobset_Tools.Properties {
         internal static System.Drawing.Bitmap folder_32 {
             get {
                 object obj = ResourceManager.GetObject("folder_32", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap fsb_32 {
+            get {
+                object obj = ResourceManager.GetObject("fsb_32", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

@@ -196,4 +196,19 @@
   <data name="restore_backup_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\restore_backup_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="bank_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\bank_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="bmf_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\bmf_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="bsb_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\bsb_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="fev1_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\fev1_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="fsb_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\fsb_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
 </root>

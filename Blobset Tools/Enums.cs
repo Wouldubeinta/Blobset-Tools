@@ -39,7 +39,7 @@
             TXPK = 1415073867,
             WiseBNK = 1145588546,
             WiseWEM = 1179011410,
-            WAV = 1380533830
+            WAV = 1380533830 // RLL2 - bigendian
         }
 
         public enum Game
@@ -67,6 +67,14 @@
         public enum BlobsetVersion
         {
             v1, v2, v3, v4
+        }
+
+        public enum DDSType 
+        {
+            DXT1,
+            DXT1_Alpha,
+            DXT5,
+            Uncompressed
         }
     }
 }

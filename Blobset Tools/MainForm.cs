@@ -110,11 +110,18 @@ namespace Blobset_Tools
                 return;
 
             ImageList myImageList = new();
+            myImageList.Images.Add(Properties.Resources.file_32);
             myImageList.Images.Add(Properties.Resources.dds_32);
             myImageList.Images.Add(Properties.Resources.txpk_32);
             myImageList.Images.Add(Properties.Resources.m3mp_32);
             myImageList.Images.Add(Properties.Resources.wem_32);
             myImageList.Images.Add(Properties.Resources.bnk_32);
+            myImageList.Images.Add(Properties.Resources.bank_32);
+            myImageList.Images.Add(Properties.Resources.fsb_32);
+            myImageList.Images.Add(Properties.Resources.fev1_32);
+            myImageList.Images.Add(Properties.Resources.wav_32);
+            myImageList.Images.Add(Properties.Resources.bmf_32);
+            myImageList.Images.Add(Properties.Resources.bsb_32);
             myImageList.Images.Add(Properties.Resources.dat_32);
 
             files_listView.SmallImageList = myImageList;
@@ -133,20 +140,41 @@ namespace Blobset_Tools
 
                 switch(ext) 
                 {
-                    case ".txpk":
+                    case ".dds":
                         icon = 1;
                         break;
-                    case ".m3mp":
+                    case ".txpk":
                         icon = 2;
                         break;
-                    case ".wem":
+                    case ".m3mp":
                         icon = 3;
                         break;
-                    case ".bnk":
+                    case ".wem":
                         icon = 4;
                         break;
-                    case ".dat":
+                    case ".bnk":
                         icon = 5;
+                        break;
+                    case ".bank":
+                        icon = 6;
+                        break;
+                    case ".fsb":
+                        icon = 7;
+                        break;
+                    case ".fev1":
+                        icon = 8;
+                        break;
+                    case ".wav":
+                        icon = 9;
+                        break;
+                    case ".bmf":
+                        icon = 10;
+                        break;
+                    case ".bsb":
+                        icon = 11;
+                        break;
+                    case ".dat":
+                        icon = 12;
                         break;
                     default:
                         icon = 0;
@@ -237,12 +265,20 @@ namespace Blobset_Tools
                     case ".bnk":
                         UiFileTypes.Wise_BNK(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion);
                         break;
-                    case ".dat":
-                        UiFileTypes.DAT(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion);
-                        break;
                     case ".bank":
                         break;
                     case ".fsb":
+                        break;
+                    case ".fev1":
+                        break;
+                    case ".wav":
+                        break;
+                    case ".bsb":
+                        break;
+                    case ".bmf":
+                        break;
+                    case ".dat":
+                        UiFileTypes.DAT(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion);
                         break;
                 }
             }
