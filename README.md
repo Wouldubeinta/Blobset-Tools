@@ -44,8 +44,6 @@ Choose the game you want to mod:
 
 On your first use, run **Update File Mapping Data** from the Options menu and allow it to complete.
 
-![Image 2](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/2.jpg?raw=true)
-
 ---
 
 ## Working with Blobset Files
@@ -54,6 +52,10 @@ On your first use, run **Update File Mapping Data** from the Options menu and al
 
 - To open a version one blobset file, select **File > Open**.
 - To return to the main game selection screen, select **File > Game Selection**.
+
+![Image 2](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/2.jpg?raw=true)
+
+---
 
 On the left side, you will see the folder layout. Select a folder to view its contents on the right.
 
@@ -65,15 +67,17 @@ On the left side, you will see the folder layout. Select a folder to view its co
   - `.m3mp` files in the M3MP Viewer
   - `.dat` files in the Hex Viewer
 
+![Image 3](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/3.jpg?raw=true)
+
 - **Right-click** a file to save it to your desired location.
 
-![Image 3](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/3.jpg?raw=true)
+![Image 4](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/4.jpg?raw=true)
 
 ### Image Manipulation
 
-- Right-click the picture box on the right side to flip the image.
+- Right-click the picture box on the right side to flip the image or change the alpha.
 
-![Image 4](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/4.jpg?raw=true)
+![Image 5](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/5.jpg?raw=true)
 
 ### Extracting Files
 
@@ -168,7 +172,7 @@ To create an M3MP file, follow these steps:
 ## Options
 
 ![Image 12](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/12.jpg?raw=true)
-![Image 13](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/12.jpg?raw=true)
+![Image 13](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/13.jpg?raw=true)
 
 - **Update File Mapping Data**: This option maps all files in the blobset, allowing Blobset Tools to recognize each file. This process will run automatically the first time you load Blobset Tools if the latest mapping file is not available. Additionally, if the game has an update, Blobset Tools will execute this automatically upon launch.
 
