@@ -724,21 +724,21 @@ namespace Concentus.Common
         [MethodImpl(INLINE_ATTR)]
         internal static uint celt_udiv(uint n, uint d)
         {
-            Inlines.OpusAssert(d > 0);
+            OpusAssert(d > 0);
             return n / d;
         }
 
         [MethodImpl(INLINE_ATTR)]
         internal static int celt_udiv(int n, int d)
         {
-            Inlines.OpusAssert(d > 0);
+            OpusAssert(d > 0);
             return n / d;
         }
 
         [MethodImpl(INLINE_ATTR)]
         internal static int celt_sudiv(int n, int d)
         {
-            Inlines.OpusAssert(d > 0);
+            OpusAssert(d > 0);
             return n / d;
         }
 
@@ -753,7 +753,7 @@ namespace Concentus.Common
         [MethodImpl(INLINE_ATTR)]
         internal static int celt_ilog2(int x)
         {
-            Inlines.OpusAssert(x > 0, "celt_ilog2() only defined for strictly positive numbers");
+            OpusAssert(x > 0, "celt_ilog2() only defined for strictly positive numbers");
 #if DEBUG_MACROS
             if (x <= 0)
                 throw new ArgumentException("celt_ilog2() only defined for strictly positive numbers");
@@ -1171,7 +1171,7 @@ namespace Concentus.Common
         internal static uint silk_MUL_uint(uint a32, uint b32)
         {
             uint ret = a32 * b32;
-            Inlines.OpusAssert(ret == a32 * (ulong)b32);
+            OpusAssert(ret == a32 * (ulong)b32);
             return ret;
         }
 
@@ -1179,7 +1179,7 @@ namespace Concentus.Common
         internal static int silk_MLA(int a32, int b32, int c32)
         {
             int ret = silk_ADD32((a32), ((b32) * (c32)));
-            Inlines.OpusAssert(ret == a32 + b32 * (long)c32);
+            OpusAssert(ret == a32 + b32 * (long)c32);
             return ret;
         }
 
@@ -1188,7 +1188,7 @@ namespace Concentus.Common
         internal static int silk_MLA_uint(uint a32, uint b32, uint c32)
         {
             uint ret = silk_ADD32((a32), ((b32) * (c32)));
-            Inlines.OpusAssert(ret == a32 + b32 * (long)c32);
+            OpusAssert(ret == a32 + b32 * (long)c32);
             return (int)ret;
         }
 
@@ -1373,7 +1373,7 @@ namespace Concentus.Common
         internal static long silk_ADD64(long a, long b)
         {
             long ret = a + b;
-            Inlines.OpusAssert(ret == silk_ADD_SAT64(a, b));
+            OpusAssert(ret == silk_ADD_SAT64(a, b));
             return ret;
         }
 
@@ -1382,7 +1382,7 @@ namespace Concentus.Common
         internal static short silk_SUB16(short a, short b)
         {
             short ret = (short)(a - b);
-            Inlines.OpusAssert(ret == silk_SUB_SAT16(a, b));
+            OpusAssert(ret == silk_SUB_SAT16(a, b));
             return ret;
         }
 
@@ -1391,7 +1391,7 @@ namespace Concentus.Common
         internal static int silk_SUB32(int a, int b)
         {
             int ret = a - b;
-            Inlines.OpusAssert(ret == silk_SUB_SAT32(a, b));
+            OpusAssert(ret == silk_SUB_SAT32(a, b));
             return ret;
         }
 
@@ -1400,7 +1400,7 @@ namespace Concentus.Common
         internal static long silk_SUB64(long a, long b)
         {
             long ret = a - b;
-            Inlines.OpusAssert(ret == silk_SUB_SAT64(a, b));
+            OpusAssert(ret == silk_SUB_SAT64(a, b));
             return ret;
         }
 
@@ -1434,7 +1434,7 @@ namespace Concentus.Common
         internal static short silk_ADD_SAT16(short a16, short b16)
         {
             short res = (short)silk_SAT16(silk_ADD32(a16, (b16)));
-            Inlines.OpusAssert(res == silk_SAT16(a16 + b16));
+            OpusAssert(res == silk_SAT16(a16 + b16));
             return res;
         }
 
@@ -1444,7 +1444,7 @@ namespace Concentus.Common
             int res = (unchecked(((uint)(a32) + (uint)(b32)) & 0x80000000) == 0 ?
                 ((((a32) & (b32)) & 0x80000000) != 0 ? int.MinValue : (a32) + (b32)) :
                 ((((a32) | (b32)) & 0x80000000) == 0 ? int.MaxValue : (a32) + (b32)));
-            Inlines.OpusAssert(res == silk_SAT32(a32 + (long)b32));
+            OpusAssert(res == silk_SAT32(a32 + (long)b32));
             return res;
         }
 
@@ -1480,7 +1480,7 @@ namespace Concentus.Common
         internal static short silk_SUB_SAT16(short a16, short b16)
         {
             short res = (short)silk_SAT16(silk_SUB32(a16, (b16)));
-            Inlines.OpusAssert(res == silk_SAT16(a16 - b16));
+            OpusAssert(res == silk_SAT16(a16 - b16));
             return res;
         }
 
@@ -1490,7 +1490,7 @@ namespace Concentus.Common
             int res = (unchecked(((uint)(a32) - (uint)(b32)) & 0x80000000) == 0 ?
                 (((a32) & ((b32) ^ 0x80000000) & 0x80000000) != 0 ? int.MinValue : (a32) - (b32)) :
                 ((((a32) ^ 0x80000000) & (b32) & 0x80000000) != 0 ? int.MaxValue : (a32) - (b32)));
-            Inlines.OpusAssert(res == silk_SAT32(a32 - (long)b32));
+            OpusAssert(res == silk_SAT32(a32 - (long)b32));
             return res;
         }
 
@@ -2091,8 +2091,8 @@ namespace Concentus.Common
             int a_headrm, b_headrm, lshift;
             int b32_inv, a32_nrm, b32_nrm, result;
 
-            Inlines.OpusAssert(b32 != 0);
-            Inlines.OpusAssert(Qres >= 0);
+            OpusAssert(b32 != 0);
+            OpusAssert(Qres >= 0);
 
             /* Compute number of bits head room and normalize inputs */
             a_headrm = silk_CLZ32(silk_abs(a32)) - 1;
@@ -2145,8 +2145,8 @@ namespace Concentus.Common
             int b_headrm, lshift;
             int b32_inv, b32_nrm, err_Q32, result;
 
-            Inlines.OpusAssert(b32 != 0);
-            Inlines.OpusAssert(Qres > 0);
+            OpusAssert(b32 != 0);
+            OpusAssert(Qres > 0);
 
             /* Compute number of bits head room and normalize input */
             b_headrm = silk_CLZ32(silk_abs(b32)) - 1;
@@ -2479,8 +2479,8 @@ namespace Concentus.Common
         {
             int i;
 
-            Inlines.OpusAssert(ifact_Q2 >= 0);
-            Inlines.OpusAssert(ifact_Q2 <= 4);
+            OpusAssert(ifact_Q2 >= 0);
+            OpusAssert(ifact_Q2 <= 4);
 
             for (i = 0; i < d; i++)
             {
@@ -2557,7 +2557,7 @@ namespace Concentus.Common
             int i;
             int xy = 0;
             for (i = 0; i < len; i++)
-                xy = Inlines.MAC16_16(xy, inVec1[inVec1_ptr + i], inVec2[inVec2_ptr + i]);
+                xy = MAC16_16(xy, inVec1[inVec1_ptr + i], inVec2[inVec2_ptr + i]);
             return xy;
         }
 
@@ -2571,7 +2571,7 @@ namespace Concentus.Common
             int i;
             int xy = 0;
             for (i = inVec_ptr; i < inVec_ptr + len; i++)
-                xy = Inlines.MAC16_16(xy, inVec[i], inVec[i]);
+                xy = MAC16_16(xy, inVec[i], inVec[i]);
             return xy;
         }
 

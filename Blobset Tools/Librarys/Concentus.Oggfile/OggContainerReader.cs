@@ -30,7 +30,7 @@ namespace Concentus.Oggfile
         /// </summary>
         public int[] StreamSerials
         {
-            get { return System.Linq.Enumerable.ToArray<int>(_packetReaders.Keys); }
+            get { return Enumerable.ToArray(_packetReaders.Keys); }
         }
 
         /// <summary>

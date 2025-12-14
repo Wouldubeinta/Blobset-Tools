@@ -38,6 +38,7 @@
             toolStripComboBox = new ToolStripComboBox();
             contextMenuStrip1 = new ContextMenuStrip(components);
             flipImageToolStripMenuItem = new ToolStripMenuItem();
+            alphaToolStripMenuItem = new ToolStripMenuItem();
             extractToolStripMenuItem = new ToolStripMenuItem();
             pngFileToolStripMenuItem = new ToolStripMenuItem();
             saveFileDialog = new SaveFileDialog();
@@ -108,9 +109,9 @@
             // 
             // contextMenuStrip1
             // 
-            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { flipImageToolStripMenuItem, extractToolStripMenuItem });
+            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { flipImageToolStripMenuItem, alphaToolStripMenuItem, extractToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
-            contextMenuStrip1.Size = new Size(130, 48);
+            contextMenuStrip1.Size = new Size(130, 70);
             // 
             // flipImageToolStripMenuItem
             // 
@@ -119,6 +120,17 @@
             flipImageToolStripMenuItem.Size = new Size(129, 22);
             flipImageToolStripMenuItem.Text = "Flip Image";
             flipImageToolStripMenuItem.Click += flipImageToolStripMenuItem_Click;
+            // 
+            // alphaToolStripMenuItem
+            // 
+            alphaToolStripMenuItem.Checked = true;
+            alphaToolStripMenuItem.CheckOnClick = true;
+            alphaToolStripMenuItem.CheckState = CheckState.Checked;
+            alphaToolStripMenuItem.Image = Properties.Resources.alpha_32;
+            alphaToolStripMenuItem.Name = "alphaToolStripMenuItem";
+            alphaToolStripMenuItem.Size = new Size(129, 22);
+            alphaToolStripMenuItem.Text = "Alpha";
+            alphaToolStripMenuItem.Click += alphaToolStripMenuItem_Click;
             // 
             // extractToolStripMenuItem
             // 
@@ -174,5 +186,6 @@
         private ToolStripMenuItem extractToolStripMenuItem;
         private ToolStripMenuItem pngFileToolStripMenuItem;
         private SaveFileDialog saveFileDialog;
+        private ToolStripMenuItem alphaToolStripMenuItem;
     }
 }

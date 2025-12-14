@@ -860,7 +860,7 @@ namespace Concentus.Structs
             Span<byte> outputBuffer,
             int max_data_bytes)
         {
-            int ret = opus_multistream_encode_native<short>(opus_copy_channel_in_short,
+            int ret = opus_multistream_encode_native(opus_copy_channel_in_short,
                pcm, frame_size, outputBuffer, max_data_bytes, 16, Downmix.downmix_int, 0);
 
             if (ret < 0)
@@ -894,7 +894,7 @@ namespace Concentus.Structs
             Span<byte> outputBuffer,
             int max_data_bytes)
         {
-            int ret = opus_multistream_encode_native<float>(opus_copy_channel_in_float,
+            int ret = opus_multistream_encode_native(opus_copy_channel_in_float,
                pcm, frame_size, outputBuffer, max_data_bytes, 16, Downmix.downmix_float, 1);
 
             if (ret < 0)

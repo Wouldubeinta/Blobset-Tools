@@ -360,7 +360,7 @@ namespace Concentus.Structs
               int frame_size,
               bool decode_fec)
         {
-            int ret = opus_multistream_decode_native<short>(data,
+            int ret = opus_multistream_decode_native(data,
                 out_pcm, opus_copy_channel_out_short, frame_size, decode_fec ? 1 : 0, 0);
 
             if (ret < 0)
@@ -397,7 +397,7 @@ namespace Concentus.Structs
               int frame_size,
               bool decode_fec)
         {
-            int ret = opus_multistream_decode_native<float>(data,
+            int ret = opus_multistream_decode_native(data,
                 out_pcm, opus_copy_channel_out_float, frame_size, decode_fec ? 1 : 0, 0);
 
             if (ret < 0)

@@ -1,4 +1,8 @@
-﻿namespace Blobset_Tools
+﻿using Blobset_Tools.Properties;
+using BlobsetIO;
+using System.Reflection;
+
+namespace Blobset_Tools
 {
     public partial class GameSelection : Form
     {
@@ -7,405 +11,826 @@
             InitializeComponent();
         }
 
-        private void affl_button_Click(object sender, EventArgs e)
+        private IniFile? settingsIni = null;
+        private int platform = 0;
+        private int defaultGame = 0;
+
+        private void GameSelection_Load(object sender, EventArgs e)
         {
-            //MessageBox.Show("Not Implemented yet!!!", "AFL Live", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Global.currentPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            GameSelection_ComboBox.Items.AddRange(GameList);
+            settingsIni = new IniFile(Path.Combine(Global.currentPath, "Settings.ini"));
+            defaultGame = Convert.ToInt32(settingsIni.Read("DefaultGame", "Settings"));
+            GameSelection_ComboBox.SelectedIndex = defaultGame;
+            platform = Convert.ToInt32(settingsIni.Read("Platform", "Settings"));
+            Platform_ComboBox.SelectedIndex = 0;
+        }
 
-            Properties.Settings.Default.GameID = (int)Enums.Game.AFLL;
-            Properties.Settings.Default.GameName = "AFL Live";
-            Properties.Settings.Default.SteamGameID = 0;
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v1;
+        private void load_button_Click(object sender, EventArgs e)
+        {
+            ofd.Filter = BlobsetPlatformExt();
+            settingsIni.Write("Platform", Platform_ComboBox.SelectedIndex.ToString(), "Settings");
+            settingsIni.Write("DefaultGame", GameSelection_ComboBox.SelectedIndex.ToString(), "Settings");
+            Global.platforms = GetPlatforms();
+            Global.isBigendian = Global.platforms > Enums.Platforms.Windows;
 
-            if (File.Exists(@"C:\Program Files (x86)\Tru Blu Games\AFL Live\data-0.blobset.pc"))
-                Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Tru Blu Games\AFL Live\data-0.blobset.pc";
-            else
+            switch (GameSelection_ComboBox.SelectedIndex)
+            {
+                case 0:
+                    AFFL();
+                    break;
+                case 1:
+                    RLL2();
+                    break;
+                case 2:
+                    RLL2WCE();
+                    break;
+                case 3:
+                    DBC14();
+                    break;
+                case 4:
+                    RLL3();
+                    break;
+                case 5:
+                    TCC();
+                    break;
+                case 6:
+                    CPL16();
+                    break;
+                case 7:
+                    DB17();
+                    break;
+                case 8:
+                    MTBOD();
+                    break;
+                case 9:
+                    AC();
+                    break;
+                case 10:
+                    RLL4();
+                    break;
+                case 11:
+                    AOIT();
+                    break;
+                case 12:
+                    CPL18();
+                    break;
+                case 13:
+                    C19();
+                    break;
+                case 14:
+                    AOT2();
+                    break;
+                case 15:
+                    TWT2();
+                    break;
+                case 16:
+                    C22();
+                    break;
+                case 17:
+                    AFL23();
+                    break;
+                case 18:
+                    C24();
+                    break;
+                case 19:
+                    TB();
+                    break;
+                case 20:
+                    R25();
+                    break;
+                case 21:
+                    AFL26();
+                    break;
+                case 22:
+                    RL26();
+                    break;
+                case 23:
+                    C26();
+                    break;
+            }
+        }
+
+        private void AFFL()
+        {
+            string iniPath = GameInfo("AFL Live");
+
+            if (!File.Exists(Global.gameInfo.GameLocation))
             {
                 if (ofd.ShowDialog() == DialogResult.OK)
-                    Properties.Settings.Default.GameLocation = ofd.FileName;
+                {
+                    Global.gameInfo.GameLocation = ofd.FileName;
+                    IniFile gameInfoIni = new(iniPath);
+                    gameInfoIni.Write("GameLocation", ofd.FileName, "GameInfo");
+                }
                 else
                 {
-                    Application.Exit();
+                    ofd.Dispose();
                     return;
                 }
+
                 ofd.Dispose();
             }
 
-            Properties.Settings.Default.Save();
             HideAndCloseForm();
         }
 
-        private void rll2_button_Click(object sender, EventArgs e)
+        private void RLL2()
         {
-            //MessageBox.Show("Not Implemented yet!!!", "Rugby League Live 2 PS3", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            string iniPath = GameInfo("Rugby League Live 2");
 
-            Properties.Settings.Default.GameID = (int)Enums.Game.RLL2;
-            Properties.Settings.Default.GameName = "Rugby League Live 2 PS3";
-            Properties.Settings.Default.SteamGameID = 0;
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v1;
-
-            if (File.Exists(@"F:\GAMES\BLES01472-[Rugby League Live 2]\PS3_GAME\USRDIR\data-0.blobset.ps3")) 
-            {
-                Properties.Settings.Default.GameLocation = @"F:\GAMES\BLES01472-[Rugby League Live 2]\PS3_GAME\USRDIR\data-0.blobset.ps3";
-                Properties.Settings.Default.Save();
-            }
-
-            if (!File.Exists(Properties.Settings.Default.GameLocation)) 
+            if (!File.Exists(Global.gameInfo.GameLocation))
             {
                 if (ofd.ShowDialog() == DialogResult.OK)
-                    Properties.Settings.Default.GameLocation = ofd.FileName;
+                {
+                    Global.gameInfo.GameLocation = ofd.FileName;
+                    IniFile gameInfoIni = new(iniPath);
+                    gameInfoIni.Write("GameLocation", ofd.FileName, "GameInfo");
+                }
                 else
                 {
-                    Application.Exit();
+                    ofd.Dispose();
                     return;
                 }
 
                 ofd.Dispose();
             }
 
-            Properties.Settings.Default.Save();
             HideAndCloseForm();
         }
 
-        private void dbc14_button_Click(object sender, EventArgs e)
+        private void RLL2WCE()
         {
-            //MessageBox.Show("Not Implemented yet!!!", "Don Bradman Cricket 14", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            string iniPath = GameInfo("Rugby League Live 2 - World Cup Edition");
 
-            Properties.Settings.Default.GameID = (int)Enums.Game.DBC14;
-            Properties.Settings.Default.GameName = "Don Bradman Cricket 14";
-            Properties.Settings.Default.SteamGameID = 216260;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Don Bradman Cricket 14\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v1;
-            Properties.Settings.Default.Save();
-
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
+            if (!File.Exists(Global.gameInfo.GameLocation))
             {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data-0.blobset.pc");
+                if (ofd.ShowDialog() == DialogResult.OK)
+                {
+                    Global.gameInfo.GameLocation = ofd.FileName;
+                    IniFile gameInfoIni = new(iniPath);
+                    gameInfoIni.Write("GameLocation", ofd.FileName, "GameInfo");
+                }
+                else
+                {
+                    ofd.Dispose();
+                    return;
+                }
+
+                ofd.Dispose();
             }
 
             HideAndCloseForm();
         }
 
-        private void rll3_button_Click(object sender, EventArgs e)
+        private void DBC14()
         {
-            //MessageBox.Show("Not Implemented yet!!!", "Rugby League 3", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            string iniPath = GameInfo("Don Bradman Cricket 14");
+            bool error = false;
 
-            Properties.Settings.Default.GameID = (int)Enums.Game.RLL3;
-            Properties.Settings.Default.GameName = "Rugby League 3";
-            Properties.Settings.Default.SteamGameID = 312920;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Rugby League 3\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v1;
-            Properties.Settings.Default.Save();
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data-0.blobset.pc"), iniPath);
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data-0.blobset.pc");
-            }
+            if (error)
+                return;
 
             HideAndCloseForm();
         }
 
-        private void db17_button_Click(object sender, EventArgs e)
+        private void RLL3()
         {
-            MessageBox.Show("Not Implemented yet!!!", "Don Bradman Cricket 17", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            string iniPath = GameInfo("Rugby League Live 3");
+            bool error = false;
 
-            /*
-            Properties.Settings.Default.GameID = (int)Enums.Game.DBC17;
-            Properties.Settings.Default.GameName = "Don Bradman Cricket 17";
-            Properties.Settings.Default.SteamGameID = 464850;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Don Bradman Cricket 17\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v2;
-            Properties.Settings.Default.Save();
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data-0.blobset.pc"), iniPath);
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data-0.blobset.pc");
-            }
+            if (error)
+                return;
 
             HideAndCloseForm();
-            */
         }
 
-        private void ac_button_Click(object sender, EventArgs e)
+        private void TCC()
+        {
+            string iniPath = GameInfo("TableTop Cricket");
+            bool error = false;
+
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
+
+            HideAndCloseForm();
+        }
+
+        private void CPL16()
+        {
+            string iniPath = GameInfo("Casey Powell Lacrosse 16");
+            bool error = false;
+
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
+
+            HideAndCloseForm();
+        }
+
+        private void MTBOD()
+        {
+            string iniPath = GameInfo("Masquerade - The Baubles of Doom");
+            bool error = false;
+
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
+
+            HideAndCloseForm();
+        }
+
+        private void DB17()
+        {
+            string iniPath = GameInfo("Don Bradman Cricket 17");
+            bool error = false;
+
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
+
+            HideAndCloseForm();
+        }
+
+        private void AC()
         {
             MessageBox.Show("Not Implemented yet!!!", "Ashes Cricket", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             /*
-            Properties.Settings.Default.GameID = (int)Enums.Game.AC;
-            Properties.Settings.Default.GameName = "Ashes Cricket";
-            Properties.Settings.Default.SteamGameID = 649640;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Ashes Cricket\data-0.blobset.pc"
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v2;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("Ashes Cricket");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
             */
         }
 
-        private void rll4_button_Click(object sender, EventArgs e)
+        private void RLL4()
         {
             MessageBox.Show("Not Implemented yet!!!", "Rugby League Live 4", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             /*
-            Properties.Settings.Default.GameID = (int)Enums.Game.RLL4;
-            Properties.Settings.Default.GameName = "Rugby League Live 4";
-            Properties.Settings.Default.SteamGameID = 556480;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Rugby League Live 4\data-0.blobset.pc"
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v2;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("Rugby League Live 4");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
             */
         }
 
-        private void aoit_button_Click(object sender, EventArgs e)
+        private void AOIT()
         {
             MessageBox.Show("Not Implemented yet!!!", "AO International Tennis", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             /*
-            Properties.Settings.Default.GameID = (int)Enums.Game.AOIT;
-            Properties.Settings.Default.GameName = "AO International Tennis";
-            Properties.Settings.Default.SteamGameID = 758410;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\AO International Tennis\data\data-0.blobset.pc"
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v3;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("AO International Tennis");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
             */
         }
 
-        private void c19_button_Click(object sender, EventArgs e)
+        private void CPL18()
+        {
+            MessageBox.Show("Not Implemented yet!!!", "Casey Powell Lacrosse 18", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            /*
+            string iniPath = GameInfo("Casey Powell Lacrosse 18");
+            bool error = false;
+
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
+
+            HideAndCloseForm();
+            */
+        }
+
+        private void C19()
         {
             MessageBox.Show("Not Implemented yet!!!", "Cricket 19", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             /*
-            Properties.Settings.Default.GameID = (int)Enums.Game.C19;
-            Properties.Settings.Default.GameName = "Cricket 19";
-            Properties.Settings.Default.SteamGameID = 1028630;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Cricket 19\data\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v3;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("Cricket 19");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
             */
         }
 
-        private void ao2_button_Click(object sender, EventArgs e)
+        private void AOT2()
         {
-            Properties.Settings.Default.GameID = (int)Enums.Game.AOT2;
-            Properties.Settings.Default.GameName = "AO Tennis 2";
-            Properties.Settings.Default.SteamGameID = 1072500;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\AO Tennis 2\data\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v4;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("AO Tennis 2");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
         }
 
-        private void c22_button_Click(object sender, EventArgs e)
+        private void TWT2()
         {
-            Properties.Settings.Default.GameID = (int)Enums.Game.C22;
-            Properties.Settings.Default.GameName = "Cricket 22";
-            Properties.Settings.Default.SteamGameID = 1701380;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Cricket 22\data\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v4;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("Tennis World Tour 2");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
         }
 
-        private void afl23_button_Click(object sender, EventArgs e)
+        private void C22()
         {
-            Properties.Settings.Default.GameID = (int)Enums.Game.AFL23;
-            Properties.Settings.Default.GameName = "AFL 23";
-            Properties.Settings.Default.SteamGameID = 2337630;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\AFL 23\data\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v4;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("Cricket 22");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
         }
 
-        private void c24_button_Click(object sender, EventArgs e)
+        private void AFL23()
         {
-            Properties.Settings.Default.GameID = (int)Enums.Game.C24;
-            Properties.Settings.Default.GameName = "Cricket 24";
-            Properties.Settings.Default.SteamGameID = 2358260;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Cricket 24\data\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v4;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("AFL 23");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
         }
 
-        private void tb_button_Click(object sender, EventArgs e)
+        private void C24()
         {
-            Properties.Settings.Default.GameID = (int)Enums.Game.TB;
-            Properties.Settings.Default.GameName = "Tiebreak";
-            Properties.Settings.Default.SteamGameID = 2264340;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Tiebreak\data\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v4;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("Cricket 24");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
         }
 
-        private void r25_Click(object sender, EventArgs e)
+        private void TB()
         {
-            Properties.Settings.Default.GameID = (int)Enums.Game.R25;
-            Properties.Settings.Default.GameName = "Rugby 25";
-            Properties.Settings.Default.SteamGameID = 2340870;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Rugby 25\data\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v4;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("Tiebreak");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
         }
 
-        private void afl26_button_Click(object sender, EventArgs e)
+        private void R25()
         {
-            Properties.Settings.Default.GameID = (int)Enums.Game.AFL26;
-            Properties.Settings.Default.GameName = "AFL 26";
-            Properties.Settings.Default.SteamGameID = 3468640;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\AFL 26\data\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v4;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("Rugby 25");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
         }
 
-        private void rl26_button_Click(object sender, EventArgs e)
+        private void AFL26()
         {
-            Properties.Settings.Default.GameID = (int)Enums.Game.RL26;
-            Properties.Settings.Default.GameName = "Rugby League 26";
-            Properties.Settings.Default.SteamGameID = 3468660;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Rugby League\data\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v4;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("AFL 26");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(@"Rugby League\data\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
         }
 
-        private void c26_button_Click(object sender, EventArgs e)
+        private void RL26()
         {
-            Properties.Settings.Default.GameID = (int)Enums.Game.C26;
-            Properties.Settings.Default.GameName = "Cricket 26";
-            Properties.Settings.Default.SteamGameID = 3468650;
-            Properties.Settings.Default.GameLocation = @"C:\Program Files (x86)\Steam\steamapps\common\Cricket 26\data\data-0.blobset.pc";
-            Properties.Settings.Default.BlobsetVersion = (int)Enums.BlobsetVersion.v4;
-            Properties.Settings.Default.Save();
+            string iniPath = GameInfo("Rugby League 26");
+            bool error = false;
 
-            if (!File.Exists(Properties.Settings.Default.GameLocation))
-            {
-                GetGameLocation(Properties.Settings.Default.GameName + @"\data\data-0.blobset.pc");
-            }
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine("Rugby League", "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
 
             HideAndCloseForm();
         }
 
-        private void GetGameLocation(string game)
+        private void C26()
+        {
+            string iniPath = GameInfo("Cricket 26");
+            bool error = false;
+
+            if (!File.Exists(Global.gameInfo.GameLocation))
+                error = GetGameLocation(Path.Combine(Global.gameInfo.GameName, "data", "data-0.blobset.pc"), iniPath);
+
+            if (error)
+                return;
+
+            HideAndCloseForm();
+        }
+
+        private bool GetGameLocation(string game, string iniPath)
         {
             string steamLocation = UI.getSteamLocation();
+            IniFile iniFile = new(iniPath);
+            string gameLocation = Path.Combine(steamLocation, "steamapps", "common", game);
 
-            if (steamLocation != string.Empty)
+            // Check if the Steam location is valid
+            if (!string.IsNullOrEmpty(steamLocation) && File.Exists(gameLocation))
             {
-                string gameLocation = steamLocation + @"\steamapps\common\" + game;
-
-                if (File.Exists(gameLocation))
-                {
-                    Properties.Settings.Default.GameLocation = gameLocation;
-                    Properties.Settings.Default.Save();
-                }
-                else
-                {
-                    ofd.InitialDirectory = steamLocation + @"\steamapps\common";
-
-                    if (ofd.ShowDialog() == DialogResult.OK)
-                    {
-                        Properties.Settings.Default.GameLocation = ofd.FileName;
-                        Properties.Settings.Default.Save();
-                    }
-                    else
-                    {
-                        Application.Exit();
-                        return;
-                    }
-                    ofd.Dispose();
-                }
+                SetGameLocation(gameLocation, iniFile);
+                return false; // Game location found
             }
-            else
+
+            // If the game location is not found, prompt the user to select a file
+            return PromptUserForGameLocation(iniFile, steamLocation);
+        }
+
+        private void SetGameLocation(string location, IniFile iniFile)
+        {
+            Global.gameInfo.GameLocation = location;
+            iniFile.Write("GameLocation", location, "GameInfo");
+        }
+
+        private bool PromptUserForGameLocation(IniFile iniFile, string steamLocation)
+        {
+            if (!string.IsNullOrEmpty(steamLocation))
+                ofd.InitialDirectory = Path.Combine(steamLocation, "steamapps", "common");
+
+            if (ofd.ShowDialog() == DialogResult.OK)
             {
-                if (ofd.ShowDialog() == DialogResult.OK)
-                {
-                    Properties.Settings.Default.GameLocation = ofd.FileName;
-                    Properties.Settings.Default.Save();
-                }
-                else
-                {
-                    Application.Exit();
-                    return;
-                }
-                ofd.Dispose();
+                SetGameLocation(ofd.FileName, iniFile);
+                return false; // User selected a game location
             }
+            ofd.Dispose();
+            return true; // User canceled the dialog
+        }
+
+        private void GameSelection_comboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            switch (GameSelection_ComboBox.SelectedIndex)
+            {
+                case 0:
+                    load_button.Image = Resources.AFLL;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.AddRange(AllPlatforms);
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 1:
+                    load_button.Image = Resources.RLL2;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.AddRange(ConsolePlatforms);
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 2:
+                    load_button.Image = Resources.RLL2_WCE;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.AddRange(ConsolePlatforms);
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 3:
+                    load_button.Image = Resources.Don_Bradman_Cricket_14;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.AddRange(AllPlatforms);
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 4:
+                    load_button.Image = Resources.RLL3;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.AddRange(AllPlatforms);
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 5:
+                    load_button.Image = Resources.TTC;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.AddRange(AllPlatforms);
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 6:
+                    load_button.Image = Resources.CPL16;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 7:
+                    load_button.Image = Resources.Don_Bradman_Cricket_17;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 8:
+                    load_button.Image = Resources.MTBOD;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.AddRange(AllPlatforms);
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 9:
+                    load_button.Image = Resources.Ashes_Cricket;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 10:
+                    load_button.Image = Resources.RLL4;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 11:
+                    load_button.Image = Resources.AO_International_Tennis;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 12:
+                    load_button.Image = Resources.CPL18;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 13:
+                    load_button.Image = Resources.Cricket_19;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 14:
+                    load_button.Image = Resources.AO_Tennis_2;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 15:
+                    load_button.Image = Resources.TWT2;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 16:
+                    load_button.Image = Resources.Cricket_22;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 17:
+                    load_button.Image = Resources.AFL23;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 18:
+                    load_button.Image = Resources.Cricket_24;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 19:
+                    load_button.Image = Resources.Tiebreak;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 20:
+                    load_button.Image = Resources.Rugby_25;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 21:
+                    load_button.Image = Resources.AFL26;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 22:
+                    load_button.Image = Resources.RL26;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+                case 23:
+                    load_button.Image = Resources.Cricket_26;
+                    Platform_ComboBox.Items.Clear();
+                    Platform_ComboBox.Items.Add("Windows");
+                    Platform_ComboBox.SelectedIndex = 0;
+                    break;
+            }
+        }
+
+        private string GameInfo(string gameName)
+        {
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            string platformExt = platformDetails["PlatformExt"];
+
+            GameInfo gameInfo = new();
+            string iniPath = Path.Combine(Global.currentPath, "games", gameName, platformExt, "GameInfo.ini");
+            gameInfo.Deserialize(iniPath);
+            Global.gameInfo = gameInfo;
+            return iniPath;
+        }
+
+        private void Platform_ComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            switch (Platform_ComboBox.Items[Platform_ComboBox.SelectedIndex].ToString())
+            {
+                case "Windows":
+                    pictureBox1.Image = Resources.Windows;
+                    break;
+                case "Playstation 3":
+                    pictureBox1.Image = Resources.PS3;
+                    break;
+                case "Xbox 360":
+                    pictureBox1.Image = Resources.Xbox_360;
+                    break;
+            }
+        }
+
+        private void Platform_ComboBox_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            var items = Platform_ComboBox.Items;
+
+            string[] platforms = new string[items.Count];
+
+            int i = 0;
+
+            foreach (var item in items)
+            {
+                platforms[i] = item.ToString();
+                i++;
+            }
+
+            DrawItem(platforms, platform, e);
+        }
+
+        private void GameSelection_comboBox_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            DrawItem(GameList, defaultGame, e);
+        }
+
+        private void DrawItem(string[] list, int index, DrawItemEventArgs e)
+        {
+            Color backgroundColor = (e.State & DrawItemState.Selected) == DrawItemState.Selected
+                ? Color.Gold// Or any other color you prefer for selected item
+                : Color.Crimson; // Default background color
+
+            // Draw the background
+            using (SolidBrush backgroundBrush = new(backgroundColor))
+            {
+                e.Graphics.FillRectangle(backgroundBrush, e.Bounds);
+            }
+
+            // Draw each string in the array, using a different size, color,
+            // and font for each item.
+            Font myFont = new("RLFont", 14F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            e.Graphics.DrawString(e.Index == -1 ? list[index] : list[e.Index], myFont, Brushes.Black, new RectangleF(e.Bounds.X, e.Bounds.Y + 2, e.Bounds.Width, e.Bounds.Height));
+        }
+
+        private readonly string[] GameList =
+        {
+            "AFL Live (PC)(PS3)(360)",
+            "Rugby League Live 2 (PS3)(360)",
+            "Rugby League Live 2 - World Cup Edition (PS3)(360)",
+            "Don Bradman Cricket 14 (PC)(PS3)(360)",
+            "Rugby League Live 3 (PC)(PS3)(360)",
+            "TableTop Cricket (PC)(PS3)(360)",
+            "Casey Powell Lacrosse 16 (PC)",
+            "Don Bradman Cricket 17 (PC)",
+            "Masquerade - The Baubles of Doom (PC)(PS3)(360)",
+            "Ashes Cricket (PC)",
+            "Rugby League Live 4 (PC)",
+            "AO International Tennis (PC)",
+            "Casey Powell Lacrosse 18 (PC)",
+            "Cricket 19 (PC)",
+            "AO Tennis 2 (PC)",
+            "Tennis World Tour 2 (PC)",
+            "Cricket 22 (PC)",
+            "AFL 23 (PC)",
+            "Cricket 24 (PC)",
+            "Tiebreak (PC)",
+            "Rugby 25 (PC)",
+            "AFL 26 (PC)",
+            "Rugby League 26 (PC)",
+            "Cricket 26 (PC)"
+        };
+
+        private readonly string[] AllPlatforms =
+        {
+            "Windows",
+            "Playstation 3",
+            "Xbox 360"
+        };
+
+        private readonly string[] ConsolePlatforms = { "Playstation 3", "Xbox 360" };
+
+        private string BlobsetPlatformExt()
+        {
+            string ext = "Blobset File | *.pc";
+            string platform = Platform_ComboBox.Items[Platform_ComboBox.SelectedIndex].ToString();
+
+            switch (platform)
+            {
+                case "Playstation 3":
+                    ext = "Blobset File | *.ps3";
+                    break;
+                case "Xbox 360":
+                    ext = "Blobset File | *.xbox360";
+                    break;
+                default:
+                    ext = "Blobset File | *.pc";
+                    break;
+            }
+            return ext;
+        }
+
+        private Enums.Platforms GetPlatforms()
+        {
+            Enums.Platforms platforms = Enums.Platforms.Windows;
+            string platform = "Windows";
+
+            if (Platform_ComboBox.Items != null && Platform_ComboBox.SelectedIndex != -1)
+                platform = Platform_ComboBox.Items[Platform_ComboBox.SelectedIndex].ToString();
+
+            switch (platform)
+            {
+                case "Playstation 3":
+                    platforms = Enums.Platforms.PS3;
+                    break;
+                case "Xbox 360":
+                    platforms = Enums.Platforms.Xbox360;
+                    break;
+                default:
+                    platforms = Enums.Platforms.Windows;
+                    break;
+            }
+            return platforms;
         }
 
         private void HideAndCloseForm()

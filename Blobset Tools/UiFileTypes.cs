@@ -1,8 +1,5 @@
 ﻿using BlobsetIO;
-using Microsoft.VisualBasic;
-using System;
 using System.Media;
-using System.Windows.Forms;
 using WEMSharp;
 using static Blobset_Tools.Enums;
 
@@ -11,17 +8,31 @@ namespace Blobset_Tools
     internal class UiFileTypes
     {
         #region "DDS"
-        public static void DDS(RichTextBox fileInfo_richTextBox, string filePath, PictureBox dds_pictureBox, int blobsetVersion)
+        public static void DDS(RichTextBox fileInfo_richTextBox, string filePath, PictureBox dds_pictureBox, int blobsetVersion, bool isAlpha, bool isFlipped)
         {
             var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
+
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            //string platform = platformDetails["Platform"];
+            string platformExt = platformDetails["PlatformExt"];
 
             Structs.DDSInfo ddsInfo = new();
             byte[] ddsData = blobsetVersion > 1 ? UI.GetDDSData_V3_V4(Global.filelist) : UI.GetDDSData_V1_V2(Global.filelist);
 
             if (ddsData == null) return;
 
-            Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo);
-            if (bitmap != null) dds_pictureBox.Image = bitmap;
+            Bitmap bitmap = UI.DDStoBitmap(ddsData, isAlpha, ref ddsInfo);
+
+            if (bitmap != null)
+            {
+                dds_pictureBox.Image = bitmap;
+
+                if (isFlipped)
+                {
+                    dds_pictureBox.Image.RotateFlip(RotateFlipType.Rotate180FlipX);
+                    dds_pictureBox.Refresh();
+                }
+            }
 
             fileInfo_richTextBox.SelectionColor = Color.White;
             fileInfo_richTextBox.AppendText("*** DDS Location ***" + Environment.NewLine);
@@ -33,13 +44,13 @@ namespace Blobset_Tools
             fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
             fileInfo_richTextBox.AppendText($"FileIndex: {Global.filelist[Global.fileIndex].BlobsetIndex}{Environment.NewLine}");
 
-            if (Properties.Settings.Default.BlobsetVersion == (int)BlobsetVersion.v4)
+            if (blobsetVersion == (int)BlobsetVersion.v4)
                 fileInfo_richTextBox.AppendText($"FileName: {filePath}{Environment.NewLine}");
             else
             {
                 fileInfo_richTextBox.AppendText($"FolderHash: {Global.filelist[Global.fileIndex].FolderHash}{Environment.NewLine}");
                 fileInfo_richTextBox.AppendText($"FileHash: {Global.filelist[Global.fileIndex].FileHash}{Environment.NewLine}");
-                fileInfo_richTextBox.AppendText($"Blobset Number: data-{blobsetHeaderData.BlobSetNumber}.blobset.pc{Environment.NewLine}");
+                fileInfo_richTextBox.AppendText($"Blobset Number: data-{blobsetHeaderData.BlobSetNumber}.blobset.{platformExt}{Environment.NewLine}");
             }
 
             if (blobsetVersion != (int)BlobsetVersion.v4)
@@ -74,6 +85,10 @@ namespace Blobset_Tools
             var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
             uint txpkSize = blobsetHeaderData.MainUnCompressedSize + blobsetHeaderData.VramUnCompressedSize;
 
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            //string platform = platformDetails["Platform"];
+            string platformExt = platformDetails["PlatformExt"];
+
             fileInfo_richTextBox.SelectionColor = Color.White;
             fileInfo_richTextBox.AppendText("*** TXPK Location ***" + Environment.NewLine);
             fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
@@ -83,7 +98,15 @@ namespace Blobset_Tools
             fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
             fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
             fileInfo_richTextBox.AppendText($"FileIndex: {Global.filelist[Global.fileIndex].BlobsetIndex}{Environment.NewLine}");
-            fileInfo_richTextBox.AppendText($"FileName: {filePath}{Environment.NewLine}");
+
+            if (blobsetVersion == (int)BlobsetVersion.v4)
+                fileInfo_richTextBox.AppendText($"FileName: {filePath}{Environment.NewLine}");
+            else
+            {
+                fileInfo_richTextBox.AppendText($"FolderHash: {Global.filelist[Global.fileIndex].FolderHash}{Environment.NewLine}");
+                fileInfo_richTextBox.AppendText($"FileHash: {Global.filelist[Global.fileIndex].FileHash}{Environment.NewLine}");
+                fileInfo_richTextBox.AppendText($"Blobset Number: data-{blobsetHeaderData.BlobSetNumber}.blobset.{platformExt}{Environment.NewLine}");
+            }
 
             if (blobsetVersion != (int)BlobsetVersion.v4)
                 fileInfo_richTextBox.AppendText($"MainFinalOffset: {blobsetHeaderData.MainFinalOffSet}{Environment.NewLine}");
@@ -126,11 +149,10 @@ namespace Blobset_Tools
         {
             // Retrieve blobset metadata
             var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
-            uint MainFinalOffSet = blobsetHeaderData.MainFinalOffSet;
-            uint MainCompressedSize = blobsetHeaderData.MainCompressedSize;
-            uint MainUnCompressedSize = blobsetHeaderData.MainUnCompressedSize;
-            uint VramCompressedSize = blobsetHeaderData.VramCompressedSize;
-            uint VramUnCompressedSize = blobsetHeaderData.VramUnCompressedSize;
+
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            //string platform = platformDetails["Platform"];
+            string platformExt = platformDetails["PlatformExt"];
 
             // Display blobset information
             fileInfo_richTextBox.SelectionColor = Color.White;
@@ -141,7 +163,15 @@ namespace Blobset_Tools
             fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
             fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
             fileInfo_richTextBox.AppendText($"FileIndex: {Global.filelist[Global.fileIndex].BlobsetIndex}" + Environment.NewLine);
-            fileInfo_richTextBox.AppendText($"FileName: {filePath}" + Environment.NewLine);
+
+            if (blobsetVersion == (int)BlobsetVersion.v4)
+                fileInfo_richTextBox.AppendText($"FileName: {filePath}{Environment.NewLine}");
+            else
+            {
+                fileInfo_richTextBox.AppendText($"FolderHash: {Global.filelist[Global.fileIndex].FolderHash}{Environment.NewLine}");
+                fileInfo_richTextBox.AppendText($"FileHash: {Global.filelist[Global.fileIndex].FileHash}{Environment.NewLine}");
+                fileInfo_richTextBox.AppendText($"Blobset Number: data-{blobsetHeaderData.BlobSetNumber}.blobset.{platformExt}{Environment.NewLine}");
+            }
 
             if (blobsetVersion != (int)BlobsetVersion.v4)
                 fileInfo_richTextBox.AppendText($"MainFinalOffset: {blobsetHeaderData.MainFinalOffSet}{Environment.NewLine}");
@@ -156,7 +186,7 @@ namespace Blobset_Tools
             fileInfo_richTextBox.AppendText($"VramUnCompressedSize: {blobsetHeaderData.VramUnCompressedSize}{Environment.NewLine}{Environment.NewLine}");
 
             // Determine if the m3mp data is compressed
-            bool isCompressed = MainCompressedSize != MainUnCompressedSize;
+            bool isCompressed = blobsetHeaderData.MainCompressedSize != blobsetHeaderData.MainUnCompressedSize;
 
             // Read M3MP information based on blobset version
             M3MP m3mp = blobsetVersion > 2 ? ZSTD_IO.ReadM3MPInfo(filePath, isCompressed) : LZMA_IO.ReadM3MPInfo(Global.filelist);
@@ -167,7 +197,7 @@ namespace Blobset_Tools
             fileInfo_richTextBox.AppendText("*** M3MP Info ***" + Environment.NewLine);
             fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
             fileInfo_richTextBox.AppendText($"M3MP File Count: {m3mp.FilesCount}" + Environment.NewLine);
-            fileInfo_richTextBox.AppendText($"M3MP File Size: {Utilities.FormatSize(MainUnCompressedSize)}" + Environment.NewLine + Environment.NewLine);
+            fileInfo_richTextBox.AppendText($"M3MP File Size: {Utilities.FormatSize(blobsetHeaderData.MainUnCompressedSize)}" + Environment.NewLine + Environment.NewLine);
             fileInfo_richTextBox.SelectionColor = Color.White;
             fileInfo_richTextBox.AppendText("*** M3MP File List ***" + Environment.NewLine);
             fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
@@ -188,11 +218,10 @@ namespace Blobset_Tools
         {
             // Retrieve blobset metadata
             var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
-            uint MainFinalOffSet = blobsetHeaderData.MainFinalOffSet;
-            uint MainCompressedSize = blobsetHeaderData.MainCompressedSize;
-            uint MainUnCompressedSize = blobsetHeaderData.MainUnCompressedSize;
-            uint VramCompressedSize = blobsetHeaderData.VramCompressedSize;
-            uint VramUnCompressedSize = blobsetHeaderData.VramUnCompressedSize;
+
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            //string platform = platformDetails["Platform"];
+            string platformExt = platformDetails["PlatformExt"];
 
             // Display blobset information
             fileInfo_richTextBox.SelectionColor = Color.White;
@@ -205,15 +234,8 @@ namespace Blobset_Tools
             fileInfo_richTextBox.AppendText($"FileIndex: {Global.filelist[Global.fileIndex].BlobsetIndex}" + Environment.NewLine);
             fileInfo_richTextBox.AppendText($"FileName: {filePath}" + Environment.NewLine);
 
-            if (blobsetVersion != (int)BlobsetVersion.v4)
-                fileInfo_richTextBox.AppendText($"MainFinalOffset: {blobsetHeaderData.MainFinalOffSet}{Environment.NewLine}");
-
             fileInfo_richTextBox.AppendText($"MainCompressedSize: {blobsetHeaderData.MainCompressedSize}{Environment.NewLine}");
             fileInfo_richTextBox.AppendText($"MainUnCompressedSize: {blobsetHeaderData.MainUnCompressedSize}{Environment.NewLine}");
-
-            if (blobsetVersion != (int)BlobsetVersion.v4)
-                fileInfo_richTextBox.AppendText($"VramFinalOffset: {blobsetHeaderData.VramFinalOffSet}{Environment.NewLine}");
-
             fileInfo_richTextBox.AppendText($"VramCompressedSize: {blobsetHeaderData.VramCompressedSize}{Environment.NewLine}");
             fileInfo_richTextBox.AppendText($"VramUnCompressedSize: {blobsetHeaderData.VramUnCompressedSize}{Environment.NewLine}{Environment.NewLine}");
 
@@ -249,16 +271,6 @@ namespace Blobset_Tools
             DisposeWEMResources(wem);
         }
 
-        private static void StopAndDisposePlayer(ref SoundPlayer player)
-        {
-            if (player != null)
-            {
-                player.Stop();
-                player.Stream.Dispose();
-                player.Dispose();
-            }
-        }
-
         private static void DisposeWEMResources(WEMFile? wem)
         {
             if (wem?._wemFile != null)
@@ -274,11 +286,6 @@ namespace Blobset_Tools
         {
             // Retrieve blobset metadata
             var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
-            uint MainFinalOffSet = blobsetHeaderData.MainFinalOffSet;
-            uint MainCompressedSize = blobsetHeaderData.MainCompressedSize;
-            uint MainUnCompressedSize = blobsetHeaderData.MainUnCompressedSize;
-            uint VramCompressedSize = blobsetHeaderData.VramCompressedSize;
-            uint VramUnCompressedSize = blobsetHeaderData.VramUnCompressedSize;
 
             // Display blobset information
             fileInfo_richTextBox.SelectionColor = Color.White;
@@ -291,15 +298,8 @@ namespace Blobset_Tools
             fileInfo_richTextBox.AppendText($"FileIndex: {Global.filelist[Global.fileIndex].BlobsetIndex}" + Environment.NewLine);
             fileInfo_richTextBox.AppendText($"FileName: {filePath}" + Environment.NewLine);
 
-            if (blobsetVersion != (int)BlobsetVersion.v4)
-                fileInfo_richTextBox.AppendText($"MainFinalOffset: {blobsetHeaderData.MainFinalOffSet}{Environment.NewLine}");
-
             fileInfo_richTextBox.AppendText($"MainCompressedSize: {blobsetHeaderData.MainCompressedSize}{Environment.NewLine}");
             fileInfo_richTextBox.AppendText($"MainUnCompressedSize: {blobsetHeaderData.MainUnCompressedSize}{Environment.NewLine}");
-
-            if (blobsetVersion != (int)BlobsetVersion.v4)
-                fileInfo_richTextBox.AppendText($"VramFinalOffset: {blobsetHeaderData.VramFinalOffSet}{Environment.NewLine}");
-
             fileInfo_richTextBox.AppendText($"VramCompressedSize: {blobsetHeaderData.VramCompressedSize}{Environment.NewLine}");
             fileInfo_richTextBox.AppendText($"VramUnCompressedSize: {blobsetHeaderData.VramUnCompressedSize}{Environment.NewLine}{Environment.NewLine}");
 
@@ -307,18 +307,18 @@ namespace Blobset_Tools
             fileInfo_richTextBox.SelectionColor = Color.White;
             fileInfo_richTextBox.AppendText("*** Wise Audio BNK Info ***" + Environment.NewLine);
             fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-            fileInfo_richTextBox.AppendText($"BNK File Size: {Utilities.FormatSize(MainUnCompressedSize)}");
+            fileInfo_richTextBox.AppendText($"BNK File Size: {Utilities.FormatSize(blobsetHeaderData.MainUnCompressedSize)}");
         }
         #endregion
 
         #region "DAT"
-        public static void DAT(RichTextBox fileInfo_richTextBox, string filePath, PictureBox dds_pictureBox, int blobsetVersion) 
+        public static void DAT(RichTextBox fileInfo_richTextBox, string filePath, PictureBox dds_pictureBox, int blobsetVersion)
         {
             var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
 
-            uint MainFinalOffSet = blobsetHeaderData.MainFinalOffSet;
-            uint VramFinalOffSet = blobsetHeaderData.VramFinalOffSet;
-            uint blobsetNumber = blobsetHeaderData.BlobSetNumber;
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            //string platform = platformDetails["Platform"];
+            string platformExt = platformDetails["PlatformExt"];
 
             fileInfo_richTextBox.SelectionColor = Color.White;
             fileInfo_richTextBox.AppendText("*** Unknown File DAT Location ***" + Environment.NewLine);
@@ -328,7 +328,15 @@ namespace Blobset_Tools
             fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
             fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
             fileInfo_richTextBox.AppendText("FileIndex: " + Global.filelist[Global.fileIndex].BlobsetIndex + Environment.NewLine);
-            fileInfo_richTextBox.AppendText("FileName: " + filePath + Environment.NewLine);
+
+            if (blobsetVersion == (int)BlobsetVersion.v4)
+                fileInfo_richTextBox.AppendText($"FileName: {filePath}{Environment.NewLine}");
+            else
+            {
+                fileInfo_richTextBox.AppendText($"FolderHash: {Global.filelist[Global.fileIndex].FolderHash}{Environment.NewLine}");
+                fileInfo_richTextBox.AppendText($"FileHash: {Global.filelist[Global.fileIndex].FileHash}{Environment.NewLine}");
+                fileInfo_richTextBox.AppendText($"Blobset Number: data-{blobsetHeaderData.BlobSetNumber}.blobset.{platformExt}{Environment.NewLine}");
+            }
 
             if (blobsetVersion != (int)BlobsetVersion.v4)
                 fileInfo_richTextBox.AppendText($"MainFinalOffset: {blobsetHeaderData.MainFinalOffSet}{Environment.NewLine}");
@@ -350,17 +358,82 @@ namespace Blobset_Tools
         #endregion
 
         #region "BANK"
-        public static void FMOD_BANK() 
+        public static void FMOD_BANK()
         {
 
         }
         #endregion
 
         #region "FSB"
-        public static void FSB() 
+        public static void FSB()
         {
 
         }
         #endregion
+
+        #region "WAV"
+        public static void WAV(RichTextBox fileInfo_richTextBox, string filePath, PictureBox dds_pictureBox, int blobsetVersion, SoundPlayer player, byte[] wavData)
+        {
+            // Retrieve blobset metadata
+            var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
+
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            //string platform = platformDetails["Platform"];
+            string platformExt = platformDetails["PlatformExt"];
+
+            // Display blobset information
+            fileInfo_richTextBox.SelectionColor = Color.White;
+            fileInfo_richTextBox.AppendText("*** WAV Audio Location ***" + Environment.NewLine);
+            fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
+            fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath + Environment.NewLine + Environment.NewLine);
+            fileInfo_richTextBox.SelectionColor = Color.White;
+            fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
+            fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
+            fileInfo_richTextBox.AppendText($"FileIndex: {Global.filelist[Global.fileIndex].BlobsetIndex}" + Environment.NewLine);
+
+            fileInfo_richTextBox.AppendText($"FolderHash: {Global.filelist[Global.fileIndex].FolderHash}{Environment.NewLine}");
+            fileInfo_richTextBox.AppendText($"FileHash: {Global.filelist[Global.fileIndex].FileHash}{Environment.NewLine}");
+            fileInfo_richTextBox.AppendText($"Blobset Number: data-{blobsetHeaderData.BlobSetNumber}.blobset.{platformExt}{Environment.NewLine}");
+
+            fileInfo_richTextBox.AppendText($"MainFinalOffSet: {blobsetHeaderData.MainFinalOffSet}{Environment.NewLine}");
+            fileInfo_richTextBox.AppendText($"MainCompressedSize: {blobsetHeaderData.MainCompressedSize}{Environment.NewLine}");
+            fileInfo_richTextBox.AppendText($"MainUnCompressedSize: {blobsetHeaderData.MainUnCompressedSize}{Environment.NewLine}");
+            fileInfo_richTextBox.AppendText($"VramFinalOffSet: {blobsetHeaderData.VramFinalOffSet}{Environment.NewLine}");
+            fileInfo_richTextBox.AppendText($"VramCompressedSize: {blobsetHeaderData.VramCompressedSize}{Environment.NewLine}");
+            fileInfo_richTextBox.AppendText($"VramUnCompressedSize: {blobsetHeaderData.VramUnCompressedSize}{Environment.NewLine}{Environment.NewLine}");
+
+            // Stop and dispose of the current player if it exists before playing a new file.
+            StopAndDisposePlayer(ref player);
+
+            using MemoryStream wav_ms = new(IO.ReadData(filePath, blobsetHeaderData.MainFinalOffSet, (int)blobsetHeaderData.MainUnCompressedSize));
+
+            WavHeader wav_header = new(0, 0);
+            wav_header.Deserialize(wav_ms);
+            wav_ms.Position = 0;
+
+            // Play the WAV audio
+            player = new SoundPlayer(wav_ms);
+            player.Play();
+
+            // Display WEM information
+            fileInfo_richTextBox.SelectionColor = Color.White;
+            fileInfo_richTextBox.AppendText("*** WAV Audio Info ***" + Environment.NewLine);
+            fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
+            fileInfo_richTextBox.AppendText($"WAV Channel Count: {wav_header.numChannels}" + Environment.NewLine);
+            fileInfo_richTextBox.AppendText($"WAV Sample Rate: {wav_header.sampleRate} Hz" + Environment.NewLine);
+            fileInfo_richTextBox.AppendText($"WAV Average Bytes Per Second: {Utilities.FormatSize((ulong)wav_header.bytesPerSecond)}" + Environment.NewLine);
+            fileInfo_richTextBox.AppendText($"WAV File Size: {Utilities.FormatSize(blobsetHeaderData.MainUnCompressedSize)}");
+        }
+        #endregion
+
+        private static void StopAndDisposePlayer(ref SoundPlayer player)
+        {
+            if (player != null)
+            {
+                player.Stop();
+                player.Stream.Dispose();
+                player.Dispose();
+            }
+        }
     }
 }

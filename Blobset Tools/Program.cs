@@ -2,7 +2,7 @@ namespace Blobset_Tools
 {
     internal static class Program
     {
-        private static Mutex _mutex = null;
+        private static Mutex? _mutex = null;
 
         /// <summary>
         ///  The main entry point for the application.

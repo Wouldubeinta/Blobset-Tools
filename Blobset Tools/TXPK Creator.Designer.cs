@@ -34,7 +34,7 @@
             statusStrip1 = new StatusStrip();
             status_Label = new ToolStripStatusLabel();
             progressStripStatusLabel = new ToolStripStatusLabel();
-            toolStripProgressBar1 = new ToolStripProgressBar();
+            toolStripProgressBar = new ToolStripProgressBar();
             txpk_richTextBox = new RichTextBox();
             saveFileDialog1 = new SaveFileDialog();
             menuStrip1.SuspendLayout();
@@ -59,7 +59,7 @@
             // 
             // statusStrip1
             // 
-            statusStrip1.Items.AddRange(new ToolStripItem[] { status_Label, progressStripStatusLabel, toolStripProgressBar1 });
+            statusStrip1.Items.AddRange(new ToolStripItem[] { status_Label, progressStripStatusLabel, toolStripProgressBar });
             statusStrip1.Location = new Point(0, 428);
             statusStrip1.Name = "statusStrip1";
             statusStrip1.Size = new Size(800, 22);
@@ -78,10 +78,10 @@
             progressStripStatusLabel.Name = "progressStripStatusLabel";
             progressStripStatusLabel.Size = new Size(0, 17);
             // 
-            // toolStripProgressBar1
+            // toolStripProgressBar
             // 
-            toolStripProgressBar1.Name = "toolStripProgressBar1";
-            toolStripProgressBar1.Size = new Size(200, 16);
+            toolStripProgressBar.Name = "toolStripProgressBar";
+            toolStripProgressBar.Size = new Size(200, 16);
             // 
             // txpk_richTextBox
             // 
@@ -127,7 +127,7 @@
         private StatusStrip statusStrip1;
         private ToolStripStatusLabel status_Label;
         private ToolStripStatusLabel progressStripStatusLabel;
-        private ToolStripProgressBar toolStripProgressBar1;
+        private ToolStripProgressBar toolStripProgressBar;
         private RichTextBox txpk_richTextBox;
         private SaveFileDialog saveFileDialog1;
     }

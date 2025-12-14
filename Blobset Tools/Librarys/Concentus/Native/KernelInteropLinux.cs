@@ -7,7 +7,7 @@ namespace Concentus.Native
     {
         internal const int RTLD_NOW = 2;
 
-        private static readonly Lazy<ILibDl> _libDlImpl = new(GetLibDL, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+        private static readonly Lazy<ILibDl> _libDlImpl = new(GetLibDL, LazyThreadSafetyMode.ExecutionAndPublication);
 
         // helpful list from https://en.wikipedia.org/wiki/Uname
         internal static readonly IReadOnlyDictionary<string, PlatformArchitecture> POSSIBLE_UNIX_MACHINES =

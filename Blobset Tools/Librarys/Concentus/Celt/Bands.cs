@@ -249,7 +249,7 @@ namespace Concentus.Celt
             }
 
             Inlines.OpusAssert(start <= end);
-            Arrays.MemSetWithOffset<int>(freq, 0, freq_ptr + bound, N - bound);
+            Arrays.MemSetWithOffset(freq, 0, freq_ptr + bound, N - bound);
         }
 
         /* This prevents energy collapse for transients with multiple short MDCTs */
@@ -1219,7 +1219,7 @@ namespace Concentus.Celt
 
                         if (fill == 0)
                         {
-                            Arrays.MemSetWithOffset<int>(X, 0, X_ptr, N);
+                            Arrays.MemSetWithOffset(X, 0, X_ptr, N);
                         }
                         else
                         {
@@ -1399,7 +1399,7 @@ namespace Concentus.Celt
 
                         if (fill == 0)
                         {
-                            Arrays.MemSetWithOffset<int>(X, 0, X_ptr, N);
+                            Arrays.MemSetWithOffset(X, 0, X_ptr, N);
                         }
                         else
                         {

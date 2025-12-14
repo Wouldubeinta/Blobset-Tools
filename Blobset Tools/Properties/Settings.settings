@@ -1,27 +1,5 @@
 ﻿<?xml version='1.0' encoding='utf-8'?>
-<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="Blobset_Tools.Properties" GeneratedClassName="Settings">
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)">
   <Profiles />
-  <Settings>
-    <Setting Name="LoadGame" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="SkipUnknown" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="GameLocation" Type="System.String" Scope="User">
-      <Value Profile="(Default)">D:\Steam\steamapps\common\Rugby 25\data\data-0.blobset.pc</Value>
-    </Setting>
-    <Setting Name="GameID" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">14</Value>
-    </Setting>
-    <Setting Name="GameName" Type="System.String" Scope="User">
-      <Value Profile="(Default)">Rugby 25</Value>
-    </Setting>
-    <Setting Name="BlobsetVersion" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">3</Value>
-    </Setting>
-    <Setting Name="SteamGameID" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">2340870</Value>
-    </Setting>
-  </Settings>
+  <Settings />
 </SettingsFile>

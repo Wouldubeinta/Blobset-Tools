@@ -1,25 +1,18 @@
-using System;
-using System.IO;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
-
-
 namespace SevenZip.Compression.LZMA
 {
     public static class SevenZipHelper
     {
 
-        static int dictionary = 1 << 23;
-        static int posStateBits = 2;
-        static int litContextBits = 3; // for normal files
-        static int litPosBits = 0;
-        static int algorithm = 2;
-        static int numFastBytes = 128;
-        static string matchFinder = "bt4";
-        static bool eos = false;
+        private static readonly int dictionary = 1 << 23;
+        private static readonly int posStateBits = 2;
+        private static readonly int litContextBits = 3; // for normal files
+        private static readonly int litPosBits = 0;
+        private static readonly int algorithm = 2;
+        private static readonly int numFastBytes = 128;
+        private static readonly string matchFinder = "bt4";
+        private static readonly bool eos = false;
 
-        static CoderPropID[] propIDs =
+        private static readonly CoderPropID[] propIDs =
         {
             CoderPropID.DictionarySize,
             CoderPropID.PosStateBits,
@@ -32,7 +25,7 @@ namespace SevenZip.Compression.LZMA
         };
 
         // these are the default properties, keeping it simple for now:
-        static object[] properties =
+        private static readonly object[] properties =
         {
             dictionary,
             posStateBits,
@@ -56,7 +49,7 @@ namespace SevenZip.Compression.LZMA
             {
                 inStream = new MemoryStream(inputBytes);
                 outStream = new MemoryStream();
-                Encoder encoder = new Encoder();
+                Encoder encoder = new();
                 //encoder.SetCoderProperties(propIDs, properties);
                 encoder.WriteCoderProperties(outStream);
                 encoder.Code(inStream, outStream, -1, -1, null);
@@ -89,7 +82,7 @@ namespace SevenZip.Compression.LZMA
 
             try
             {
-                Encoder coder = new Encoder();
+                Encoder coder = new();
                 input = new FileStream(inFile, FileMode.Open);
                 output = new FileStream(outFile, FileMode.Create);
 

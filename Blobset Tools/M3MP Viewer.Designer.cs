@@ -129,7 +129,7 @@
             // 
             // extractM3MP_fbd
             // 
-            extractM3MP_fbd.Description = "Select the m3mp folder in the root directory of the Blobset Tools.";
+            extractM3MP_fbd.Description = "Select your m3mp folder in your games folder of the Blobset Tools.";
             // 
             // M3MP_Viewer
             // 

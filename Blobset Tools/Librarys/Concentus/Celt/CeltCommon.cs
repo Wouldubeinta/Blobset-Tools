@@ -372,7 +372,7 @@ namespace Concentus.Celt
                     int bound = B * N / upsample;
                     for (i = 0; i < bound; i++)
                         output[c][i] *= upsample;
-                    Arrays.MemSetWithOffset<int>(output[c], 0, bound, B * N - bound);
+                    Arrays.MemSetWithOffset(output[c], 0, bound, B * N - bound);
                 } while (++c < C);
             }
         }
@@ -405,7 +405,7 @@ namespace Concentus.Celt
             Nu = N / upsample;
             if (upsample != 1)
             {
-                Arrays.MemSetWithOffset<int>(inp, 0, inp_ptr, N);
+                Arrays.MemSetWithOffset(inp, 0, inp_ptr, N);
             }
             for (i = 0; i < Nu; i++)
                 inp[inp_ptr + (i * upsample)] = pcmp[pcmp_ptr + (CC * i)];
@@ -452,7 +452,7 @@ namespace Concentus.Celt
             Nu = N / upsample;
             if (upsample != 1)
             {
-                Arrays.MemSetWithOffset<int>(inp, 0, inp_ptr, N);
+                Arrays.MemSetWithOffset(inp, 0, inp_ptr, N);
             }
             for (i = 0; i < Nu; i++)
                 inp[inp_ptr + (i * upsample)] = pcmp[CC * i];

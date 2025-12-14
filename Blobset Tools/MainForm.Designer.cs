@@ -38,19 +38,25 @@ namespace Blobset_Tools
             toolStripProgressBar = new ToolStripProgressBar();
             menuStrip1 = new MenuStrip();
             fileToolStripMenuItem = new ToolStripMenuItem();
+            openToolStripMenuItem = new ToolStripMenuItem();
+            gameSelectionToolStripMenuItem = new ToolStripMenuItem();
             exitToolStripMenuItem = new ToolStripMenuItem();
-            extractBlobsetToolStripMenuItem = new ToolStripMenuItem();
-            createBlobsetToolStripMenuItem = new ToolStripMenuItem();
+            blobsetToolStripMenuItem = new ToolStripMenuItem();
+            extractBlobset_ToolStripMenuItem = new ToolStripMenuItem();
+            modifyBlobset_ToolStripMenuItem = new ToolStripMenuItem();
+            createToolStripMenuItem = new ToolStripMenuItem();
             gameName_toolStripTextBox = new ToolStripTextBox();
             toolsToolStripMenuItem = new ToolStripMenuItem();
             tXPKCreatorToolStripMenuItem = new ToolStripMenuItem();
             m3MPCreatorToolStripMenuItem = new ToolStripMenuItem();
+            fileMappingEditorToolStripMenuItem = new ToolStripMenuItem();
             optionsToolStripMenuItem = new ToolStripMenuItem();
             updateFileMappingDataToolStripMenuItem = new ToolStripMenuItem();
             loadGameToolStripMenuItem = new ToolStripMenuItem();
             validateSteamGameFilesToolStripMenuItem = new ToolStripMenuItem();
             skipUnknownFilesToolStripMenuItem = new ToolStripMenuItem();
             restoreBackupFilesToolStripMenuItem = new ToolStripMenuItem();
+            resetBlobsetToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
             searchToolStripTextBox = new ToolStripTextBox();
             searchToolStripMenuItem = new ToolStripMenuItem();
@@ -75,9 +81,12 @@ namespace Blobset_Tools
             saveLogTotxtToolStripMenuItem = new ToolStripMenuItem();
             flipImage_contextMenuStrip = new ContextMenuStrip(components);
             flipImageToolStripMenuItem = new ToolStripMenuItem();
+            alphaToolStripMenuItem = new ToolStripMenuItem();
             extractDatFilecontextMenuStrip = new ContextMenuStrip(components);
             extractDatToolStripMenuItem = new ToolStripMenuItem();
             datFileToolStripMenuItem = new ToolStripMenuItem();
+            blobset_ofd = new OpenFileDialog();
+            blobset_sfd = new SaveFileDialog();
             statusStrip1.SuspendLayout();
             menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
@@ -130,7 +139,7 @@ namespace Blobset_Tools
             // menuStrip1
             // 
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, extractBlobsetToolStripMenuItem, createBlobsetToolStripMenuItem, gameName_toolStripTextBox, toolsToolStripMenuItem, optionsToolStripMenuItem, aboutToolStripMenuItem, searchToolStripTextBox, searchToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, blobsetToolStripMenuItem, gameName_toolStripTextBox, toolsToolStripMenuItem, optionsToolStripMenuItem, aboutToolStripMenuItem, searchToolStripTextBox, searchToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(1271, 27);
@@ -139,34 +148,69 @@ namespace Blobset_Tools
             // 
             // fileToolStripMenuItem
             // 
-            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { exitToolStripMenuItem });
+            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openToolStripMenuItem, gameSelectionToolStripMenuItem, exitToolStripMenuItem });
             fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             fileToolStripMenuItem.Size = new Size(37, 23);
             fileToolStripMenuItem.Text = "File";
+            // 
+            // openToolStripMenuItem
+            // 
+            openToolStripMenuItem.Image = Properties.Resources.open_32;
+            openToolStripMenuItem.Name = "openToolStripMenuItem";
+            openToolStripMenuItem.Size = new Size(156, 22);
+            openToolStripMenuItem.Text = "Open";
+            openToolStripMenuItem.Click += openToolStripMenuItem_Click;
+            // 
+            // gameSelectionToolStripMenuItem
+            // 
+            gameSelectionToolStripMenuItem.Image = Properties.Resources.menu_32;
+            gameSelectionToolStripMenuItem.Name = "gameSelectionToolStripMenuItem";
+            gameSelectionToolStripMenuItem.Size = new Size(156, 22);
+            gameSelectionToolStripMenuItem.Text = "Game Selection";
+            gameSelectionToolStripMenuItem.ToolTipText = "Go back to the game selection menu.";
+            gameSelectionToolStripMenuItem.Click += gameSelectionToolStripMenuItem_Click;
             // 
             // exitToolStripMenuItem
             // 
             exitToolStripMenuItem.Image = Properties.Resources.close_32;
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            exitToolStripMenuItem.Size = new Size(92, 22);
+            exitToolStripMenuItem.Size = new Size(156, 22);
             exitToolStripMenuItem.Text = "Exit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
-            // extractBlobsetToolStripMenuItem
+            // blobsetToolStripMenuItem
             // 
-            extractBlobsetToolStripMenuItem.Name = "extractBlobsetToolStripMenuItem";
-            extractBlobsetToolStripMenuItem.Size = new Size(96, 23);
-            extractBlobsetToolStripMenuItem.Text = "Extract Blobset";
-            extractBlobsetToolStripMenuItem.ToolTipText = "Extract all blobset files.";
-            extractBlobsetToolStripMenuItem.Click += extractBlobsetToolStripMenuItem_Click;
+            blobsetToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { extractBlobset_ToolStripMenuItem, modifyBlobset_ToolStripMenuItem, createToolStripMenuItem });
+            blobsetToolStripMenuItem.Name = "blobsetToolStripMenuItem";
+            blobsetToolStripMenuItem.Size = new Size(58, 23);
+            blobsetToolStripMenuItem.Text = "Blobset";
             // 
-            // createBlobsetToolStripMenuItem
+            // extractBlobset_ToolStripMenuItem
             // 
-            createBlobsetToolStripMenuItem.Name = "createBlobsetToolStripMenuItem";
-            createBlobsetToolStripMenuItem.Size = new Size(99, 23);
-            createBlobsetToolStripMenuItem.Text = "Modify Blobset";
-            createBlobsetToolStripMenuItem.ToolTipText = "Modify blobset with mods.";
-            createBlobsetToolStripMenuItem.Click += createBlobsetToolStripMenuItem_Click;
+            extractBlobset_ToolStripMenuItem.Image = Properties.Resources.extract_32;
+            extractBlobset_ToolStripMenuItem.Name = "extractBlobset_ToolStripMenuItem";
+            extractBlobset_ToolStripMenuItem.Size = new Size(112, 22);
+            extractBlobset_ToolStripMenuItem.Text = "Extract";
+            extractBlobset_ToolStripMenuItem.ToolTipText = "Extract all files in Blobset.";
+            extractBlobset_ToolStripMenuItem.Click += extractBlobset_ToolStripMenuItem_Click;
+            // 
+            // modifyBlobset_ToolStripMenuItem
+            // 
+            modifyBlobset_ToolStripMenuItem.Image = Properties.Resources.modify_32;
+            modifyBlobset_ToolStripMenuItem.Name = "modifyBlobset_ToolStripMenuItem";
+            modifyBlobset_ToolStripMenuItem.Size = new Size(112, 22);
+            modifyBlobset_ToolStripMenuItem.Text = "Modify";
+            modifyBlobset_ToolStripMenuItem.ToolTipText = "Modify the original blobset file with mods.";
+            modifyBlobset_ToolStripMenuItem.Click += modifyBlobset_ToolStripMenuItem_Click;
+            // 
+            // createToolStripMenuItem
+            // 
+            createToolStripMenuItem.Image = Properties.Resources.create_32;
+            createToolStripMenuItem.Name = "createToolStripMenuItem";
+            createToolStripMenuItem.Size = new Size(112, 22);
+            createToolStripMenuItem.Text = "Create";
+            createToolStripMenuItem.ToolTipText = "Create new update blobset file with mods.";
+            createToolStripMenuItem.Click += createBlobset_ToolStripMenuItem_Click;
             // 
             // gameName_toolStripTextBox
             // 
@@ -183,7 +227,7 @@ namespace Blobset_Tools
             // 
             // toolsToolStripMenuItem
             // 
-            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { tXPKCreatorToolStripMenuItem, m3MPCreatorToolStripMenuItem });
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { tXPKCreatorToolStripMenuItem, m3MPCreatorToolStripMenuItem, fileMappingEditorToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new Size(47, 23);
             toolsToolStripMenuItem.Text = "Tools";
@@ -192,7 +236,7 @@ namespace Blobset_Tools
             // 
             tXPKCreatorToolStripMenuItem.Image = (Image)resources.GetObject("tXPKCreatorToolStripMenuItem.Image");
             tXPKCreatorToolStripMenuItem.Name = "tXPKCreatorToolStripMenuItem";
-            tXPKCreatorToolStripMenuItem.Size = new Size(184, 26);
+            tXPKCreatorToolStripMenuItem.Size = new Size(177, 22);
             tXPKCreatorToolStripMenuItem.Text = "TXPK Creator";
             tXPKCreatorToolStripMenuItem.ToolTipText = "To create DDS TXPK files.";
             tXPKCreatorToolStripMenuItem.Click += txpkCreatorToolStripMenuItem_Click;
@@ -201,14 +245,22 @@ namespace Blobset_Tools
             // 
             m3MPCreatorToolStripMenuItem.Image = (Image)resources.GetObject("m3MPCreatorToolStripMenuItem.Image");
             m3MPCreatorToolStripMenuItem.Name = "m3MPCreatorToolStripMenuItem";
-            m3MPCreatorToolStripMenuItem.Size = new Size(184, 26);
+            m3MPCreatorToolStripMenuItem.Size = new Size(177, 22);
             m3MPCreatorToolStripMenuItem.Text = "M3MP Creator";
             m3MPCreatorToolStripMenuItem.ToolTipText = "To Create M3MP files.";
             m3MPCreatorToolStripMenuItem.Click += m3mpCreatorToolStripMenuItem_Click;
             // 
+            // fileMappingEditorToolStripMenuItem
+            // 
+            fileMappingEditorToolStripMenuItem.Image = Properties.Resources.file_mapping_32;
+            fileMappingEditorToolStripMenuItem.Name = "fileMappingEditorToolStripMenuItem";
+            fileMappingEditorToolStripMenuItem.Size = new Size(177, 22);
+            fileMappingEditorToolStripMenuItem.Text = "File Mapping Editor";
+            fileMappingEditorToolStripMenuItem.Click += fileMappingEditorToolStripMenuItem_Click;
+            // 
             // optionsToolStripMenuItem
             // 
-            optionsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { updateFileMappingDataToolStripMenuItem, loadGameToolStripMenuItem, validateSteamGameFilesToolStripMenuItem, skipUnknownFilesToolStripMenuItem, restoreBackupFilesToolStripMenuItem });
+            optionsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { updateFileMappingDataToolStripMenuItem, loadGameToolStripMenuItem, validateSteamGameFilesToolStripMenuItem, skipUnknownFilesToolStripMenuItem, restoreBackupFilesToolStripMenuItem, resetBlobsetToolStripMenuItem });
             optionsToolStripMenuItem.Name = "optionsToolStripMenuItem";
             optionsToolStripMenuItem.Size = new Size(61, 23);
             optionsToolStripMenuItem.Text = "Options";
@@ -217,7 +269,7 @@ namespace Blobset_Tools
             // 
             updateFileMappingDataToolStripMenuItem.Image = Properties.Resources.mapping_32;
             updateFileMappingDataToolStripMenuItem.Name = "updateFileMappingDataToolStripMenuItem";
-            updateFileMappingDataToolStripMenuItem.Size = new Size(215, 26);
+            updateFileMappingDataToolStripMenuItem.Size = new Size(211, 22);
             updateFileMappingDataToolStripMenuItem.Text = "Update File Mapping Data";
             updateFileMappingDataToolStripMenuItem.ToolTipText = "This update's the file mapping files in the data folder.";
             updateFileMappingDataToolStripMenuItem.Click += updateFileMappingDataToolStripMenuItem_Click;
@@ -227,7 +279,7 @@ namespace Blobset_Tools
             loadGameToolStripMenuItem.CheckOnClick = true;
             loadGameToolStripMenuItem.Image = Properties.Resources.loading_32;
             loadGameToolStripMenuItem.Name = "loadGameToolStripMenuItem";
-            loadGameToolStripMenuItem.Size = new Size(215, 26);
+            loadGameToolStripMenuItem.Size = new Size(211, 22);
             loadGameToolStripMenuItem.Text = "Load Game";
             loadGameToolStripMenuItem.ToolTipText = "If ticked, this will load the game after modifing the blobset.";
             loadGameToolStripMenuItem.Click += loadGameToolStripMenuItem_Click;
@@ -236,7 +288,7 @@ namespace Blobset_Tools
             // 
             validateSteamGameFilesToolStripMenuItem.Image = (Image)resources.GetObject("validateSteamGameFilesToolStripMenuItem.Image");
             validateSteamGameFilesToolStripMenuItem.Name = "validateSteamGameFilesToolStripMenuItem";
-            validateSteamGameFilesToolStripMenuItem.Size = new Size(215, 26);
+            validateSteamGameFilesToolStripMenuItem.Size = new Size(211, 22);
             validateSteamGameFilesToolStripMenuItem.Text = "Validate Steam Game Files";
             validateSteamGameFilesToolStripMenuItem.ToolTipText = "This will repair game files, If something stuffs up.";
             validateSteamGameFilesToolStripMenuItem.Click += validateSteamGameFilesToolStripMenuItem_Click;
@@ -246,7 +298,7 @@ namespace Blobset_Tools
             skipUnknownFilesToolStripMenuItem.CheckOnClick = true;
             skipUnknownFilesToolStripMenuItem.Image = Properties.Resources.skip_32;
             skipUnknownFilesToolStripMenuItem.Name = "skipUnknownFilesToolStripMenuItem";
-            skipUnknownFilesToolStripMenuItem.Size = new Size(215, 26);
+            skipUnknownFilesToolStripMenuItem.Size = new Size(211, 22);
             skipUnknownFilesToolStripMenuItem.Text = "Skip Unknown Files";
             skipUnknownFilesToolStripMenuItem.ToolTipText = "When ticked, this will skip extracting unknown file types, like meshes and animation files ect...";
             skipUnknownFilesToolStripMenuItem.Click += skipUnknownFilesToolStripMenuItem_Click;
@@ -255,10 +307,19 @@ namespace Blobset_Tools
             // 
             restoreBackupFilesToolStripMenuItem.Image = Properties.Resources.restore_backup_32;
             restoreBackupFilesToolStripMenuItem.Name = "restoreBackupFilesToolStripMenuItem";
-            restoreBackupFilesToolStripMenuItem.Size = new Size(215, 26);
+            restoreBackupFilesToolStripMenuItem.Size = new Size(211, 22);
             restoreBackupFilesToolStripMenuItem.Text = "Restore Backup Files";
             restoreBackupFilesToolStripMenuItem.ToolTipText = "This will restore the backed up files that you replaced with mods.";
             restoreBackupFilesToolStripMenuItem.Click += restoreBackupFilesToolStripMenuItem_Click;
+            // 
+            // resetBlobsetToolStripMenuItem
+            // 
+            resetBlobsetToolStripMenuItem.Image = Properties.Resources.restore_backup_32;
+            resetBlobsetToolStripMenuItem.Name = "resetBlobsetToolStripMenuItem";
+            resetBlobsetToolStripMenuItem.Size = new Size(211, 22);
+            resetBlobsetToolStripMenuItem.Text = "Reset Blobset";
+            resetBlobsetToolStripMenuItem.ToolTipText = "Reset blobset files to their original state.";
+            resetBlobsetToolStripMenuItem.Click += resetBlobsetToolStripMenuItem_Click;
             // 
             // aboutToolStripMenuItem
             // 
@@ -364,7 +425,7 @@ namespace Blobset_Tools
             // 
             splitContainer3.Panel2.Controls.Add(dds_pictureBox);
             splitContainer3.Size = new Size(523, 675);
-            splitContainer3.SplitterDistance = 310;
+            splitContainer3.SplitterDistance = 390;
             splitContainer3.TabIndex = 0;
             // 
             // fileInfo_richTextBox
@@ -376,7 +437,7 @@ namespace Blobset_Tools
             fileInfo_richTextBox.Location = new Point(0, 0);
             fileInfo_richTextBox.Name = "fileInfo_richTextBox";
             fileInfo_richTextBox.ReadOnly = true;
-            fileInfo_richTextBox.Size = new Size(523, 310);
+            fileInfo_richTextBox.Size = new Size(523, 390);
             fileInfo_richTextBox.TabIndex = 0;
             fileInfo_richTextBox.Text = "";
             fileInfo_richTextBox.MouseClick += fileInfo_richTextBox_MouseClick;
@@ -388,7 +449,7 @@ namespace Blobset_Tools
             dds_pictureBox.Location = new Point(0, 0);
             dds_pictureBox.MaximumSize = new Size(800, 800);
             dds_pictureBox.Name = "dds_pictureBox";
-            dds_pictureBox.Size = new Size(523, 361);
+            dds_pictureBox.Size = new Size(523, 281);
             dds_pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             dds_pictureBox.TabIndex = 0;
             dds_pictureBox.TabStop = false;
@@ -478,9 +539,9 @@ namespace Blobset_Tools
             // 
             // flipImage_contextMenuStrip
             // 
-            flipImage_contextMenuStrip.Items.AddRange(new ToolStripItem[] { flipImageToolStripMenuItem });
+            flipImage_contextMenuStrip.Items.AddRange(new ToolStripItem[] { flipImageToolStripMenuItem, alphaToolStripMenuItem });
             flipImage_contextMenuStrip.Name = "flipImage_contextMenuStrip";
-            flipImage_contextMenuStrip.Size = new Size(130, 26);
+            flipImage_contextMenuStrip.Size = new Size(130, 48);
             // 
             // flipImageToolStripMenuItem
             // 
@@ -489,6 +550,17 @@ namespace Blobset_Tools
             flipImageToolStripMenuItem.Size = new Size(129, 22);
             flipImageToolStripMenuItem.Text = "Flip Image";
             flipImageToolStripMenuItem.Click += flipImageToolStripMenuItem_Click;
+            // 
+            // alphaToolStripMenuItem
+            // 
+            alphaToolStripMenuItem.Checked = true;
+            alphaToolStripMenuItem.CheckOnClick = true;
+            alphaToolStripMenuItem.CheckState = CheckState.Checked;
+            alphaToolStripMenuItem.Image = Properties.Resources.alpha_32;
+            alphaToolStripMenuItem.Name = "alphaToolStripMenuItem";
+            alphaToolStripMenuItem.Size = new Size(129, 22);
+            alphaToolStripMenuItem.Text = "Alpha";
+            alphaToolStripMenuItem.Click += alphaToolStripMenuItem_Click;
             // 
             // extractDatFilecontextMenuStrip
             // 
@@ -511,6 +583,14 @@ namespace Blobset_Tools
             datFileToolStripMenuItem.Size = new Size(113, 22);
             datFileToolStripMenuItem.Text = "Dat File";
             datFileToolStripMenuItem.Click += datFileToolStripMenuItem_Click;
+            // 
+            // blobset_ofd
+            // 
+            blobset_ofd.Title = "Select Your Blobset File.";
+            // 
+            // blobset_sfd
+            // 
+            blobset_sfd.Title = "Make a name for your created blobset.";
             // 
             // MainForm
             // 
@@ -558,8 +638,6 @@ namespace Blobset_Tools
         private MenuStrip menuStrip1;
         private ToolStripMenuItem fileToolStripMenuItem;
         private ToolStripMenuItem exitToolStripMenuItem;
-        private ToolStripMenuItem createBlobsetToolStripMenuItem;
-        private ToolStripMenuItem extractBlobsetToolStripMenuItem;
         private ToolStripMenuItem optionsToolStripMenuItem;
         private ToolStripMenuItem updateFileMappingDataToolStripMenuItem;
         private ToolStripMenuItem loadGameToolStripMenuItem;
@@ -600,5 +678,16 @@ namespace Blobset_Tools
         private ToolStripMenuItem extractDatToolStripMenuItem;
         private ToolStripMenuItem datFileToolStripMenuItem;
         private ToolStripMenuItem restoreBackupFilesToolStripMenuItem;
+        private ToolStripMenuItem fileMappingEditorToolStripMenuItem;
+        private ToolStripMenuItem alphaToolStripMenuItem;
+        private ToolStripMenuItem gameSelectionToolStripMenuItem;
+        private ToolStripMenuItem resetBlobsetToolStripMenuItem;
+        private ToolStripMenuItem openToolStripMenuItem;
+        private OpenFileDialog blobset_ofd;
+        private ToolStripMenuItem blobsetToolStripMenuItem;
+        private ToolStripMenuItem extractBlobset_ToolStripMenuItem;
+        private ToolStripMenuItem modifyBlobset_ToolStripMenuItem;
+        private ToolStripMenuItem createToolStripMenuItem;
+        private SaveFileDialog blobset_sfd;
     }
 }

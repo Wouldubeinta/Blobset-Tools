@@ -1,5 +1,7 @@
 using BlobsetIO;
+using PackageIO;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Reflection;
 using static Blobset_Tools.Enums;
 
@@ -9,31 +11,31 @@ namespace Blobset_Tools
     {
         private BackgroundWorker? Extract_bgw = null;
         private BackgroundWorker? Modify_bgw = null;
+        private BackgroundWorker? Create_bgw = null;
         private BackgroundWorker? FileMapping_bgw = null;
         private System.Media.SoundPlayer? player = null;
-        private byte[]? oggData = null;
-        private byte[]? wavData = null;
+        private bool isFlipped = false;
+        private readonly byte[]? oggData = null;
+        private readonly byte[]? wavData = null;
         public MainForm()
         {
             InitializeComponent();
 
             Global.version = Assembly.GetEntryAssembly().GetName().Version.ToString();
             Text = "Blobset Tools - v" + Global.version;
-            Global.currentPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            string gameName = "* Reading and Writing " + Properties.Settings.Default.GameName + " Blobset file *";
+            string gameName = "* Reading and Writing " + Global.gameInfo.GameName + " Blobset file *";
             gameName_toolStripTextBox.Text = gameName;
 
             dds_pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             dds_pictureBox.Image = Properties.Resources.Blobset_Tools;
-
             UI.BlobsetHeaderData();
         }
 
         private void MainForm_Load(object sender, EventArgs e)
         {
             string gameVersion = Utilities.GetGameVersion();
-            BlobsetVersion blobsetVersion = (BlobsetVersion)Properties.Settings.Default.BlobsetVersion;
-            string fileMappingVersion = File.ReadAllText(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\version.txt");
+            BlobsetVersion blobsetVersion = (BlobsetVersion)Global.gameInfo.BlobsetVersion;
+            string fileMappingVersion = Global.gameInfo.Version;
 
             fileInfo_richTextBox.SelectionColor = Color.White;
             fileInfo_richTextBox.AppendText("*** " + "Blobset Tools - v" + Global.version + " ***" + Environment.NewLine);
@@ -52,32 +54,43 @@ namespace Blobset_Tools
             else
                 fileInfo_richTextBox.SelectionColor = Color.Red;
 
-            fileInfo_richTextBox.AppendText("File Mapping Version: " + fileMappingVersion + Environment.NewLine + Environment.NewLine);
+            fileInfo_richTextBox.AppendText("File Mapping Version: " + fileMappingVersion + Environment.NewLine);
 
+            if (gameVersion == fileMappingVersion)
+                fileInfo_richTextBox.SelectionColor = Color.Green;
+            else
+                fileInfo_richTextBox.SelectionColor = Color.Red;
+
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            string platform = platformDetails["Platform"];
+            fileInfo_richTextBox.AppendText("Platform: " + platform + Environment.NewLine + Environment.NewLine);
+
+            fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
+            fileInfo_richTextBox.AppendText("Author: Wouldubeinta" + Environment.NewLine);
+            fileInfo_richTextBox.AppendText("Discord ID: Wouldubeinta" + Environment.NewLine + Environment.NewLine);
+            fileInfo_richTextBox.SelectionColor = Color.White;
+            fileInfo_richTextBox.AppendText("*** Special Thanks To ***" + Environment.NewLine);
             fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
 
             foreach (string line in UI.LoadingText)
                 fileInfo_richTextBox.AppendText(line);
 
-            if (gameVersion == fileMappingVersion) 
+            if (gameVersion == fileMappingVersion)
             {
                 folder_treeView.Nodes.Clear();
                 UI.FilesList(folder_treeView);
             }
-            else 
+            else
             {
-                DialogResult result = MessageBox.Show("You need to update the filemapping, click Yes to continue", "Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                DialogResult result = MessageBox.Show("You need to update the file mapping data for " + Global.gameInfo.GameName + ", click Yes to continue", "Update File Mapping Data", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
                 switch (result)
                 {
                     case DialogResult.Yes:
                         fileInfo_richTextBox.Clear();
                         fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-                        fileInfo_richTextBox.AppendText("Mapping files, please wait..........");
+                        fileInfo_richTextBox.AppendText("Mapping files for " + Global.gameInfo.GameName + ", please wait..........");
                         FileMappingMain();
-                        break;
-                    case DialogResult.No:
-                        //Environment.Exit(Environment.ExitCode);
                         break;
                 }
             }
@@ -89,19 +102,70 @@ namespace Blobset_Tools
                 return;
             }
 
-            loadGameToolStripMenuItem.Checked = Properties.Settings.Default.LoadGame;
-            skipUnknownFilesToolStripMenuItem.Checked = Properties.Settings.Default.SkipUnknown;
+            IniFile settingsIni = new(Path.Combine(Global.currentPath, "Settings.ini"));
 
-            if (blobsetVersion == BlobsetVersion.v1)
+            bool loadGameCheck = "true" == settingsIni.Read("LoadGame", "Settings") ? true : false;
+            bool skipUnknownFilesCheck = "true" == settingsIni.Read("SkipUnknown", "Settings") ? true : false;
+
+            loadGameToolStripMenuItem.Checked = loadGameCheck;
+            skipUnknownFilesToolStripMenuItem.Checked = skipUnknownFilesCheck;
+
+            if (blobsetVersion < BlobsetVersion.v3)
             {
                 loadGameToolStripMenuItem.Visible = false;
                 validateSteamGameFilesToolStripMenuItem.Visible = false;
                 restoreBackupFilesToolStripMenuItem.Visible = false;
+                resetBlobsetToolStripMenuItem.Visible = true;
+            }
+            else
+            {
+                openToolStripMenuItem.Visible = false;
+                createToolStripMenuItem.Visible = false;
+                resetBlobsetToolStripMenuItem.Visible = false;
+            }
+        }
+
+        private void openToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            string platformExt = platformDetails["PlatformExt"];
+
+            string iniPath = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "GameInfo.ini");
+            IniFile gameInfo = new(Path.Combine(iniPath, "Settings.ini"));
+
+            blobset_ofd.Filter = "Blobset File | *." + platformExt;
+            blobset_ofd.DefaultExt = platformExt;
+
+            if (blobset_ofd.ShowDialog() == DialogResult.OK)
+            {
+                Global.gameInfo.GameLocation = blobset_ofd.FileName;
+                IniFile gameInfoIni = new(iniPath);
+                gameInfoIni.Write("GameLocation", blobset_ofd.FileName, "GameInfo");
+
+                DialogResult result = MessageBox.Show("Do you want to update the file mapping data for " + Global.gameInfo.GameName + ", click Yes to continue", "Update File Mapping Data", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+                switch (result)
+                {
+                    case DialogResult.Yes:
+                        fileInfo_richTextBox.Clear();
+                        fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
+                        fileInfo_richTextBox.AppendText("Mapping files for " + Global.gameInfo.GameName + ", please wait..........");
+                        FileMappingMain();
+                        break;
+                    default:
+                        folder_treeView.Nodes.Clear();
+                        UI.FilesList(folder_treeView);
+                        break;
+                }
+
+                UI.BlobsetHeaderData();
             }
         }
 
         private void folder_treeView_AfterSelect(object sender, TreeViewEventArgs e)
         {
+            status_Label.ForeColor = Color.Black;
+
             files_listView.Refresh();
             files_listView.Clear();
             status_Label.Text = string.Empty;
@@ -138,7 +202,7 @@ namespace Blobset_Tools
                 int icon = 0;
                 string ext = Path.GetExtension(Global.filelist[i].FileName);
 
-                switch(ext) 
+                switch (ext)
                 {
                     case ".dds":
                         icon = 1;
@@ -234,11 +298,11 @@ namespace Blobset_Tools
                 if (Global.fileIndex == -1)
                     return;
 
-                string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + Global.filelist[Global.fileIndex].FolderHash + @"\" + Global.filelist[Global.fileIndex].FileHash;
-                int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+                string filePath = Global.gameInfo.GameLocation.Replace("data-0.blobset.pc", string.Empty) + Global.filelist[Global.fileIndex].FolderHash + @"\" + Global.filelist[Global.fileIndex].FileHash;
+                int blobsetVersion = Global.gameInfo.BlobsetVersion;
 
-                if (Properties.Settings.Default.BlobsetVersion != (int)BlobsetVersion.v4)
-                    filePath = Properties.Settings.Default.GameLocation;
+                if (Global.gameInfo.BlobsetVersion != (int)BlobsetVersion.v4)
+                    filePath = Global.gameInfo.GameLocation;
 
                 if (!File.Exists(filePath))
                 {
@@ -248,10 +312,10 @@ namespace Blobset_Tools
 
                 string type = Path.GetExtension(Global.filelist[Global.fileIndex].FilePath);
 
-                switch (type) 
+                switch (type)
                 {
                     case ".dds":
-                        UiFileTypes.DDS(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion);
+                        UiFileTypes.DDS(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion, alphaToolStripMenuItem.Checked, isFlipped);
                         break;
                     case ".txpk":
                         UiFileTypes.TXPK(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion);
@@ -272,6 +336,7 @@ namespace Blobset_Tools
                     case ".fev1":
                         break;
                     case ".wav":
+                        UiFileTypes.WAV(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion, player, wavData);
                         break;
                     case ".bsb":
                         break;
@@ -295,12 +360,12 @@ namespace Blobset_Tools
                 if (Global.filelist == null)
                     return;
 
-                string filePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + Global.filelist[Global.fileIndex].FolderHash + @"\" + Global.filelist[Global.fileIndex].FileHash;
+                string filePath = Global.gameInfo.GameLocation.Replace("data-0.blobset.pc", string.Empty) + Global.filelist[Global.fileIndex].FolderHash + @"\" + Global.filelist[Global.fileIndex].FileHash;
                 string ext = Path.GetExtension(Global.filelist[Global.fileIndex].FilePath);
-                int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+                int blobsetVersion = Global.gameInfo.BlobsetVersion;
 
-                if (Properties.Settings.Default.BlobsetVersion != (int)BlobsetVersion.v4)
-                    filePath = Properties.Settings.Default.GameLocation;
+                if (Global.gameInfo.BlobsetVersion != (int)BlobsetVersion.v4)
+                    filePath = Global.gameInfo.GameLocation;
 
                 if (!File.Exists(filePath))
                 {
@@ -308,98 +373,95 @@ namespace Blobset_Tools
                     return;
                 }
 
-                uint MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
-                uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+                var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
 
-                if (ext == ".txpk")
+                switch (ext)
                 {
+                    case ".dds":
+                        DDS_Viewer dds_form = new(Global.filelist[Global.fileIndex].FilePath, Global.filelist);
+                        bool IsDDSFormOpen = false;
 
-                    TXPK txpk = blobsetVersion >= 3 ? ZSTD_IO.ReadTXPKInfo(filePath) : LZMA_IO.ReadTXPKInfo(Global.filelist);
-
-                    TXPK_Viewer form = new(Global.filelist[Global.fileIndex].FilePath, txpk, Global.filelist);
-                    bool IsOpen = false;
-
-                    foreach (Form f in Application.OpenForms)
-                    {
-                        if (f.Text == "TXPK Viewer - " + Global.filelist[Global.fileIndex].FilePath)
+                        foreach (Form f in Application.OpenForms)
                         {
-                            IsOpen = true;
-                            f.Focus();
-                            break;
+                            if (f.Text == "DDS Viewer - " + Global.filelist[Global.fileIndex].FilePath)
+                            {
+                                IsDDSFormOpen = true;
+                                f.Focus();
+                                break;
+                            }
                         }
-                    }
 
-                    if (!IsOpen)
-                        form.Show();
-                }
-                if (ext == ".m3mp")
-                {
-                    bool isCompressed = false;
+                        if (!IsDDSFormOpen)
+                            dds_form.Show();
+                        break;
+                    case ".txpk":
+                        TXPK txpk = blobsetVersion > 2 ? ZSTD_IO.ReadTXPKInfo(filePath) : LZMA_IO.ReadTXPKInfo(Global.filelist);
 
-                    if (MainCompressedSize != MainUnCompressedSize)
-                        isCompressed = true;
+                        TXPK_Viewer txpk_form = new(Global.filelist[Global.fileIndex].FilePath, txpk, Global.filelist);
+                        bool IsTxpkFormOpen = false;
 
-                    M3MP? m3mp = blobsetVersion >= 3 ? ZSTD_IO.ReadM3MPInfo(filePath, isCompressed) : LZMA_IO.ReadM3MPInfo(Global.filelist);
-
-                    M3MP_Viewer form = new(Global.filelist[Global.fileIndex].FilePath, m3mp, Global.filelist);
-                    bool IsOpen = false;
-
-                    foreach (Form f in Application.OpenForms)
-                    {
-                        if (f.Text == "M3MP Viewer - " + Global.filelist[Global.fileIndex].FilePath)
+                        foreach (Form f in Application.OpenForms)
                         {
-                            IsOpen = true;
-                            f.Focus();
-                            break;
+                            if (f.Text == "TXPK Viewer - " + Global.filelist[Global.fileIndex].FilePath)
+                            {
+                                IsTxpkFormOpen = true;
+                                f.Focus();
+                                break;
+                            }
                         }
-                    }
 
-                    if (!IsOpen)
-                        form.Show();
-                }
-                else if (ext == ".dds")
-                {
-                    DDS_Viewer form = new(Global.filelist[Global.fileIndex].FilePath, Global.filelist);
-                    bool IsOpen = false;
+                        if (!IsTxpkFormOpen)
+                            txpk_form.Show();
+                        break;
+                    case ".m3mp":
+                        bool isCompressed = false;
 
-                    foreach (Form f in Application.OpenForms)
-                    {
-                        if (f.Text == "DDS Viewer - " + Global.filelist[Global.fileIndex].FilePath)
+                        if (blobsetHeaderData.MainCompressedSize != blobsetHeaderData.MainUnCompressedSize)
+                            isCompressed = true;
+
+                        M3MP? m3mp = blobsetVersion > 2 ? ZSTD_IO.ReadM3MPInfo(filePath, isCompressed) : LZMA_IO.ReadM3MPInfo(Global.filelist);
+
+                        M3MP_Viewer m3mp_form = new(Global.filelist[Global.fileIndex].FilePath, m3mp, Global.filelist);
+                        bool IsM3mpFormOpen = false;
+
+                        foreach (Form f in Application.OpenForms)
                         {
-                            IsOpen = true;
-                            f.Focus();
-                            break;
+                            if (f.Text == "M3MP Viewer - " + Global.filelist[Global.fileIndex].FilePath)
+                            {
+                                IsM3mpFormOpen = true;
+                                f.Focus();
+                                break;
+                            }
                         }
-                    }
 
-                    if (!IsOpen)
-                        form.Show();
-                }
-                else if (ext == ".dat")
-                {
-                    Hex_Viewer form = new(Global.filelist[Global.fileIndex].FilePath, Global.filelist);
-                    bool IsOpen = false;
+                        if (!IsM3mpFormOpen)
+                            m3mp_form.Show();
+                        break;
+                    case ".dat":
+                        Hex_Viewer dat_form = new(filePath, Global.filelist[Global.fileIndex].FilePath, (int)blobsetHeaderData.MainUnCompressedSize, blobsetHeaderData.MainFinalOffSet);
+                        bool IsDatFormOpen = false;
 
-                    foreach (Form f in Application.OpenForms)
-                    {
-                        if (f.Text == "Hex Viewer - " + Global.filelist[Global.fileIndex].FilePath)
+                        foreach (Form f in Application.OpenForms)
                         {
-                            IsOpen = true;
-                            f.Focus();
-                            break;
+                            if (f.Text == "Hex Viewer - " + Global.filelist[Global.fileIndex].FilePath)
+                            {
+                                IsDatFormOpen = true;
+                                f.Focus();
+                                break;
+                            }
                         }
-                    }
 
-                    if (!IsOpen)
-                        form.Show();
+                        if (!IsDatFormOpen)
+                            dat_form.Show();
+                        break;
                 }
             }
         }
 
-        private void extractBlobsetToolStripMenuItem_Click(object sender, EventArgs e)
+        private void extractBlobset_ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             fileInfo_richTextBox.Clear();
-            fileInfo_richTextBox.AppendText("Extracting " + Properties.Settings.Default.GameName + " Blobset, please wait..........");
+            fileInfo_richTextBox.AppendText("Extracting " + Global.gameInfo.GameName + " Blobset, please wait..........");
             fileInfo_richTextBox.AppendText(Environment.NewLine);
             fileInfo_richTextBox.AppendText("This may take a while, just depends on the size of the game.");
             ExtractMain();
@@ -415,30 +477,24 @@ namespace Blobset_Tools
             Extract_bgw.WorkerSupportsCancellation = true;
             Extract_bgw.RunWorkerAsync();
 
-            createBlobsetToolStripMenuItem.Enabled = false;
-            extractBlobsetToolStripMenuItem.Enabled = false;
+            blobsetToolStripMenuItem.Enabled = false;
             validateSteamGameFilesToolStripMenuItem.Enabled = false;
             updateFileMappingDataToolStripMenuItem.Enabled = false;
             files_listView.Enabled = false;
+            status_Label.ForeColor = Color.Black;
         }
 
         private void Extract_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
-            string blobsetFile = Properties.Settings.Default.GameLocation;
-            BlobsetVersion blobsetVersion = (BlobsetVersion)Properties.Settings.Default.BlobsetVersion;
+            string blobsetFile = Global.gameInfo.GameLocation;
+            BlobsetVersion blobsetVersion = (BlobsetVersion)Global.gameInfo.BlobsetVersion;
 
             bool errorCheck = true;
 
             switch (blobsetVersion)
             {
                 case BlobsetVersion.v1:
-                    Thread thread = new Thread(() =>
-                    {
-                        errorCheck = Extract.BlobsetV1(blobsetFile, Extract_bgw);
-                    });
-
-                    thread.Start();
-                    thread.Join();
+                    errorCheck = Extract.BlobsetV1(blobsetFile, Extract_bgw);
                     break;
                 case BlobsetVersion.v2:
                     errorCheck = Extract.BlobsetV2(blobsetFile, Extract_bgw);
@@ -457,11 +513,11 @@ namespace Blobset_Tools
 
         private void Extract_bgw_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            toolStripProgressBar.Value = e.ProgressPercentage;
-            progressStripStatusLabel.Text = string.Format("{0} %", e.ProgressPercentage);
-            status_Label.ForeColor = Color.Black;
-            statusStrip1.Refresh();
-            status_Label.Text = "Extracting File: " + e.UserState.ToString();
+            int progressPercentage = Math.Max(0, Math.Min(100, e.ProgressPercentage));
+            progressStripStatusLabel.Text = $"{progressPercentage} %";
+            string fileName = e.UserState?.ToString() ?? "Unknown file";
+            status_Label.Text = $"Extracting File: {fileName}";
+            toolStripProgressBar.Value = progressPercentage;
         }
 
         private void Extract_bgw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -470,9 +526,9 @@ namespace Blobset_Tools
             {
                 status_Label.ForeColor = Color.DarkGreen;
                 fileInfo_richTextBox.Clear();
-                status_Label.Text = "Blobset file has finished extracting....";
+                status_Label.Text = Global.gameInfo.GameName + " Blobset file has finished extracting....";
                 fileInfo_richTextBox.AppendText("Blobset file has finished extracting....");
-                MessageBox.Show(Properties.Settings.Default.GameName + " Blobset file has finished extracting", "Blobset Extraction", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                MessageBox.Show(Global.gameInfo.GameName + " Blobset file has finished extracting", "Blobset Extraction", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
             else
                 fileInfo_richTextBox.Clear();
@@ -480,12 +536,10 @@ namespace Blobset_Tools
             toolStripProgressBar.Value = 0;
             progressStripStatusLabel.Text = string.Empty;
 
-            createBlobsetToolStripMenuItem.Enabled = true;
-            extractBlobsetToolStripMenuItem.Enabled = true;
+            blobsetToolStripMenuItem.Enabled = true;
             validateSteamGameFilesToolStripMenuItem.Enabled = true;
             updateFileMappingDataToolStripMenuItem.Enabled = true;
             files_listView.Enabled = true;
-            status_Label.ForeColor = Color.Black;
 
             if (Extract_bgw != null) { Extract_bgw.Dispose(); Extract_bgw = null; }
         }
@@ -507,29 +561,23 @@ namespace Blobset_Tools
             FileMapping_bgw.WorkerSupportsCancellation = true;
             FileMapping_bgw.RunWorkerAsync();
 
-            createBlobsetToolStripMenuItem.Enabled = false;
-            extractBlobsetToolStripMenuItem.Enabled = false;
+            blobsetToolStripMenuItem.Enabled = false;
             validateSteamGameFilesToolStripMenuItem.Enabled = false;
             updateFileMappingDataToolStripMenuItem.Enabled = false;
             files_listView.Enabled = false;
+            status_Label.ForeColor = Color.Black;
         }
 
         private void FileMapping_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
-            string blobsetFile = Properties.Settings.Default.GameLocation;
-            BlobsetVersion blobsetVersion = (BlobsetVersion)Properties.Settings.Default.BlobsetVersion;
+            string blobsetFile = Global.gameInfo.GameLocation;
+            BlobsetVersion blobsetVersion = (BlobsetVersion)Global.gameInfo.BlobsetVersion;
             bool errorCheck = true;
 
             switch (blobsetVersion)
             {
                 case BlobsetVersion.v1:
-                    Thread thread = new Thread(() =>
-                    {
-                        errorCheck = FileMapping.WriteV1(blobsetFile, FileMapping_bgw);
-                    });
-
-                    thread.Start();
-                    thread.Join();
+                    errorCheck = FileMapping.WriteV1(blobsetFile, FileMapping_bgw);
                     break;
                 case BlobsetVersion.v2:
                     errorCheck = FileMapping.WriteV2(blobsetFile, FileMapping_bgw);
@@ -548,37 +596,42 @@ namespace Blobset_Tools
 
         private void FileMapping_bgw_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            toolStripProgressBar.Value = e.ProgressPercentage;
-            progressStripStatusLabel.Text = string.Format("{0} %", e.ProgressPercentage);
-            status_Label.ForeColor = Color.Black;
-            status_Label.Text = "Creating New File Mapping: " + e.UserState.ToString();
-            statusStrip1.Refresh();
+            int progressPercentage = Math.Max(0, Math.Min(100, e.ProgressPercentage));
+            progressStripStatusLabel.Text = $"{progressPercentage} %";
+            string fileName = e.UserState?.ToString() ?? "Unknown file";
+            status_Label.Text = $"Creating New File Mapping Data: {fileName}";
+            toolStripProgressBar.Value = progressPercentage;
         }
 
         private void FileMapping_bgw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             if (!e.Cancelled)
             {
+                var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+                string platformExt = platformDetails["PlatformExt"];
+
                 status_Label.ForeColor = Color.DarkGreen;
                 fileInfo_richTextBox.Clear();
-                status_Label.Text = "Creating New File Mapping has finished....";
-                fileInfo_richTextBox.AppendText("Creating New File Mapping has finished....");
+                status_Label.Text = "Creating New File Mapping Data for " + Global.gameInfo.GameName + " has finished....";
+                fileInfo_richTextBox.AppendText("Creating New File Mapping Data for " + Global.gameInfo.GameName + " has finished....");
 
                 string gameVersion = Utilities.GetGameVersion();
-                int gameID = Properties.Settings.Default.GameID;
+                int gameID = Global.gameInfo.GameId;
 
-                if (gameID == (int)Enums.Game.AFLL || gameID == (int)Enums.Game.RLL2)
+                if (gameID < 7)
                 {
-                    File.Delete(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\version.txt");
-                    File.WriteAllText(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\version.txt", "1");
+                    Global.gameInfo.Version = "1.00";
+                    IniFile iniFile = new(Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "GameInfo.ini"));
+                    iniFile.Write("Version", "1.00", "GameInfo");
                 }
                 else
                 {
-                    File.Delete(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\version.txt");
-                    File.WriteAllText(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\version.txt", gameVersion);
+                    Global.gameInfo.Version = gameVersion;
+                    IniFile iniFile = new(Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "GameInfo.ini"));
+                    iniFile.Write("Version", gameVersion, "GameInfo");
                 }
 
-                MessageBox.Show("Creating New File Mapping has finished", "Creating New File Mapping", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                MessageBox.Show("Creating New File Mapping Data has finished", "Creating New File Mapping", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
             else
                 fileInfo_richTextBox.Clear();
@@ -586,12 +639,10 @@ namespace Blobset_Tools
             toolStripProgressBar.Value = 0;
             progressStripStatusLabel.Text = string.Empty;
 
-            createBlobsetToolStripMenuItem.Enabled = true;
-            extractBlobsetToolStripMenuItem.Enabled = true;
+            blobsetToolStripMenuItem.Enabled = true;
             validateSteamGameFilesToolStripMenuItem.Enabled = true;
             updateFileMappingDataToolStripMenuItem.Enabled = true;
             files_listView.Enabled = true;
-            status_Label.ForeColor = Color.Black;
 
             if (FileMapping_bgw != null) { FileMapping_bgw.Dispose(); FileMapping_bgw = null; }
 
@@ -599,7 +650,94 @@ namespace Blobset_Tools
             UI.FilesList(folder_treeView);
         }
 
-        private void createBlobsetToolStripMenuItem_Click(object sender, EventArgs e)
+        private void createBlobset_ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            fileInfo_richTextBox.Clear();
+            fileInfo_richTextBox.AppendText("Creating new update blobset with mods, please wait..........");
+
+            if (blobset_sfd.ShowDialog() == DialogResult.OK)
+            {
+                CreateMain();
+            }
+            blobset_sfd.Dispose();
+        }
+
+        private void CreateMain()
+        {
+            Create_bgw = new BackgroundWorker();
+            Create_bgw.DoWork += new DoWorkEventHandler(Create_bgw_DoWork);
+            Create_bgw.ProgressChanged += new ProgressChangedEventHandler(Create_bgw_ProgressChanged);
+            Create_bgw.RunWorkerCompleted += new RunWorkerCompletedEventHandler(Create_bgw_RunWorkerCompleted);
+            Create_bgw.WorkerReportsProgress = true;
+            Create_bgw.WorkerSupportsCancellation = true;
+            Create_bgw.RunWorkerAsync();
+
+            blobsetToolStripMenuItem.Enabled = false;
+            validateSteamGameFilesToolStripMenuItem.Enabled = false;
+            updateFileMappingDataToolStripMenuItem.Enabled = false;
+            files_listView.Enabled = false;
+            status_Label.ForeColor = Color.Black;
+        }
+
+        private void Create_bgw_DoWork(object sender, DoWorkEventArgs e)
+        {
+            string blobsetFile = blobset_sfd.FileName;
+
+            if (string.IsNullOrEmpty(blobsetFile))
+            {
+                e.Cancel = true;
+                return;
+            }
+
+            BlobsetVersion blobsetVersion = (BlobsetVersion)Global.gameInfo.BlobsetVersion;
+
+            bool errorCheck = true;
+
+            switch (blobsetVersion)
+            {
+                case BlobsetVersion.v1:
+                    errorCheck = Create.BlobsetV1(blobsetFile, Create_bgw);
+                    break;
+            }
+
+            if (errorCheck)
+                e.Cancel = true;
+        }
+
+        private void Create_bgw_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            int progressPercentage = Math.Max(0, Math.Min(100, e.ProgressPercentage));
+            progressStripStatusLabel.Text = $"{progressPercentage} %";
+            string fileName = e.UserState?.ToString() ?? "Unknown file";
+            status_Label.Text = $"Creating Update Blobset: {fileName}";
+            toolStripProgressBar.Value = progressPercentage;
+        }
+
+        private void Create_bgw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            if (!e.Cancelled)
+            {
+                status_Label.ForeColor = Color.DarkGreen;
+                fileInfo_richTextBox.Clear();
+                status_Label.Text = "Mods have been added to the " + Global.gameInfo.GameName + " blobset....";
+                fileInfo_richTextBox.AppendText("Mods have been added to the " + Global.gameInfo.GameName + " blobset....");
+                MessageBox.Show("Mods have been added to the blobset....", "Blobset Create", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+            }
+            else
+                fileInfo_richTextBox.Clear();
+
+            toolStripProgressBar.Value = 0;
+            progressStripStatusLabel.Text = string.Empty;
+
+            blobsetToolStripMenuItem.Enabled = true;
+            validateSteamGameFilesToolStripMenuItem.Enabled = true;
+            updateFileMappingDataToolStripMenuItem.Enabled = true;
+            files_listView.Enabled = true;
+
+            if (Create_bgw != null) { Create_bgw.Dispose(); Create_bgw = null; }
+        }
+
+        private void modifyBlobset_ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             fileInfo_richTextBox.Clear();
             fileInfo_richTextBox.AppendText("Modifing Blobset with mods, please wait..........");
@@ -616,30 +754,24 @@ namespace Blobset_Tools
             Modify_bgw.WorkerSupportsCancellation = true;
             Modify_bgw.RunWorkerAsync();
 
-            createBlobsetToolStripMenuItem.Enabled = false;
-            extractBlobsetToolStripMenuItem.Enabled = false;
+            blobsetToolStripMenuItem.Enabled = false;
             validateSteamGameFilesToolStripMenuItem.Enabled = false;
             updateFileMappingDataToolStripMenuItem.Enabled = false;
             files_listView.Enabled = false;
+            status_Label.ForeColor = Color.Black;
         }
 
         private void Modify_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
-            string blobsetFile = Properties.Settings.Default.GameLocation;
-            BlobsetVersion blobsetVersion = (BlobsetVersion)Properties.Settings.Default.BlobsetVersion;
+            string blobsetFile = Global.gameInfo.GameLocation;
+            BlobsetVersion blobsetVersion = (BlobsetVersion)Global.gameInfo.BlobsetVersion;
 
             bool errorCheck = true;
 
             switch (blobsetVersion)
             {
                 case BlobsetVersion.v1:
-                    Thread thread = new Thread(() =>
-                    {
-                        errorCheck = Modify.BlobsetV1(blobsetFile, Modify_bgw);
-                    });
-
-                    thread.Start();
-                    thread.Join();
+                    errorCheck = Modify.BlobsetV1(blobsetFile, Modify_bgw);
                     break;
                 case BlobsetVersion.v2:
                     errorCheck = Modify.BlobsetV2(blobsetFile, Modify_bgw);
@@ -658,11 +790,11 @@ namespace Blobset_Tools
 
         private void Modify_bgw_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            toolStripProgressBar.Value = e.ProgressPercentage;
-            progressStripStatusLabel.Text = string.Format("{0} %", e.ProgressPercentage);
-            status_Label.ForeColor = Color.Black;
-            status_Label.Text = "Modifing Blobset: " + e.UserState.ToString();
-            statusStrip1.Refresh();
+            int progressPercentage = Math.Max(0, Math.Min(100, e.ProgressPercentage));
+            progressStripStatusLabel.Text = $"{progressPercentage} %";
+            string fileName = e.UserState?.ToString() ?? "Unknown file";
+            status_Label.Text = $"Modifing Blobset: {fileName}";
+            toolStripProgressBar.Value = progressPercentage;
         }
 
         private void Modify_bgw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -671,8 +803,38 @@ namespace Blobset_Tools
             {
                 status_Label.ForeColor = Color.DarkGreen;
                 fileInfo_richTextBox.Clear();
-                status_Label.Text = "Mods have been added to the blobset....";
-                fileInfo_richTextBox.AppendText("Mods have been added to the blobset....");
+                status_Label.Text = "Mods have been added to the " + Global.gameInfo.GameName + " blobset....";
+                fileInfo_richTextBox.AppendText("Mods have been added to the " + Global.gameInfo.GameName + " blobset....");
+
+                bool loadGameCheck = loadGameToolStripMenuItem.Checked;
+
+                if (loadGameCheck)
+                {
+                    Process? ps = null;
+                    string steamLocation = UI.getSteamLocation();
+
+                    if (!string.IsNullOrEmpty(steamLocation))
+                    {
+                        try
+                        {
+                            ps = new Process();
+                            ps.StartInfo.FileName = steamLocation + @"\Steam.exe";
+                            ps.StartInfo.Arguments = "-applaunch " + Global.gameInfo.SteamGameId + " -StraightIntoFreemode";
+                            ps.Start();
+                        }
+                        catch (Exception arg)
+                        {
+                            MessageBox.Show("Error occurred, report it to Wouldy : " + arg, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                        }
+                        finally
+                        {
+                            if (ps != null)
+                                ps.Close();
+                            Application.Exit();
+                        }
+                    }
+                }
+
                 MessageBox.Show("Mods have been added to the blobset....", "Blobset Modify", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
             else
@@ -681,48 +843,52 @@ namespace Blobset_Tools
             toolStripProgressBar.Value = 0;
             progressStripStatusLabel.Text = string.Empty;
 
-            createBlobsetToolStripMenuItem.Enabled = true;
-            extractBlobsetToolStripMenuItem.Enabled = true;
+            blobsetToolStripMenuItem.Enabled = true;
             validateSteamGameFilesToolStripMenuItem.Enabled = true;
             updateFileMappingDataToolStripMenuItem.Enabled = true;
             files_listView.Enabled = true;
-            status_Label.ForeColor = Color.Black;
 
             if (Modify_bgw != null) { Modify_bgw.Dispose(); Modify_bgw = null; }
         }
 
         private void loadGameToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (loadGameToolStripMenuItem.Checked)
+            string settingsFile = Path.Combine(Global.currentPath, "Settings.ini");
+
+            if (File.Exists(settingsFile))
             {
-                Properties.Settings.Default.LoadGame = true;
-                Properties.Settings.Default.Save();
+                IniFile settingsIni = new(settingsFile);
+
+                if (loadGameToolStripMenuItem.Checked)
+                    settingsIni.Write("LoadGame", "true", "Settings");
+                else
+                    settingsIni.Write("LoadGame", "false", "Settings");
             }
             else
-            {
-                Properties.Settings.Default.LoadGame = false;
-                Properties.Settings.Default.Save();
-            }
+                MessageBox.Show("Can't find - " + settingsFile + " file.", "Settings Ini File Missing", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         private void validateSteamGameFilesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            status_Label.Text = "Validating " + Properties.Settings.Default.GameName + " files";
+            status_Label.Text = "Validating " + Global.gameInfo.GameName + " files";
             UI.ValidateSteamGame();
         }
 
         private void skipUnknownFilesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (skipUnknownFilesToolStripMenuItem.Checked)
+            string settingsFile = Path.Combine(Global.currentPath, "Settings.ini");
+
+            if (File.Exists(settingsFile))
             {
-                Properties.Settings.Default.SkipUnknown = true;
-                Properties.Settings.Default.Save();
+                IniFile settingsIni = new(settingsFile);
+
+                if (skipUnknownFilesToolStripMenuItem.Checked)
+                    settingsIni.Write("SkipUnknown", "true", "Settings");
+                else
+                    settingsIni.Write("SkipUnknown", "false", "Settings");
             }
             else
-            {
-                Properties.Settings.Default.SkipUnknown = false;
-                Properties.Settings.Default.Save();
-            }
+                MessageBox.Show("Can't find - " + settingsFile + " file.", "Settings Ini File Missing", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         private void txpkCreatorToolStripMenuItem_Click(object sender, EventArgs e)
@@ -763,6 +929,11 @@ namespace Blobset_Tools
                 form.Show();
         }
 
+        private void fileMappingEditorToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+        }
+
         private void ddsFileToolStripMenuItem_Click(object sender, EventArgs e)
         {
             List<Structs.FileIndexInfo> list = (List<Structs.FileIndexInfo>)folder_treeView.SelectedNode.Tag;
@@ -775,7 +946,7 @@ namespace Blobset_Tools
 
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
-                int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+                int blobsetVersion = Global.gameInfo.BlobsetVersion;
                 byte[] ddsData = blobsetVersion >= 2 ? UI.GetDDSData_V3_V4(Global.filelist) : UI.GetDDSData_V1_V2(Global.filelist);
 
                 File.WriteAllBytes(saveFileDialog.FileName, ddsData);
@@ -823,7 +994,7 @@ namespace Blobset_Tools
 
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
-                string blobsetFilePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash;
+                string blobsetFilePath = Path.Combine(Global.gameInfo.GameLocation.Replace("data-0.blobset.pc", string.Empty), list[Global.fileIndex].FolderHash, list[Global.fileIndex].FileHash);
                 IO.ReadWriteData(blobsetFilePath, saveFileDialog.FileName);
                 fileInfo_richTextBox.Clear();
                 fileInfo_richTextBox.AppendText("WEM File has been saved to - " + saveFileDialog.FileName);
@@ -899,11 +1070,11 @@ namespace Blobset_Tools
             {
                 if (Path.GetDirectoryName(path) == @"unknown\mainuncompressed")
                 {
-                    int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+                    int blobsetVersion = Global.gameInfo.BlobsetVersion;
 
                     if (blobsetVersion == (int)BlobsetVersion.v4)
                     {
-                        string blobsetFilePath = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash;
+                        string blobsetFilePath = Path.Combine(Global.gameInfo.GameLocation.Replace("data-0.blobset.pc", string.Empty), list[Global.fileIndex].FolderHash, list[Global.fileIndex].FileHash);
                         IO.ReadWriteData(blobsetFilePath, saveFileDialog.FileName);
                     }
                     else
@@ -927,8 +1098,30 @@ namespace Blobset_Tools
 
         private void flipImageToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            isFlipped = !isFlipped;
             dds_pictureBox.Image.RotateFlip(RotateFlipType.Rotate180FlipX);
             dds_pictureBox.Refresh();
+        }
+
+        private void alphaToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            int blobsetVersion = Global.gameInfo.BlobsetVersion;
+            Structs.DDSInfo ddsInfo = new();
+            byte[] ddsData = blobsetVersion > 1 ? UI.GetDDSData_V3_V4(Global.filelist) : UI.GetDDSData_V1_V2(Global.filelist);
+            if (ddsData == null) return;
+
+            Bitmap bitmap = UI.DDStoBitmap(ddsData, alphaToolStripMenuItem.Checked, ref ddsInfo);
+
+            if (bitmap != null)
+            {
+                dds_pictureBox.Image = bitmap;
+
+                if (isFlipped)
+                {
+                    dds_pictureBox.Image.RotateFlip(RotateFlipType.Rotate180FlipX);
+                    dds_pictureBox.Refresh();
+                }
+            }
         }
 
         private void fileInfo_richTextBox_SizeChanged(object sender, EventArgs e)
@@ -1011,8 +1204,11 @@ namespace Blobset_Tools
 
         private void restoreBackupFilesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string backupFilePath = Global.currentPath + "\\games\\" + Properties.Settings.Default.GameName + "\\backup\\";
-            string gameLocation = Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", "");
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            string platformExt = platformDetails["PlatformExt"];
+
+            string backupFilePath = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "backup");
+            string gameLocation = Global.gameInfo.GameLocation.Replace("data-0.blobset.pc", "");
 
             string[] files = Utilities.DirectoryInfo(backupFilePath, "*");
 
@@ -1040,19 +1236,73 @@ namespace Blobset_Tools
                 MessageBox.Show("No files to restore.", "Restore Backup Files", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
+        private void resetBlobsetToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Writer? bw = null;
+
+            try
+            {
+                // Retrieve platform details
+                var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+                string platformExt = platformDetails["PlatformExt"];
+
+                // Define the base path for game-related files
+                string basePath = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt);
+
+                string filePath = Global.gameInfo.GameLocation.Replace("-0", "-1");
+
+                string blobsetName = Path.GetFileName(Global.gameInfo.GameLocation);
+                byte[] blobsetHeader = Utilities.ReadBlobsetHeader(blobsetName);
+
+                if (blobsetHeader == null)
+                {
+                    string headerFilePath = Path.Combine(basePath, "backup", $"{blobsetName}.header");
+                    string message = $"Can't find blobset header - {headerFilePath}";
+                    string caption = "Blobset Header File Not Found";
+
+                    MessageBox.Show(message, caption, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Restoring original blobset header 
+                bw = new(Global.gameInfo.GameLocation, Endian.Little);
+                bw.Write(blobsetHeader);
+                if (bw != null) { bw.Close(); bw = null; }
+
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
+
+                MessageBox.Show("Blobset file has been reset to it's original state", "Resetting Blobset has finished", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                return;
+            }
+            finally
+            {
+                if (bw != null) { bw.Close(); }
+                UI.BlobsetHeaderData();
+            }
+        }
+
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (Extract_bgw != null) 
+            if (Extract_bgw != null)
             {
+                Extract_bgw.Dispose();
+
                 foreach (string f in Directory.EnumerateFiles(Global.currentPath + @"\temp\", "*.*"))
                     File.Delete(f);
 
                 Environment.Exit(Environment.ExitCode);
             }
-                
 
-            if (FileMapping_bgw != null) 
+
+            if (FileMapping_bgw != null)
             {
+                FileMapping_bgw.Dispose();
+
                 foreach (string f in Directory.EnumerateFiles(Global.currentPath + @"\temp\", "*.*"))
                     File.Delete(f);
 
@@ -1060,13 +1310,24 @@ namespace Blobset_Tools
             }
 
             if (Modify_bgw != null)
+            {
+                Modify_bgw.Dispose();
                 Environment.Exit(Environment.ExitCode);
+            }
         }
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
         {
             About about = new();
             about.ShowDialog();
+        }
+
+        private void gameSelectionToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Hide();
+            GameSelection gameSelection = new();
+            gameSelection.ShowDialog();
+            Close();
         }
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)

@@ -51,7 +51,7 @@ namespace Gameloop.Vdf.Linq
                     targetType = Nullable.GetUnderlyingType(targetType);
                 }
 
-                if (TryConvertVdf<U>(value.Value, out U resultObj))
+                if (TryConvertVdf(value.Value, out U resultObj))
                     return resultObj;
 
                 return (U)System.Convert.ChangeType(value.Value, targetType, CultureInfo.InvariantCulture);

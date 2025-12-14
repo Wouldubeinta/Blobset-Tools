@@ -12,7 +12,7 @@ namespace BlobsetIO
     ///   
     ///   This program is free software; you can redistribute it and/or
     ///   modify it under the terms of the GNU General Public License
-    ///   as published by the Free Software Foundation; either version 2
+    ///   as published by the Free Software Foundation; either version 3
     ///   of the License, or (at your option) any later version.
     ///   
     ///   This program is distributed in the hope that it will be useful,
@@ -118,10 +118,9 @@ namespace BlobsetIO
         /// <param name="input">M3MP input stream</param>
         public void Deserialize(Reader input)
         {
-            int gameId = Blobset_Tools.Properties.Settings.Default.GameID;
             Endian endian = Endian.Little;
 
-            if (gameId == (int)Enums.Game.RLL2)
+            if (Global.isBigendian)
                 endian = Endian.Big;
 
             input.CurrentEndian = endian;
@@ -175,6 +174,13 @@ namespace BlobsetIO
         /// <param name="output">M3MP output stream</param>
         public void Serialize(Writer output)
         {
+            Endian endian = Endian.Little;
+
+            if (Global.isBigendian)
+                endian = Endian.Big;
+
+            output.CurrentEndian = endian;
+
             output.WriteUInt32(1347236685); // M3MP
             output.WriteUInt32(FilesCount);
             output.WriteUInt32(ChunksCount);
@@ -188,12 +194,16 @@ namespace BlobsetIO
                 output.WriteUInt32(UnCompressedEntries[i].UncompressedDataInfo.Reserved);
             }
 
+            output.CurrentEndian = Endian.Little;
+
             for (int i = 0; i < FilesCount; i++)
             {
                 UnCompressedEntries[i].UncompressedDataInfo.FilePathOffset = (uint)output.Position;
                 output.WriteString(UnCompressedEntries[i].FilePath);
                 output.WriteInt8(0);
             }
+
+            output.CurrentEndian = endian;
 
             for (int i = 0; i < ChunksCount; i++)
             {

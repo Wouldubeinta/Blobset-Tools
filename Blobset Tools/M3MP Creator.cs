@@ -20,7 +20,10 @@ namespace Blobset_Tools
         {
             DeleteTempFiles();
 
-            if (File.Exists(Global.currentPath + @"\m3mp\M3MP_List.xml"))
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            string platformExt = platformDetails["PlatformExt"];
+
+            if (File.Exists(Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "m3mp", "M3MP_List.xml")))
             {
                 m3mp_richTextBox.AppendText("M3MP_List.xml found, ready for M3MP creation");
                 m3mp_richTextBox.AppendText(Environment.NewLine);
@@ -34,9 +37,14 @@ namespace Blobset_Tools
 
         private void createToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (File.Exists(Global.currentPath + @"\m3mp\M3MP_List.xml"))
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            string platformExt = platformDetails["PlatformExt"];
+
+            string m3mpListPath = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "m3mp", "M3MP_List.xml");
+
+            if (File.Exists(m3mpListPath))
             {
-                M3MP_Xml_In = IO.XmlDeserialize<ExtractFileInfo>(Global.currentPath + @"\m3mp\M3MP_List.xml");
+                M3MP_Xml_In = IO.XmlDeserialize<ExtractFileInfo>(m3mpListPath);
 
                 if (M3MP_Xml_In == null)
                 {
@@ -48,7 +56,7 @@ namespace Blobset_Tools
 
                 string compCheck = M3MP_Xml_In.IsCompressed ? "compressed" : "uncompressed";
 
-                saveFileDialog1.InitialDirectory = Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\mods\m3mp\" + compCheck;
+                saveFileDialog1.InitialDirectory = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "mods", "m3mp", compCheck);
 
                 if (saveFileDialog1.ShowDialog() == DialogResult.OK)
                     M3MP_Create();
@@ -78,10 +86,21 @@ namespace Blobset_Tools
 
         private void M3MP_Create_bgw_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            toolStripProgressBar1.Value = e.ProgressPercentage;
-            progressStripStatusLabel.Text = string.Format("{0} %", e.ProgressPercentage);
-            m3mp_richTextBox.AppendText(e.UserState.ToString());
+            // Update the status label to reflect the current progress percentage
+            int progressPercentage = Math.Max(0, Math.Min(100, e.ProgressPercentage));
+            progressStripStatusLabel.Text = $"{progressPercentage} %";
+
+            // Append the UserState information to the rich text box, ensuring it's formatted properly
+            if (e.UserState != null)
+                m3mp_richTextBox.AppendText(e.UserState.ToString());
+            else
+                m3mp_richTextBox.AppendText("No additional information.");
+
+            // Append a new line for better readability
             m3mp_richTextBox.AppendText(Environment.NewLine);
+
+            // Update the progress bar with the current progress percentage
+            toolStripProgressBar1.Value = progressPercentage;
         }
 
         private void M3MP_Create_bgw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -112,16 +131,23 @@ namespace Blobset_Tools
 
             try
             {
+                var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+                string platformExt = platformDetails["PlatformExt"];
+
                 int chunkSize = 32768;
                 int compressedOffset = 16;
                 int totalFileSize = 0;
                 long[]? chunkSizes = null;
 
+                string m3mpHeaderTemp = Path.Combine(Global.currentPath, "temp", "m3mp_header.tmp");
+                string m3mpUncompressedDataTmp = Path.Combine(Global.currentPath, "temp", "m3mp_uncompressed_data.tmp");
+                string m3mpCompressedDataTmp = Path.Combine(Global.currentPath, "temp", "m3mp_compressed_data.tmp");
+
                 m3mp.UnCompressedEntries = new UnCompressedEntry[M3MP_Xml_In.Entries.Length];
 
                 for (int i = 0; i < M3MP_Xml_In.Entries.Length; i++)
                 {
-                    string filePath = Global.currentPath + @"\m3mp\" + M3MP_Xml_In.Entries[i].FilePath.Replace("/", @"\");
+                    string filePath = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "m3mp", M3MP_Xml_In.Entries[i].FilePath.Replace("/", @"\"));
 
                     m3mp.UnCompressedEntries[i] = new();
                     m3mp.UnCompressedEntries[i].UncompressedDataInfo = new UncompressedDataInfo();
@@ -135,7 +161,7 @@ namespace Blobset_Tools
                     compressedOffset += filePathLength;
                     compressedOffset += 16;
 
-                    int percentProgress = 100 * i / M3MP_Xml_In.Entries.Length;
+                    int percentProgress = (i + 1) * 100 / M3MP_Xml_In.Entries.Length;
                     M3MP_Create_bgw.ReportProgress(percentProgress, "Getting header data ready: " + M3MP_Xml_In.Entries[i].FilePath);
                 }
 
@@ -151,20 +177,20 @@ namespace Blobset_Tools
                 {
                     CompressedEntry entry = new();
                     entry.CompressedDataInfo = new();
-                    int percentProgress = 100 * i / (int)m3mp.ChunksCount;
+                    int percentProgress = (i + 1) * 100 / (int)m3mp.ChunksCount;
                     M3MP_Create_bgw.ReportProgress(percentProgress, "Initializing chunk compressed data info array chunk " + (i + 1).ToString());
                     m3mp.CompressedEntries[i] = entry;
                 }
 
                 m3mp.FilesCount = (uint)M3MP_Xml_In.Entries.Length;
 
-                bw = new Writer(Global.currentPath + @"\temp\m3mp_header.tmp");
+                bw = new Writer(m3mpHeaderTemp);
 
                 m3mp.Serialize(bw);
 
                 m3mp.UnCompressedEntries[0].UncompressedDataInfo.Offset = 0;
 
-                writer = new FileStream(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp", FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                writer = new FileStream(m3mpUncompressedDataTmp, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
 
                 M3MP_Create_bgw.ReportProgress(0, Environment.NewLine);
 
@@ -172,7 +198,7 @@ namespace Blobset_Tools
 
                 for (int i = 0; i < M3MP_Xml_In.Entries.Length; i++)
                 {
-                    string filePath = Global.currentPath + @"\m3mp\" + M3MP_Xml_In.Entries[i].FilePath.Replace("/", @"\");
+                    string filePath = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "m3mp", M3MP_Xml_In.Entries[i].FilePath.Replace("/", @"\"));
                     br = new Reader(filePath);
 
                     int tmpChunkCount = Utilities.ChunkAmount((int)Utilities.FileInfo(filePath));
@@ -190,19 +216,19 @@ namespace Blobset_Tools
 
                     uncompressedOffset += m3mp.UnCompressedEntries[i].UncompressedDataInfo.Size;
 
-                    int percentProgress = 100 * i / M3MP_Xml_In.Entries.Length;
+                    int percentProgress = (i + 1) * 100 / M3MP_Xml_In.Entries.Length;
                     M3MP_Create_bgw.ReportProgress(percentProgress, "Writing temp data : " + M3MP_Xml_In.Entries[i].FilePath);
                 }
 
                 if (writer != null) { writer.Dispose(); writer = null; }
                 if (bw != null) { bw.Close(); bw = null; }
 
-                br = new(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp");
-                writer = new(Global.currentPath + @"\temp\m3mp_compressed_data.tmp", FileMode.OpenOrCreate, FileAccess.Write);
+                br = new(m3mpUncompressedDataTmp);
+                writer = new(m3mpCompressedDataTmp, FileMode.OpenOrCreate, FileAccess.Write);
 
                 M3MP_Create_bgw.ReportProgress(0, Environment.NewLine);
 
-                long m3mpHeaderSize = Utilities.FileInfo(Global.currentPath + @"\temp\m3mp_header.tmp");
+                long m3mpHeaderSize = Utilities.FileInfo(m3mpHeaderTemp);
 
                 for (int i = 0; i < m3mp.ChunksCount; i++)
                 {
@@ -213,14 +239,14 @@ namespace Blobset_Tools
                     m3mp.CompressedEntries[i].CompressedDataInfo.CompressedSize = (uint)chunkCSize;
                     m3mp.CompressedEntries[i].CompressedDataInfo.UnCompressedSize = (uint)buffer2.Length;
 
-                    int percentProgress = 100 * i / (int)m3mp.ChunksCount;
+                    int percentProgress = (i + 1) * 100 / (int)m3mp.ChunksCount;
                     M3MP_Create_bgw.ReportProgress(percentProgress, "Writing M3MP compressed data chunk " + (i + 1).ToString());
                 }
 
                 if (writer != null) { writer.Dispose(); writer = null; }
                 if (br != null) { br.Close(); br = null; }
 
-                bw = new(Global.currentPath + @"\temp\m3mp_header.tmp");
+                bw = new(m3mpHeaderTemp);
 
                 bw.Position = 0;
                 m3mp.Serialize(bw);
@@ -229,17 +255,22 @@ namespace Blobset_Tools
 
                 writer = new FileStream(saveFileDialog1.FileName, FileMode.OpenOrCreate, FileAccess.Write);
 
-                IO.ReadWriteData(Global.currentPath + @"\temp\m3mp_header.tmp", writer);
-                IO.ReadWriteData(Global.currentPath + @"\temp\m3mp_compressed_data.tmp", writer);
+                IO.ReadWriteData(m3mpHeaderTemp, writer);
+                IO.ReadWriteData(m3mpCompressedDataTmp, writer);
 
                 ModifyFileInfo m3mpXmlOut = new();
                 m3mpXmlOut.Index = M3MP_Xml_In.Index;
                 m3mpXmlOut.IsCompressed = M3MP_Xml_In.IsCompressed;
                 m3mpXmlOut.MainCompressedSize = 0;
-                m3mpXmlOut.MainUnCompressedSize = (int)Utilities.FileInfo(Global.currentPath + @"\temp\m3mp_header.tmp") + (int)Utilities.FileInfo(Global.currentPath + @"\temp\m3mp_compressed_data.tmp");
+                m3mpXmlOut.MainUnCompressedSize = (int)Utilities.FileInfo(m3mpHeaderTemp) + (int)Utilities.FileInfo(m3mpCompressedDataTmp);
                 m3mpXmlOut.VramCompressedSize = 0;
                 m3mpXmlOut.VramUnCompressedSize = 0;
-                IO.XmlSerialize(Path.GetDirectoryName(saveFileDialog1.FileName) + @"\" + Path.GetFileNameWithoutExtension(saveFileDialog1.FileName) + ".xml", m3mpXmlOut);
+
+                string directory = Path.GetDirectoryName(saveFileDialog1.FileName);
+                string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(saveFileDialog1.FileName);
+                string xmlFilePath = Path.Combine(directory, $"{fileNameWithoutExtension}.xml");
+
+                IO.XmlSerialize(xmlFilePath, m3mpXmlOut);
 
                 if (writer != null) { writer.Dispose(); writer = null; }
 
@@ -262,14 +293,18 @@ namespace Blobset_Tools
 
         private void DeleteTempFiles()
         {
-            if (File.Exists(Global.currentPath + @"\temp\m3mp_header.tmp"))
-                File.Delete(Global.currentPath + @"\temp\m3mp_header.tmp");
+            string m3mpHeaderTemp = Path.Combine(Global.currentPath, "temp", "m3mp_header.tmp");
+            string m3mpUncompressedDataTmp = Path.Combine(Global.currentPath, "temp", "m3mp_uncompressed_data.tmp");
+            string m3mpCompressedDataTmp = Path.Combine(Global.currentPath, "temp", "m3mp_compressed_data.tmp");
 
-            if (File.Exists(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp"))
-                File.Delete(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp");
+            if (File.Exists(m3mpHeaderTemp))
+                File.Delete(m3mpHeaderTemp);
 
-            if (File.Exists(Global.currentPath + @"\temp\m3mp_compressed_data.tmp"))
-                File.Delete(Global.currentPath + @"\temp\m3mp_compressed_data.tmp");
+            if (File.Exists(m3mpUncompressedDataTmp))
+                File.Delete(m3mpUncompressedDataTmp);
+
+            if (File.Exists(m3mpCompressedDataTmp))
+                File.Delete(m3mpCompressedDataTmp);
         }
 
         private void M3MP_Creator_FormClosing(object sender, FormClosingEventArgs e)

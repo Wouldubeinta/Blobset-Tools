@@ -244,7 +244,7 @@ namespace Gameloop.Vdf.Linq
             if (!(token is VObject otherObj))
                 return false;
 
-            return (_children.Count == otherObj._children.Count && Enumerable.Range(0, _children.Count).All(x => VToken.DeepEquals(_children[x], otherObj._children[x])));
+            return (_children.Count == otherObj._children.Count && Enumerable.Range(0, _children.Count).All(x => DeepEquals(_children[x], otherObj._children[x])));
         }
 
         protected override DynamicMetaObject GetMetaObject(Expression parameter)

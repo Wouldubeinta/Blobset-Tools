@@ -47,7 +47,7 @@ namespace Concentus.Common
         )
         {
             int corrCount = Inlines.silk_min_int(inputDataSize, correlationCount);
-            scale = Autocorrelation._celt_autocorr(inputData, results, corrCount - 1, inputDataSize);
+            scale = _celt_autocorr(inputData, results, corrCount - 1, inputDataSize);
         }
 
         internal static int _celt_autocorr(

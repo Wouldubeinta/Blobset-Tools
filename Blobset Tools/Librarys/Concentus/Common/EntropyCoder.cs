@@ -694,7 +694,7 @@ namespace Concentus.Common
             int r;
             int l;
             uint b;
-            nbits = nbits_total << EntropyCoder.BITRES;
+            nbits = nbits_total << BITRES;
             l = Inlines.EC_ILOG(rng);
             r = (int)(rng >> (l - 16));
             b = (uint)((r >> 12) - 8);

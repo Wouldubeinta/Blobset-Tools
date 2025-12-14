@@ -130,9 +130,6 @@
   <data name="txpk_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\txpk_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="Blobset_Tools" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\Blobset_Tools.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="flip_image_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\flip_image_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -210,5 +207,107 @@
   </data>
   <data name="fsb_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\fsb_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="file_mapping_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\file_mapping_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="alpha_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\alpha_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="AFL23" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\AFL23.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="AFL26" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\AFL26.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="AFLL" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\AFLL.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="AO International Tennis" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\AO International Tennis.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="AO Tennis 2" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\AO Tennis 2.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Ashes Cricket" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Ashes Cricket.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="CPL16" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\CPL16.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="CPL18" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\CPL18.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Cricket 19" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Cricket 19.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Cricket 22" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Cricket 22.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Cricket 24" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Cricket 24.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Cricket 26" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Cricket 26.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Don Bradman Cricket 14" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Don Bradman Cricket 14.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Don Bradman Cricket 17" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Don Bradman Cricket 17.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="MTBOD" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\MTBOD.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="RL26" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\RL26.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="RLL2" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\RLL2.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="RLL2-WCE" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\RLL2-WCE.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="RLL3" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\RLL3.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="RLL4" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\RLL4.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Tiebreak" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Tiebreak.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="TTC" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\TTC.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="TWT2" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\TWT2.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Windows" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Windows.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Xbox 360" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\360.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="PS3" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\PS3.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Blobset_Tools" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Blobset_Tools.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Rugby 25" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Rugby 25.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="menu_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\menu_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="open_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\open_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="modify_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\modify_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="create_32" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\create_32.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

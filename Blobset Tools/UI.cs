@@ -21,7 +21,7 @@ namespace Blobset_Tools
     ///   
     ///   This program is free software; you can redistribute it and/or
     ///   modify it under the terms of the GNU General Public License
-    ///   as published by the Free Software Foundation; either version 2
+    ///   as published by the Free Software Foundation; either version 3
     ///   of the License, or (at your option) any later version.
     ///   
     ///   This program is distributed in the hope that it will be useful,
@@ -44,13 +44,13 @@ namespace Blobset_Tools
 
             try
             {
-                if (!File.Exists(Properties.Settings.Default.GameLocation))
+                if (!File.Exists(Global.gameInfo.GameLocation))
                     return;
 
-                br = new(Properties.Settings.Default.GameLocation);
+                br = new(Global.gameInfo.GameLocation);
 
                 blobsetFile = new BlobsetFile();
-                blobsetFile.Deserialize(br, (Enums.BlobsetVersion)Properties.Settings.Default.BlobsetVersion);
+                blobsetFile.Deserialize(br, (Enums.BlobsetVersion)Global.gameInfo.BlobsetVersion);
                 Global.blobsetHeaderData = blobsetFile;
             }
             catch (Exception error)
@@ -70,7 +70,12 @@ namespace Blobset_Tools
 
             try
             {
-                br = new Reader(Global.currentPath + @"\games\" + Properties.Settings.Default.GameName + @"\data\BlobsetFileMapping.bin");
+                var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+                string platformExt = platformDetails["PlatformExt"];
+
+                string blobsetFilename = Path.GetFileName(Global.gameInfo.GameLocation);
+
+                br = new Reader(Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "data", blobsetFilename + ".mapping"));
 
                 fileMapping = new();
                 fileMapping.Read(br);
@@ -83,7 +88,7 @@ namespace Blobset_Tools
 
                 folder_treeView.ImageList = myImageList;
 
-                folder_treeView.Nodes.Add(MakeTreeFromPaths(fileMapping, "data-0.blobset.pc"));
+                folder_treeView.Nodes.Add(MakeTreeFromPaths(fileMapping, blobsetFilename));
 
                 if (folder_treeView.Nodes.Count > 0)
                 {
@@ -116,7 +121,7 @@ namespace Blobset_Tools
             return Index;
         }
 
-        public static Bitmap DDStoBitmap(byte[] ddsData, ref DDSInfo ddsInfo)
+        public static Bitmap DDStoBitmap(byte[] ddsData, bool hasAlpha, ref DDSInfo ddsInfo)
         {
             MemoryStream? ms = null;
             IImage? image = null;
@@ -163,7 +168,10 @@ namespace Blobset_Tools
                             break;
 
                         case ImageFormat.Rgba32:
-                            format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
+                            if (hasAlpha)
+                                format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
+                            else
+                                format = System.Drawing.Imaging.PixelFormat.Format32bppRgb;
                             break;
 
                         case ImageFormat.R5g5b5:
@@ -211,19 +219,18 @@ namespace Blobset_Tools
             return bitmap;
         }
 
-        public static byte[] GetDDSData_V1_V2(List<Structs.FileIndexInfo> list)
+        public static byte[] GetDDSData_V1_V2(List<FileIndexInfo> list)
         {
             Reader? br = null;
             byte[]? ddsData = null;
 
             try
             {
-                br = new(Properties.Settings.Default.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber));
+                br = new(Global.gameInfo.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber));
 
-                int gameId = Properties.Settings.Default.GameID;
                 Endian endian = Endian.Little;
 
-                if (gameId == (int)Enums.Game.RLL2)
+                if (Global.isBigendian)
                     endian = Endian.Big;
 
                 br.CurrentEndian = endian;
@@ -272,6 +279,13 @@ namespace Blobset_Tools
                     ddsData = br.ReadBytes(Convert.ToInt32(VramUnCompressedSize), Endian.Little);
                 }
 
+                if (Global.isBigendian)
+                {
+                    Mini_TXPK miniTxpk = LZMA_IO.ReadMiniTXPKInfo(list);
+                    PS3_DDS consoleDDS = new(miniTxpk.DDSHeight, miniTxpk.DDSWidth, miniTxpk.DDSMipMaps, miniTxpk.DDSType, ddsData.Length, ddsData);
+                    ddsData = consoleDDS.WriteDDS();
+                }
+
                 if (br != null) { br.Close(); br = null; }
             }
             catch (Exception error)
@@ -285,14 +299,14 @@ namespace Blobset_Tools
             return ddsData;
         }
 
-        public static byte[] GetDDSData_V3_V4(List<Structs.FileIndexInfo> list)
+        public static byte[] GetDDSData_V3_V4(List<FileIndexInfo> list)
         {
             Reader? br = null;
             byte[]? ddsData = null;
 
             try
             {
-                br = new(Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash);
+                br = new(Path.Combine(Global.gameInfo.GameLocation.Replace("data-0.blobset.pc", string.Empty), list[Global.fileIndex].FolderHash, list[Global.fileIndex].FileHash));
 
                 int MainCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
                 int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
@@ -349,111 +363,6 @@ namespace Blobset_Tools
             return ddsData;
         }
 
-        public static Bitmap TXPK_DDStoBitmap(byte[] txpkData, int ddsSize, long ddsOffset, ref int mipmapCount, ref ImageFormat fmt, ref PixelFormat ddsFormat)
-        {
-            MemoryStream? ms = null;
-            IImage? image = null;
-            ArrayPoolAllocator? allocator = null;
-            Bitmap? bitmap = null;
-            mipmapCount = 1;
-            fmt = ImageFormat.Rgba32;
-
-            try
-            {
-                if (txpkData != null)
-                {
-                    byte[] ddsData = new byte[ddsSize];
-                    Buffer.BlockCopy(txpkData, (int)ddsOffset, ddsData, 0, ddsSize);
-
-                    if (ddsData.Length > 124)
-                    {
-                        ms = new(ddsData);
-
-                        byte[] tmp = new byte[4];
-                        ms.Position = 84;
-                        ms.Read(tmp, 0, 4);
-                        ddsFormat = (PixelFormat)BitConverter.ToInt32(tmp);
-
-                        ms.Position = 0;
-
-                        switch (ddsFormat)
-                        {
-                            case PixelFormat.A16B16G16R16:
-                            case PixelFormat.A16B16G16R16F:
-                            case PixelFormat.A32B32G32R32F:
-                            case PixelFormat.R16F:
-                            case PixelFormat.R32F:
-                            case PixelFormat.G16R16F:
-                            case PixelFormat.G32R32F:
-                                break;
-                            default:
-                                allocator = new();
-                                var config = new PfimConfig(allocator: allocator);
-                                image = Pfimage.FromStream(ms, config);
-
-                                System.Drawing.Imaging.PixelFormat format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
-                                fmt = image.Format;
-                                mipmapCount = image.MipMaps.Length + 1;
-
-                                // Convert from Pfim's backend agnostic image format into GDI+'s image format
-                                switch (image.Format)
-                                {
-                                    case ImageFormat.Rgb24:
-                                        format = System.Drawing.Imaging.PixelFormat.Format24bppRgb;
-                                        break;
-
-                                    case ImageFormat.Rgba32:
-                                        format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
-                                        break;
-
-                                    case ImageFormat.R5g5b5:
-                                        format = System.Drawing.Imaging.PixelFormat.Format16bppRgb555;
-                                        break;
-
-                                    case ImageFormat.R5g6b5:
-                                        format = System.Drawing.Imaging.PixelFormat.Format16bppRgb565;
-                                        break;
-
-                                    case ImageFormat.R5g5b5a1:
-                                        format = System.Drawing.Imaging.PixelFormat.Format16bppArgb1555;
-                                        break;
-
-                                    case ImageFormat.Rgb8:
-                                        format = System.Drawing.Imaging.PixelFormat.Format8bppIndexed;
-                                        break;
-                                }
-
-                                // Pin pfim's data array so that it doesn't get reaped by GC, unnecessary
-                                // in this snippet but useful technique if the data was going to be used in
-                                // control like a picture box
-                                var handle = GCHandle.Alloc(image.Data, GCHandleType.Pinned);
-                                try
-                                {
-                                    var data = Marshal.UnsafeAddrOfPinnedArrayElement(image.Data, 0);
-                                    bitmap = new Bitmap(image.Width, image.Height, image.Stride, format, data);
-                                }
-                                finally
-                                {
-                                    handle.Free();
-                                }
-                                break;
-                        }
-                    }
-                }
-            }
-            catch (Exception error)
-            {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
-            }
-            finally
-            {
-                if (ms != null) { ms.Close(); ms = null; }
-                if (image != null) { image.Dispose(); image = null; }
-                if (allocator != null) { allocator = null; }
-            }
-            return bitmap;
-        }
-
         public class ArrayPoolAllocator : IImageAllocator
         {
             public byte[] Rent(int minLength)
@@ -485,8 +394,8 @@ namespace Blobset_Tools
 
                     if (item == pathItems[pathItems.Length - 1])
                     {
-                        List<Structs.FileIndexInfo> fileInfo = new();
-                        Structs.FileIndexInfo file = new()
+                        List<FileIndexInfo> fileInfo = new();
+                        FileIndexInfo file = new()
                         {
                             FileName = item,
                             FilePath = fileMapping.Entries[i].FilePath,
@@ -502,7 +411,7 @@ namespace Blobset_Tools
                             currentNode.Tag = fileInfo;
                         else
                         {
-                            List<Structs.FileIndexInfo> getfileInfos = (List<Structs.FileIndexInfo>)currentNode.Tag;
+                            List<FileIndexInfo> getfileInfos = (List<FileIndexInfo>)currentNode.Tag;
                             getfileInfos.Add(file);
                             currentNode.Tag = getfileInfos;
                         }
@@ -533,8 +442,8 @@ namespace Blobset_Tools
 
                     if (item == pathItems[pathItems.Length - 1])
                     {
-                        List<Structs.FileIndexInfo> fileInfo = new();
-                        Structs.FileIndexInfo file = new()
+                        List<FileIndexInfo> fileInfo = new();
+                        FileIndexInfo file = new()
                         {
                             FileName = item,
                             MappingIndex = index,
@@ -546,7 +455,7 @@ namespace Blobset_Tools
                             currentNode.Tag = fileInfo;
                         else
                         {
-                            List<Structs.FileIndexInfo> getfileInfos = (List<Structs.FileIndexInfo>)currentNode.Tag;
+                            List<FileIndexInfo> getfileInfos = (List<FileIndexInfo>)currentNode.Tag;
                             getfileInfos.Add(file);
                             currentNode.Tag = getfileInfos;
                         }
@@ -574,10 +483,10 @@ namespace Blobset_Tools
 
                     if (steamPath != null)
                     {
-                        string libararyFoldersPath = steamPath.ToString() + @"\steamapps\libraryfolders.vdf";
+                        string libararyFoldersPath = Path.Combine(steamPath.ToString(), "steamapps", "libraryfolders.vdf");
 
                         if (!File.Exists(libararyFoldersPath))
-                            libararyFoldersPath = steamPath.ToString() + @"\config\libraryfolders.vdf";
+                            libararyFoldersPath = Path.Combine(steamPath.ToString(), "config", "libraryfolders.vdf");
 
                         if (File.Exists(libararyFoldersPath))
                         {
@@ -591,7 +500,7 @@ namespace Blobset_Tools
                             {
                                 foreach (var app in libraryFolder.Value.Apps)
                                 {
-                                    if (app.Key.ToString() == Properties.Settings.Default.SteamGameID.ToString())
+                                    if (app.Key.ToString() == Global.gameInfo.SteamGameId.ToString())
                                     {
                                         hasGameId = true;
                                         break;
@@ -625,7 +534,7 @@ namespace Blobset_Tools
 
         public static void ValidateSteamGame()
         {
-            int steamID = Properties.Settings.Default.GameID;
+            uint steamID = Global.gameInfo.SteamGameId;
 
             if (steamID == 0)
             {
@@ -667,16 +576,9 @@ namespace Blobset_Tools
 
         public static readonly string[] LoadingText =
         {
-            "Author: Wouldubeinta",
-            Environment.NewLine,
-            "Discord ID: Wouldubeinta",
-            Environment.NewLine,
-            Environment.NewLine,
-            "*** Special Thanks To ***",
-            Environment.NewLine,
             "BigAnt for the support.",
             Environment.NewLine,
-            "Luigi Auriemma for he's expertise over the year's.",
+            "Luigi Auriemma for his expertise over the year's.",
             Environment.NewLine,
             "FeudalNate for PackageIO class.",
             Environment.NewLine,
@@ -700,6 +602,9 @@ namespace Blobset_Tools
             Environment.NewLine,
             "lostromb for concentus.oggfile - ",
             "https://github.com/lostromb/concentus.oggfile",
+            Environment.NewLine,
+            "bartlomiejduda for PS3 and Xbox 360 image swizzling code - ",
+            "https://github.com/bartlomiejduda",
             Environment.NewLine,
             Environment.NewLine,
         };

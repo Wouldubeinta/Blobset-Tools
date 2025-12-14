@@ -9,7 +9,7 @@
     ///   
     ///   This program is free software; you can redistribute it and/or
     ///   modify it under the terms of the GNU General Public License
-    ///   as published by the Free Software Foundation; either version 2
+    ///   as published by the Free Software Foundation; either version 3
     ///   of the License, or (at your option) any later version.
     ///   
     ///   This program is distributed in the hope that it will be useful,
@@ -27,15 +27,19 @@
     {
         public enum FileType
         {
-            BMf = 543575362, // Used in AFLL.
-            BSB = 1112752672, // Used in AFLL.
+            BMf = 543575362, // Used in AFLL and RLL2.
+            BSB_BE = 541217602,
+            BSB = 1112752672, // Used in AFLL and RLL2.
             BANK = 1179011410,
-            FEV1 = 827737414, // Used in AFLL.
+            FEV1_BE = 1178949169,
+            FEV1 = 827737414, // Used in AFLL and RLL2.
             FSB = 1179861557,
+            PM3M = 1295207760,
             M3MP = 1347236685,
             MINI = 1229867341,
             MOB = 557993805, //Used in RLL4 and some cricket games.
             PNG = -1991225785,
+            KPXT = 1263556692,
             TXPK = 1415073867,
             WiseBNK = 1145588546,
             WiseWEM = 1179011410,
@@ -44,24 +48,30 @@
 
         public enum Game
         {
-            AFLL, // AFL Live
-            RLL2, // Rugby League Live 2 PS3
-            DBC14, // Don Bradman Cricket 14
-            RLL3, // Rugby League Live 3
-            DBC17, // Don Bradman Cricket 17
-            AC, // Ashes Cricket
-            RLL4, // Rugby League Live 4
-            AOIT, // AO International Tennis
-            C19, // Cricket 19
-            AOT2, // AO Tennis 2
-            C22, // Cricket 22
-            AFL23, // AFL 23
-            C24, // Cricket 24
-            TB, // Tiebreak
-            R25, // Rugby 25
-            AFL26, // AFL 26
-            RL26, // Rugby League 26
-            C26 // Cricket 26
+            AFLL, // AFL Live (PC)(PS3)(360)
+            RLL2, // Rugby League Live 2 (PS3)(360)
+            RLL2WCE, // Rugby League Live 2 - World Cup Edition (PS3)(360)
+            DBC14, // Don Bradman Cricket 14 (PC)(PS3)(360)
+            RLL3, // Rugby League Live 3 (PC)(PS3)(360)
+            TTC, // TableTop Cricket (PC)(PS3)(360)
+            CPL16, // Casey Powell Lacrosse 16 (PC)
+            DBC17, // Don Bradman Cricket 17 (PC)
+            MTBOD, // Masquerade - The Baubles of Doom (PC)(PS3)(360)
+            AC, // Ashes Cricket (PC)
+            RLL4, // Rugby League Live 4 (PC)
+            AOIT, // AO International Tennis (PC)
+            CPL18, // Casey Powell Lacrosse 18 (PC)
+            C19, // Cricket 19 (PC)
+            AOT2, // AO Tennis 2 (PC)
+            TWT2, // Tennis World Tour 2 (PC)
+            C22, // Cricket 22 (PC)
+            AFL23, // AFL 23 (PC)
+            C24, // Cricket 24 (PC)
+            TB, // Tiebreak (PC)
+            R25, // Rugby 25 (PC)
+            AFL26, // AFL 26 (PC)
+            RL26, // Rugby League 26 (PC)
+            C26 // Cricket 26 (PC)
         }
 
         public enum BlobsetVersion
@@ -69,12 +79,11 @@
             v1, v2, v3, v4
         }
 
-        public enum DDSType 
+        public enum Platforms
         {
-            DXT1,
-            DXT1_Alpha,
-            DXT5,
-            Uncompressed
+            Windows,
+            PS3,
+            Xbox360
         }
     }
 }

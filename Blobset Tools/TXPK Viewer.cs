@@ -1,7 +1,6 @@
 ﻿using BlobsetIO;
 using PackageIO;
 using System.ComponentModel;
-using static Blobset_Tools.Enums;
 
 namespace Blobset_Tools
 {
@@ -13,7 +12,9 @@ namespace Blobset_Tools
         private readonly List<Structs.FileIndexInfo> list;
         private BackgroundWorker? TXPKDecompress_bgw = null;
         private BackgroundWorker? TXPKExtract_bgw = null;
-        private ImageList myImageList = null;
+        private ImageList? myImageList = null;
+        private readonly bool isAlpha = true;
+        private bool isFlipped = false;
 
         private uint MainFinalOffset = 0;
         private uint MainCompressedSize = 0;
@@ -34,12 +35,14 @@ namespace Blobset_Tools
         {
             if (txpkData != null)
             {
-                MainFinalOffset = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
-                MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
-                MainUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
-                VramFinalOffset = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramFinalOffSet;
-                VramCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramCompressedSize;
-                VramUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
+                var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
+
+                MainFinalOffset = blobsetHeaderData.MainFinalOffSet;
+                MainCompressedSize = blobsetHeaderData.MainCompressedSize;
+                MainUnCompressedSize = blobsetHeaderData.MainUnCompressedSize;
+                VramFinalOffset = blobsetHeaderData.VramFinalOffSet;
+                VramCompressedSize = blobsetHeaderData.VramCompressedSize;
+                VramUnCompressedSize = blobsetHeaderData.VramUnCompressedSize;
 
                 Text = Text + " - " + filename;
                 myImageList = new ImageList();
@@ -102,12 +105,18 @@ namespace Blobset_Tools
 
         private void files_listView_SelectedIndexChanged(object sender, EventArgs e)
         {
+            LoadImage(alphaToolStripMenuItem.Checked);
+            pictureBox1.Refresh();
+        }
+
+        private void LoadImage(bool hasAlpha)
+        {
             Reader? br = null;
 
             try
             {
-                string txpkName = Path.GetFileName(filename);
-                br = new Reader(Global.currentPath + @"\temp\" + txpkName);
+                string txpkName = Path.Combine(Global.currentPath, "temp", Path.GetFileName(filename));
+                br = new Reader(txpkName);
 
                 fileIndex = UI.getLVSelectedIndex(files_listView);
 
@@ -123,17 +132,30 @@ namespace Blobset_Tools
                 if (index == -1) return;
 
                 br.Position = br.Position + txpk.Entries[index].DDSDataOffset;
-                byte[] ddsData = br.ReadBytes((int)txpk.Entries[index].DDSDataSize1);
+                byte[] ddsData = br.ReadBytes((int)txpk.Entries[index].DDSDataSize, Endian.Little);
+
+                if (Global.isBigendian)
+                {
+                    PS3_DDS consoleDDS = new(txpk.Entries[index].DDSHeight, txpk.Entries[index].DDSWidth, txpk.Entries[index].DDSMipMaps, txpk.Entries[index].DDSType, ddsData.Length, ddsData);
+                    ddsData = consoleDDS.WriteDDS();
+                }
 
                 Structs.DDSInfo ddsInfo = new();
 
-                Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo);
+                Bitmap bitmap = UI.DDStoBitmap(ddsData, hasAlpha, ref ddsInfo);
 
                 string ddsFormat = ddsInfo.isDX10 ? ddsInfo.dxgiFormat.ToString() + " - DX11+" : ddsInfo.CompressionAlgorithm.ToString();
 
                 if (bitmap != null)
                 {
                     pictureBox1.Image = bitmap;
+
+                    if (isFlipped)
+                    {
+                        pictureBox1.Image.RotateFlip(RotateFlipType.Rotate180FlipX);
+                        pictureBox1.Refresh();
+                    }
+
                     DDSInfo_SSLabel.Text = "Format: " + ddsFormat + "    Height: " + bitmap.Height.ToString() + "     Width: " + bitmap.Width.ToString() + "     MipMaps: 1/" + ddsInfo.MipMap.ToString();
                 }
                 if (br != null) { br.Close(); br = null; }
@@ -150,7 +172,10 @@ namespace Blobset_Tools
 
         private void extractTXPKToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            extractTXPK_fbd.SelectedPath = Global.currentPath + @"\txpk\";
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            string platformExt = platformDetails["PlatformExt"];
+
+            extractTXPK_fbd.SelectedPath = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "txpk");
 
             if (extractTXPK_fbd.ShowDialog() == DialogResult.OK)
             {
@@ -175,14 +200,12 @@ namespace Blobset_Tools
         private void TXPKDecompress_bgw_DoWork(object sender, DoWorkEventArgs e)
         {
             bool errorCheck = false;
-            int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+            int blobsetVersion = Global.gameInfo.BlobsetVersion;
 
             if (MainCompressedSize != MainUnCompressedSize && VramCompressedSize != VramUnCompressedSize)
-            {
-                errorCheck = blobsetVersion >= 3 ? TXPX_DecompressZSTD(false) : TXPX_DecompressLZMA();
-            }
+                errorCheck = blobsetVersion > 2 ? TXPX_DecompressZSTD(false) : TXPX_DecompressLZMA();
             else
-                errorCheck = blobsetVersion >= 3 ? TXPX_DecompressZSTD(true) : TXPX_DecompressLZMA();
+                errorCheck = blobsetVersion > 2 ? TXPX_DecompressZSTD(true) : TXPX_DecompressLZMA();
 
             if (errorCheck)
                 e.Cancel = true;
@@ -213,10 +236,10 @@ namespace Blobset_Tools
 
             try
             {
-                br = new Reader(Properties.Settings.Default.GameLocation.Replace("data-0.blobset.pc", string.Empty) + list[Global.fileIndex].FolderHash + @"\" + list[Global.fileIndex].FileHash);
+                br = new Reader(Path.Combine(Global.gameInfo.GameLocation.Replace("data-0.blobset.pc", string.Empty), list[Global.fileIndex].FolderHash, list[Global.fileIndex].FileHash));
 
                 string txpkName = Path.GetFileName(filename);
-                fsWriter = new FileStream(Global.currentPath + @"\temp\" + txpkName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                fsWriter = new FileStream(Path.Combine(Global.currentPath, "temp", txpkName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
 
                 if (isMainUnCompressed)
                 {
@@ -270,10 +293,15 @@ namespace Blobset_Tools
 
             try
             {
-                br = new Reader(Properties.Settings.Default.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber));
+                Endian endian = Endian.Little;
+
+                if (Global.isBigendian)
+                    endian = Endian.Big;
+
+                br = new Reader(Global.gameInfo.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber), endian);
 
                 string txpkName = Path.GetFileName(filename);
-                fsWriter = new FileStream(Global.currentPath + @"\temp\" + txpkName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                fsWriter = new FileStream(Path.Combine(Global.currentPath, "temp", txpkName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
 
                 br.Position = MainFinalOffset;
 
@@ -294,12 +322,12 @@ namespace Blobset_Tools
 
                         if (chunkCompressedSize[j] == chunkUnCompressedSize)
                         {
-                            byte[] txpkHeader = br.ReadBytes(chunkUnCompressedSize);
+                            byte[] txpkHeader = br.ReadBytes(chunkUnCompressedSize, Endian.Little);
                             fsWriter.Write(txpkHeader, 0, txpkHeader.Length);
                         }
                         else
                         {
-                            byte[] compressedTmptxpkData = br.ReadBytes(chunkCompressedSize[j]);
+                            byte[] compressedTmptxpkData = br.ReadBytes(chunkCompressedSize[j], Endian.Little);
                             byte[] txpkHeader = LZMA_IO.DecompressAndRead(compressedTmptxpkData, chunkUnCompressedSize);
                             fsWriter.Write(txpkHeader, 0, txpkHeader.Length);
                         }
@@ -307,7 +335,7 @@ namespace Blobset_Tools
                 }
                 else
                 {
-                    byte[] txpkHeader = br.ReadBytes((int)MainUnCompressedSize);
+                    byte[] txpkHeader = br.ReadBytes((int)MainUnCompressedSize, Endian.Little);
                     fsWriter.Write(txpkHeader, 0, txpkHeader.Length);
                 }
 
@@ -330,12 +358,12 @@ namespace Blobset_Tools
 
                         if (chunkCompressedSize[j] == chunkUnCompressedSize)
                         {
-                            byte[] txpkData = br.ReadBytes(chunkUnCompressedSize);
+                            byte[] txpkData = br.ReadBytes(chunkUnCompressedSize, Endian.Little);
                             fsWriter.Write(txpkData, 0, txpkData.Length);
                         }
                         else
                         {
-                            byte[] compressedTmptxpkData = br.ReadBytes(chunkCompressedSize[j]);
+                            byte[] compressedTmptxpkData = br.ReadBytes(chunkCompressedSize[j], Endian.Little);
                             byte[] txpkData = LZMA_IO.DecompressAndRead(compressedTmptxpkData, chunkUnCompressedSize);
                             fsWriter.Write(txpkData, 0, txpkData.Length);
                         }
@@ -343,7 +371,7 @@ namespace Blobset_Tools
                 }
                 else
                 {
-                    byte[] txpkData = br.ReadBytes((int)VramUnCompressedSize);
+                    byte[] txpkData = br.ReadBytes((int)VramUnCompressedSize, Endian.Little);
                     fsWriter.Write(txpkData, 0, txpkData.Length);
                 }
 
@@ -386,11 +414,11 @@ namespace Blobset_Tools
 
         private void TXPKExtract_bgw_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            toolStripProgressBar.Value = e.ProgressPercentage;
-            progressStripStatusLabel.Text = string.Format("{0} %", e.ProgressPercentage);
+            int progressPercentage = Math.Max(0, Math.Min(100, e.ProgressPercentage));
+            progressStripStatusLabel.Text = $"{progressPercentage} %";
             status_Label.ForeColor = Color.Black;
-            status_Label.Text = "Extracting TXPK: " + e.UserState.ToString();
-            statusStrip1.Refresh();
+            status_Label.Text = $"Extracting TXPK: {e.UserState}";
+            toolStripProgressBar.Value = progressPercentage;
         }
 
         private void TXPKExtract_bgw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -414,12 +442,11 @@ namespace Blobset_Tools
         {
             Reader? br = null;
             FileStream? writer = null;
-
             bool errorCheck = true;
 
             try
             {
-                string txpkName = Global.currentPath + @"\temp\" + Path.GetFileName(filename);
+                string txpkName = Path.Combine(Global.currentPath, "temp", Path.GetFileName(filename));
 
                 if (!File.Exists(txpkName))
                     return false;
@@ -429,13 +456,22 @@ namespace Blobset_Tools
                 TXPK txpk = new();
                 txpk.Deserialize(br);
 
-                ExtractFileInfo txpkInfo = new();
+                ExtractFileInfo? txpkInfo = null;
+                PS3_DDS_Header? txpkPS3Info = null;
+
+                if (Global.isBigendian)
+                {
+                    txpkPS3Info = new();
+                    txpkPS3Info.Entries = new PS3_DDS_Header.Entry[txpk.FilesCount];
+                }
+                else
+                {
+                    txpkInfo = new();
+                    txpkInfo.Entries = new ExtractFileInfo.Entry[txpk.FilesCount];
+                }
 
                 int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
-
                 int index = 0;
-
-                txpkInfo.Entries = new ExtractFileInfo.Entry[txpk.FilesCount];
 
                 foreach (var entry in txpk.Entries)
                 {
@@ -443,23 +479,56 @@ namespace Blobset_Tools
                     string filePath = extractTXPK_fbd.SelectedPath + @"\" + ddsFilePath;
                     Directory.CreateDirectory(Path.GetDirectoryName(filePath));
 
-                    br.Position = entry.DDSDataOffset + MainUnCompressedSize;
+                    br.Position = MainUnCompressedSize + entry.DDSDataOffset;
 
-                    int chunkCount = Utilities.ChunkAmount((int)entry.DDSDataSize1);
-                    long[] chunkSizes = Utilities.ChunkSizes((int)entry.DDSDataSize1, chunkCount);
+                    int chunkCount = Utilities.ChunkAmount((int)entry.DDSDataSize);
+                    long[] chunkSizes = Utilities.ChunkSizes((int)entry.DDSDataSize, chunkCount);
 
                     writer = new FileStream(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
-                    for (int i = 0; i < chunkCount; i++)
+                    byte[]? ddsHeader = null;
+
+                    if (Global.isBigendian)
                     {
-                        byte[] tmpChunkData = br.ReadBytes((int)chunkSizes[i]);
-                        IO.ReadWriteData(tmpChunkData, writer, (int)chunkSizes[i]);
+                        PS3_DDS consoleDDS = new(txpk.Entries[index].DDSHeight, txpk.Entries[index].DDSWidth, txpk.Entries[index].DDSMipMaps, txpk.Entries[index].DDSType, 0);
+                        ddsHeader = consoleDDS.WriteDDS();
+                        writer.Write(ddsHeader, 0, ddsHeader.Length);
+
+                        txpkPS3Info.Entries[index] = new();
+                        txpkPS3Info.Entries[index].FilePath = entry.DDSFilePath.Replace(@"/", @"\") + ".dds";
+                        txpkPS3Info.Entries[index].BufferSize = txpk.Entries[index].BufferSize;
+                        txpkPS3Info.Entries[index].DDSType = txpk.Entries[index].DDSType;
+                        txpkPS3Info.Entries[index].DDSMipMaps = txpk.Entries[index].DDSMipMaps;
+                        txpkPS3Info.Entries[index].Unknown1 = txpk.Entries[index].Unknown1;
+                        txpkPS3Info.Entries[index].Unknown2 = txpk.Entries[index].Unknown2;
+                        txpkPS3Info.Entries[index].DDSWidth = txpk.Entries[index].DDSWidth2;
+                        txpkPS3Info.Entries[index].DDSHeight = txpk.Entries[index].DDSHeight2;
+                        txpkPS3Info.Entries[index].DDSImageType = txpk.Entries[index].DDSImageType2;
+                        txpkPS3Info.Entries[index].Unknown3 = txpk.Entries[index].Unknown3;
+                        txpkPS3Info.Entries[index].Unknown4 = txpk.Entries[index].Unknown4;
+                        txpkPS3Info.Entries[index].Unknown5 = txpk.Entries[index].Unknown5;
+                        txpkPS3Info.Entries[index].Reserved = txpk.Entries[index].Reserved;
+
+                        byte[] ddsData = br.ReadBytes((int)entry.DDSDataSize, Endian.Little);
+
+                        if (txpk.Entries[index].DDSType == 133 || txpk.Entries[index].DDSType == 154)
+                            ddsData = PS3_DDS.UnswizzleMorton(ddsData, (int)txpk.Entries[index].DDSWidth, (int)txpk.Entries[index].DDSHeight, 32, 1, 1);
+
+                        IO.ReadWriteData(ddsData, writer, (int)entry.DDSDataSize);
+                    }
+                    else
+                    {
+                        txpkInfo.Entries[index] = new();
+                        txpkInfo.Entries[index].FilePath = entry.DDSFilePath.Replace(@"/", @"\") + ".dds";
+
+                        for (int i = 0; i < chunkCount; i++)
+                        {
+                            byte[] tmpChunkData = br.ReadBytes((int)chunkSizes[i], Endian.Little);
+                            IO.ReadWriteData(tmpChunkData, writer, (int)chunkSizes[i]);
+                        }
                     }
 
-                    txpkInfo.Entries[index] = new();
-                    txpkInfo.Entries[index].FilePath = entry.DDSFilePath.Replace(@"/", @"\") + ".dds";
-
-                    int percentProgress = 100 * index / (int)txpk.FilesCount;
+                    int percentProgress = (index + 1) * 100 / (int)txpk.FilesCount;
                     TXPKExtract_bgw.ReportProgress(percentProgress, ddsFilePath);
 
                     if (writer != null) { writer.Dispose(); writer = null; }
@@ -467,9 +536,16 @@ namespace Blobset_Tools
                     index++;
                 }
 
-                txpkInfo.Index = list[Global.fileIndex].BlobsetIndex;
-
-                IO.XmlSerialize(extractTXPK_fbd.SelectedPath + @"\TXPK_List.xml", txpkInfo);
+                if (Global.isBigendian)
+                {
+                    txpkPS3Info.Index = list[Global.fileIndex].BlobsetIndex;
+                    IO.XmlSerialize(extractTXPK_fbd.SelectedPath + @"\TXPK_List.xml", txpkPS3Info);
+                }
+                else
+                {
+                    txpkInfo.Index = list[Global.fileIndex].BlobsetIndex;
+                    IO.XmlSerialize(extractTXPK_fbd.SelectedPath + @"\TXPK_List.xml", txpkInfo);
+                }
 
                 if (br != null) { br.Close(); br = null; }
             }
@@ -516,8 +592,14 @@ namespace Blobset_Tools
 
         private void flipImageToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            isFlipped = !isFlipped;
             pictureBox1.Image.RotateFlip(RotateFlipType.Rotate180FlipX);
             pictureBox1.Refresh();
+        }
+
+        private void alphaToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            LoadImage(alphaToolStripMenuItem.Checked);
         }
 
         private void files_listView_MouseClick(object sender, MouseEventArgs e)
@@ -532,18 +614,18 @@ namespace Blobset_Tools
         {
             string path = files_listView.SelectedItems[fileIndex].Text;
 
-            saveFileDialog1.Title = "Save PNG File";
-            saveFileDialog1.Filter = "PNG" + " File|*.png";
-            saveFileDialog1.DefaultExt = "png";
-            saveFileDialog1.FileName = Path.GetFileNameWithoutExtension(path);
+            saveFileDialog.Title = "Save PNG File";
+            saveFileDialog.Filter = "PNG" + " File|*.png";
+            saveFileDialog.DefaultExt = "png";
+            saveFileDialog.FileName = Path.GetFileNameWithoutExtension(path);
 
-            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
-                pictureBox1.Image.Save(saveFileDialog1.FileName);
+                pictureBox1.Image.Save(saveFileDialog.FileName);
 
-                MessageBox.Show("PNG File has been saved to - " + saveFileDialog1.FileName, "PNG File Extracted :)", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                MessageBox.Show("PNG File has been saved to - " + saveFileDialog.FileName, "PNG File Extracted :)", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
-            saveFileDialog1.Dispose();
+            saveFileDialog.Dispose();
         }
 
         private void extractDDSToolStripMenuItem_Click(object sender, EventArgs e)

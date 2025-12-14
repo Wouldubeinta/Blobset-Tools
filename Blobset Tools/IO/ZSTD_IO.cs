@@ -14,7 +14,7 @@ namespace Blobset_Tools
     ///   
     ///   This program is free software; you can redistribute it and/or
     ///   modify it under the terms of the GNU General Public License
-    ///   as published by the Free Software Foundation; either version 2
+    ///   as published by the Free Software Foundation; either version 3
     ///   of the License, or (at your option) any later version.
     ///   
     ///   This program is distributed in the hope that it will be useful,
@@ -325,8 +325,10 @@ namespace Blobset_Tools
 
             try
             {
-                if (File.Exists(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp"))
-                    File.Delete(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp");
+                string m3mp_uncompressed_data = Path.Combine(Global.currentPath, "temp", "m3mp_uncompressed_data.tmp");
+
+                if (File.Exists(m3mp_uncompressed_data))
+                    File.Delete(m3mp_uncompressed_data);
 
                 fsReader = new(m3mpTempFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 br = new(fsReader);
@@ -334,7 +336,7 @@ namespace Blobset_Tools
                 M3MP m3mp = new();
                 m3mp.Deserialize(br);
 
-                fsWriter = new(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp", FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                fsWriter = new(m3mp_uncompressed_data, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
                 for (int i = 0; i < m3mp.ChunksCount; i++)
                 {
@@ -343,7 +345,7 @@ namespace Blobset_Tools
                     byte[] compressedChunkData = br.ReadBytes((int)m3mp.CompressedEntries[i].CompressedDataInfo.CompressedSize);
                     DecompressAndWrite(compressedChunkData, fsWriter, true);
 
-                    int percentProgress = 100 * i / (int)m3mp.ChunksCount;
+                    int percentProgress = (i + 1) * 100 / (int)m3mp.ChunksCount;
                     bgw.ReportProgress(percentProgress, "Extracting Chunk Data - " + (i + 1).ToString());
                 }
 
@@ -351,7 +353,7 @@ namespace Blobset_Tools
                 if (br != null) { br.Close(); br = null; }
 
                 int index = 0;
-                br = new(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp");
+                br = new(m3mp_uncompressed_data);
 
                 foreach (var entry in m3mp.UnCompressedEntries)
                 {
@@ -370,7 +372,7 @@ namespace Blobset_Tools
                         IO.ReadWriteData(tmpData, fsWriter, (int)chunkSizes[i]);
                     }
 
-                    int percentProgress = 100 * index / (int)m3mp.FilesCount;
+                    int percentProgress = (index + 1) * 100 / (int)m3mp.FilesCount;
                     bgw.ReportProgress(percentProgress, filePath);
                     index++;
                     if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
@@ -379,8 +381,8 @@ namespace Blobset_Tools
                 if (br != null) { br.Close(); br = null; }
                 if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
 
-                if (File.Exists(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp"))
-                    File.Delete(Global.currentPath + @"\temp\m3mp_uncompressed_data.tmp");
+                if (File.Exists(m3mp_uncompressed_data))
+                    File.Delete(m3mp_uncompressed_data);
             }
             catch (Exception error)
             {

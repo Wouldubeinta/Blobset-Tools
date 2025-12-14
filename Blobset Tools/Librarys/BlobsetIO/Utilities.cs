@@ -1,5 +1,6 @@
 ﻿using Blobset_Tools;
-using Pfim;
+using PackageIO;
+using static Blobset_Tools.Enums;
 
 
 namespace BlobsetIO
@@ -13,7 +14,7 @@ namespace BlobsetIO
     ///   
     ///   This program is free software; you can redistribute it and/or
     ///   modify it under the terms of the GNU General Public License
-    ///   as published by the Free Software Foundation; either version 2
+    ///   as published by the Free Software Foundation; either version 3
     ///   of the License, or (at your option) any later version.
     ///   
     ///   This program is distributed in the hope that it will be useful,
@@ -34,24 +35,16 @@ namespace BlobsetIO
         /// </summary>
         /// <param name="UnCommpressedS">Uncompressed file size</param>
         /// <param name="ChunkSize">Chunk Size. For blobset file v4 - 262144, v1, v2 and v3 - 32768</param>
-        public static int ChunkAmount(int UnCommpressedSize, int ChunkSize = 262144)
+        public static int ChunkAmount(int uncompressedSize, int chunkSize = 262144)
         {
-            int ChunkCount = 0;
-            decimal ChunkSizeDec = UnCommpressedSize / (decimal)ChunkSize;
+            if (uncompressedSize <= 0)
+                return 1;
 
-            if (UnCommpressedSize < ChunkSize)
-            {
-                ChunkCount = 1;
-            }
-            else if (decimal.Round(ChunkSizeDec, 0) == ChunkSizeDec)
-            {
-                ChunkCount = UnCommpressedSize / ChunkSize;
-            }
-            else if (decimal.Round(ChunkSizeDec, 0) != ChunkSizeDec)
-            {
-                ChunkCount = (UnCommpressedSize / ChunkSize) + 1;
-            }
-            return ChunkCount;
+            if (chunkSize <= 0)
+                return 1;
+
+            // Calculate the number of chunks using ceiling division
+            return (int)Math.Ceiling((double)uncompressedSize / chunkSize);
         }
 
         /// <summary>
@@ -60,44 +53,166 @@ namespace BlobsetIO
         /// <param name="UnCommpressedSize">Uncompressed file size</param>
         /// <param name="ChunkAmount">Chunk Count</param>
         /// <param name="ChunkSize">Chunk Size. For blobset file v3 - 262144, v1 and v2 - 32768</param>
-        public static long[] ChunkSizes(int UnCommpressedSize, int ChunkAmount, int ChunkSize = 262144)
+        public static long[] ChunkSizes(int uncompressedSize, int chunkAmount, int chunkSize = 262144)
         {
-            long[] ChunkS = new long[ChunkAmount];
-            decimal ChunkSizeDec = (decimal)UnCommpressedSize / ChunkSize;
+            if (chunkAmount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(chunkAmount), "Chunk amount must be greater than zero.");
 
-            if (UnCommpressedSize < ChunkSize)
-            {
-                ChunkS[0] = UnCommpressedSize;
-            }
-            else if (decimal.Round(ChunkSizeDec, 0) == ChunkSizeDec)
-            {
-                for (int i = 0; i < ChunkAmount; i++)
-                {
-                    ChunkS[i] = ChunkSize;
-                }
-            }
-            else if (decimal.Round(ChunkSizeDec, 0) != ChunkSizeDec)
-            {
-                for (int i = 0; i < ChunkAmount - 1; i++)
-                {
-                    ChunkS[i] = ChunkSize;
-                }
+            if (chunkSize <= 0)
+                throw new ArgumentOutOfRangeException(nameof(chunkSize), "Chunk size must be greater than zero.");
 
-                int Chunk = UnCommpressedSize / ChunkSize;
-                int LastChunkSize = ChunkSize * Chunk;
-                ChunkS[ChunkAmount - 1] = UnCommpressedSize - LastChunkSize;
+            long[] chunkSizes = new long[chunkAmount];
+
+            // Calculate the size of each chunk
+            long fullChunkSize = chunkSize;
+            long totalFullChunks = uncompressedSize / fullChunkSize;
+            long remainder = uncompressedSize % fullChunkSize;
+
+            // Fill the array with chunk sizes
+            for (int i = 0; i < chunkAmount; i++)
+            {
+                if (i < totalFullChunks)
+                    chunkSizes[i] = fullChunkSize;
+                else if (i == totalFullChunks && remainder > 0)
+                    chunkSizes[i] = remainder;
+                else
+                    chunkSizes[i] = 0; // Remaining chunks will be zero if there are not enough bytes
             }
-            return ChunkS;
+            return chunkSizes;
         }
 
-        public static string DdsFormat(DdsHeader ddsHeader)
+        public static void DumpBlobsetHeader(string blobsetFile, string filename)
         {
-            string format = string.Empty;
-            //int pFormat = ddsHeader.PixelFormat.
+            Reader? br = null;
+            Writer? bw = null;
 
-            //switch()
+            try
+            {
+                // Retrieve platform details
+                var platformDetails = GetPlatformInfo(Global.platforms);
+                string platformExt = platformDetails["PlatformExt"];
 
-            return format;
+                // Define the base path for game-related files
+                string basePath = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt);
+
+                FileStream fin = new(blobsetFile, FileMode.Open,
+                FileAccess.ReadWrite, FileShare.ReadWrite);
+
+                FileStream fout = new(Path.Combine(basePath, "backup", filename + ".header"), FileMode.Create,
+                FileAccess.ReadWrite, FileShare.ReadWrite);
+
+                br = new Reader(fin, Global.isBigendian ? Endian.Big : Endian.Little);
+                bw = new Writer(fout, Endian.Little);
+
+                const int HeaderSize = 12;
+                const int DefaultHashSize = 20;
+                const int NoHashSize = 0;
+
+                int hashSize = DefaultHashSize;
+
+                switch (Global.gameInfo.GameId)
+                {
+                    case 0: // AFLL has no 20 byte hash
+                    case 5 when Global.isBigendian: // TableTop Cricket has no hash if big-endian
+                        hashSize = NoHashSize;
+                        break;
+                }
+
+                // Set the initial position to read header size
+                br.Position = hashSize + HeaderSize;
+                int headerSize = br.ReadInt32();
+                br.Position = 0;
+                byte[] header = br.ReadBytes(headerSize, Endian.Little);
+
+                bw.Write(header, Endian.Little);
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (br != null)
+                    br.Close();
+                if (bw != null)
+                    bw.Close();
+            }
+        }
+
+        public static byte[] ReadBlobsetHeader(string filename)
+        {
+            Reader? br = null;
+            byte[]? header = null;
+
+            try
+            {
+                // Retrieve platform details
+                var platformDetails = GetPlatformInfo(Global.platforms);
+                string platformExt = platformDetails["PlatformExt"];
+
+                // Define the base path for game-related files
+                string basePath = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt);
+                string blobsetHeader = Path.Combine(basePath, "backup", filename + ".header");
+
+                if (!File.Exists(blobsetHeader))
+                    return header;
+
+                FileStream fin = new(blobsetHeader, FileMode.Open,
+                FileAccess.ReadWrite, FileShare.ReadWrite);
+
+                int headerSize = (int)fin.Length;
+                header = new byte[headerSize];
+
+                br = new Reader(fin, Endian.Little);
+                header = br.ReadBytes(headerSize, Endian.Little);
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (br != null) { br.Close(); br = null; }
+            }
+            return header;
+        }
+
+        public static void ResetBlobset(string file)
+        {
+            Reader? br = null;
+            Writer? bw = null;
+
+            try
+            {
+                FileStream fin = new(Global.currentPath + @"\data\blobset.header", FileMode.Open,
+                FileAccess.ReadWrite, FileShare.ReadWrite);
+
+                FileStream fout = new(file + "data-0.blobset.pc", FileMode.Open,
+                FileAccess.ReadWrite, FileShare.ReadWrite);
+
+                br = new Reader(fin, Endian.Little);
+                bw = new Writer(fout, Endian.Little);
+
+                byte[] header = br.ReadBytes((int)fin.Length, Endian.Little);
+
+                bw.Write(header, Endian.Little);
+
+                if (File.Exists(file + "data-1.blobset.pc"))
+                {
+                    File.Delete(file + "data-1.blobset.pc");
+                }
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (br != null)
+                    br.Close();
+                if (bw != null)
+                    bw.Close();
+            }
         }
 
         public static int LinesLength(string file)
@@ -176,32 +291,58 @@ namespace BlobsetIO
         public static string GetGameVersion()
         {
             string gameVersion = string.Empty;
-            int gameID = Blobset_Tools.Properties.Settings.Default.GameID;
+            int gameID = Global.gameInfo.GameId;
 
             switch (gameID)
             {
-                case (int)Enums.Game.AFLL:
-                    gameVersion = "BAVersion:604";
+                case (int)Game.AFLL:
+                case (int)Game.RLL2:
+                case (int)Game.RLL2WCE:
+                case (int)Game.DBC14:
+                case (int)Game.RLL3:
+                case (int)Game.TTC:
+                case (int)Game.CPL16:
+                    gameVersion = "1.00";
                     break;
-                case (int)Enums.Game.RLL2:
-                    gameVersion = "1";
-                    break;
-                case (int)Enums.Game.DBC14:
-                case (int)Enums.Game.RLL3:
-                case (int)Enums.Game.DBC17:
-                case (int)Enums.Game.RLL4:
-                case (int)Enums.Game.AC:
-                    string gv1 = Blobset_Tools.Properties.Settings.Default.GameLocation.Replace(@"data-0.blobset.pc", string.Empty) + "version.txt";
+                case (int)Game.DBC17:
+                case (int)Game.MTBOD:
+                case (int)Game.AC:
+                case (int)Game.RLL4:
+                    string gv1 = Global.gameInfo.GameLocation.Replace(@"data-0.blobset.pc", string.Empty) + "version.txt";
                     if (File.Exists(gv1))
                         gameVersion = File.ReadAllText(gv1);
                     break;
                 default:
-                    string gv2 = Blobset_Tools.Properties.Settings.Default.GameLocation.Replace(@"data\data-0.blobset.pc", string.Empty) + "version.txt";
+                    string gv2 = Global.gameInfo.GameLocation.Replace(@"data\data-0.blobset.pc", string.Empty) + "version.txt";
                     if (File.Exists(gv2))
                         gameVersion = File.ReadAllText(gv2);
                     break;
             }
             return gameVersion;
+        }
+
+        public static Dictionary<string, string> GetPlatformInfo(Platforms platform)
+        {
+            var platformInfo = new Dictionary<string, string>();
+
+            switch (platform)
+            {
+                case Platforms.PS3:
+                    platformInfo["Platform"] = "Playstation 3";
+                    platformInfo["PlatformExt"] = "ps3";
+                    break;
+                case Platforms.Xbox360:
+                    platformInfo["Platform"] = "Xbox 360";
+                    platformInfo["PlatformExt"] = "xbox360";
+                    break;
+                case Platforms.Windows:
+                default:
+                    platformInfo["Platform"] = "Windows";
+                    platformInfo["PlatformExt"] = "pc";
+                    break;
+            }
+
+            return platformInfo;
         }
 
         /// <summary>

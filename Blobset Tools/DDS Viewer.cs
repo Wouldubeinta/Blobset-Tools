@@ -11,11 +11,11 @@
             list = _list;
         }
 
-        private void TexturePreview_Load(object sender, System.EventArgs e)
+        private void TexturePreview_Load(object sender, EventArgs e)
         {
             toolStripComboBox.SelectedIndex = 4;
             Text = "DDS Viewer - " + ddsfile;
-            LoadImage();
+            LoadImage(alphaToolStripMenuItem.Checked);
 
             if (pictureBox1.Image != null)
             {
@@ -27,13 +27,13 @@
             }
         }
 
-        private unsafe void LoadImage()
+        private unsafe void LoadImage(bool hasAlpha)
         {
             Structs.DDSInfo ddsInfo = new();
 
-            int blobsetVersion = Properties.Settings.Default.BlobsetVersion;
+            int blobsetVersion = Global.gameInfo.BlobsetVersion;
             byte[] ddsData = blobsetVersion >= 2 ? UI.GetDDSData_V3_V4(Global.filelist) : UI.GetDDSData_V1_V2(Global.filelist);
-            Bitmap bitmap = UI.DDStoBitmap(ddsData, ref ddsInfo);
+            Bitmap bitmap = UI.DDStoBitmap(ddsData, hasAlpha, ref ddsInfo);
 
             string ddsFormat = ddsInfo.isDX10 ? ddsInfo.dxgiFormat.ToString() + " - DX11+" : ddsInfo.CompressionAlgorithm.ToString();
 
@@ -49,7 +49,7 @@
             }
         }
 
-        private void alphaEnabledToolStripMenuItem_Click(object sender, EventArgs e)
+        private void flipToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (pictureBox1.Image != null)
             {
@@ -59,6 +59,12 @@
                     pictureBox1.Refresh();
                 }
             }
+        }
+
+        private void alphaToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            LoadImage(alphaToolStripMenuItem.Checked);
+            pictureBox1.Refresh();
         }
 
         private void toolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)

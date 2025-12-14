@@ -12,7 +12,7 @@ namespace BlobsetIO
     ///   
     ///   This program is free software; you can redistribute it and/or
     ///   modify it under the terms of the GNU General Public License
-    ///   as published by the Free Software Foundation; either version 2
+    ///   as published by the Free Software Foundation; either version 3
     ///   of the License, or (at your option) any later version.
     ///   
     ///   This program is distributed in the hope that it will be useful,
@@ -96,17 +96,18 @@ namespace BlobsetIO
         /// Deserialize Blobset stream
         /// </summary>
         /// <param name="input">Blobset input stream</param>
+        /// <param name="blobsetVersion">Blobset Version</param>
         public void Deserialize(Reader input, Enums.BlobsetVersion blobsetVersion)
         {
-            int gameId = Blobset_Tools.Properties.Settings.Default.GameID;
+            int gameId = Global.gameInfo.GameId;
             Endian endian = Endian.Little;
 
-            if (gameId == (int)Enums.Game.RLL2)
+            if (Global.isBigendian)
                 endian = Endian.Big;
 
             input.CurrentEndian = endian;
 
-            if (gameId >= 2 && gameId <= 6 || gameId == (int)Enums.Game.RLL2)
+            if (gameId > 0 && gameId < 8 && gameId != 5)
                 SHA1Hash = input.ReadBytes(20, Endian.Little);
 
             Magic = input.ReadUInt32();

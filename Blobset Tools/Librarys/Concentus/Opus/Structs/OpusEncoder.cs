@@ -409,7 +409,7 @@ namespace Concentus.Structs
                 {
                     analysis_read_pos_bak = analysis.read_pos;
                     analysis_read_subframe_bak = analysis.read_subframe;
-                    Analysis.run_analysis<T>(analysis,
+                    Analysis.run_analysis(analysis,
                         celt_mode,
                         analysis_pcm,
                         analysis_size,
@@ -1491,7 +1491,7 @@ namespace Concentus.Structs
 
             try
             {
-                int ret = opus_encode_native<short>(in_pcm, 0, internal_frame_size, out_data, 0, max_data_bytes, 16,
+                int ret = opus_encode_native(in_pcm, 0, internal_frame_size, out_data, 0, max_data_bytes, 16,
                                          in_pcm, frame_size, 0, -2, channels, Downmix.downmix_int, 0);
 
                 if (ret < 0)

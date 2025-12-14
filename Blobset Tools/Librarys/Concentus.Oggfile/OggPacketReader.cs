@@ -7,7 +7,7 @@
  ***************************************************************************/
 namespace Concentus.Oggfile
 {
-    [System.Diagnostics.DebuggerTypeProxy(typeof(PacketReader.DebugView))]
+    [System.Diagnostics.DebuggerTypeProxy(typeof(DebugView))]
     internal class PacketReader : IPacketProvider
     {
         internal class DebugView

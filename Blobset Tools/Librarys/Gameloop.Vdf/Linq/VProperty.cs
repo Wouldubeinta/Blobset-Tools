@@ -38,7 +38,7 @@
 
         protected override bool DeepEquals(VToken node)
         {
-            return (node is VProperty otherProp && Key == otherProp.Key && VToken.DeepEquals(Value, otherProp.Value) && VConditional.DeepEquals(Conditional, otherProp.Conditional));
+            return (node is VProperty otherProp && Key == otherProp.Key && DeepEquals(Value, otherProp.Value) && DeepEquals(Conditional, otherProp.Conditional));
         }
     }
 }

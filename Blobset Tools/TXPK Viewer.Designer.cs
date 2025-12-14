@@ -32,11 +32,12 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(TXPK_Viewer));
             flipImage_contextMenuStrip = new ContextMenuStrip(components);
             flipImageToolStripMenuItem = new ToolStripMenuItem();
+            alphaToolStripMenuItem = new ToolStripMenuItem();
             extractToPNGToolStripMenuItem = new ToolStripMenuItem();
             extractDDS_contextMenuStrip = new ContextMenuStrip(components);
             extractDDSToolStripMenuItem = new ToolStripMenuItem();
             extractTXPK_fbd = new FolderBrowserDialog();
-            saveFileDialog1 = new SaveFileDialog();
+            saveFileDialog = new SaveFileDialog();
             menuStrip1 = new MenuStrip();
             extractTXPKToolStripMenuItem = new ToolStripMenuItem();
             statusStrip1 = new StatusStrip();
@@ -66,9 +67,9 @@
             // 
             // flipImage_contextMenuStrip
             // 
-            flipImage_contextMenuStrip.Items.AddRange(new ToolStripItem[] { flipImageToolStripMenuItem, extractToPNGToolStripMenuItem });
+            flipImage_contextMenuStrip.Items.AddRange(new ToolStripItem[] { flipImageToolStripMenuItem, alphaToolStripMenuItem, extractToPNGToolStripMenuItem });
             flipImage_contextMenuStrip.Name = "flipImage_contextMenuStrip";
-            flipImage_contextMenuStrip.Size = new Size(153, 48);
+            flipImage_contextMenuStrip.Size = new Size(153, 70);
             // 
             // flipImageToolStripMenuItem
             // 
@@ -77,6 +78,17 @@
             flipImageToolStripMenuItem.Size = new Size(152, 22);
             flipImageToolStripMenuItem.Text = "Flip Image";
             flipImageToolStripMenuItem.Click += flipImageToolStripMenuItem_Click;
+            // 
+            // alphaToolStripMenuItem
+            // 
+            alphaToolStripMenuItem.Checked = true;
+            alphaToolStripMenuItem.CheckOnClick = true;
+            alphaToolStripMenuItem.CheckState = CheckState.Checked;
+            alphaToolStripMenuItem.Image = Properties.Resources.alpha_32;
+            alphaToolStripMenuItem.Name = "alphaToolStripMenuItem";
+            alphaToolStripMenuItem.Size = new Size(152, 22);
+            alphaToolStripMenuItem.Text = "Alpha";
+            alphaToolStripMenuItem.Click += alphaToolStripMenuItem_Click;
             // 
             // extractToPNGToolStripMenuItem
             // 
@@ -102,7 +114,11 @@
             // 
             // extractTXPK_fbd
             // 
-            extractTXPK_fbd.Description = "Select the txpk folder in the root directory of the Blobset Tools.";
+            extractTXPK_fbd.Description = "Select your txpk folder in your games folder of the Blobset Tools.";
+            // 
+            // saveFileDialog
+            // 
+            saveFileDialog.Title = "Select your txpk folder in your games folder of the Blobset Tools.";
             // 
             // menuStrip1
             // 
@@ -265,7 +281,7 @@
         private ToolStripMenuItem extractDDSToolStripMenuItem;
         private FolderBrowserDialog extractTXPK_fbd;
         private ToolStripMenuItem extractToPNGToolStripMenuItem;
-        private SaveFileDialog saveFileDialog1;
+        private SaveFileDialog saveFileDialog;
         private MenuStrip menuStrip1;
         private StatusStrip statusStrip1;
         private ToolStripStatusLabel status_Label;
@@ -278,5 +294,6 @@
         private PictureBox pictureBox1;
         private ToolStripStatusLabel progressStripStatusLabel;
         private ToolStripProgressBar toolStripProgressBar;
+        private ToolStripMenuItem alphaToolStripMenuItem;
     }
 }

@@ -1072,7 +1072,7 @@ namespace ZstdSharp.Unsafe
                         Vector128<byte> t3 = AdvSimd.ShiftRightAndInsert(t2, t2, 4);
                         Vector64<byte> t4 = AdvSimd.ShiftRightLogicalNarrowingLower(t3.As<byte, ushort>(), 4);
                         ulong matches = t4.As<byte, ulong>().GetElement(0);
-                        return BitOperations.RotateRight(matches, (int) headGrouped);
+                        return BitOperations.RotateRight(matches, (int)headGrouped);
                     }
 #endif
                 }

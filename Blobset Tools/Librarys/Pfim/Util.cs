@@ -37,7 +37,7 @@ namespace Pfim
         public static int Translate(Stream str, byte[] buf, int bufLen, int bufIndex)
         {
             Buffer.BlockCopy(buf, bufIndex, buf, 0, bufLen - bufIndex);
-            int result = Util.ReadFill(str, buf, bufLen - bufIndex, bufIndex);
+            int result = ReadFill(str, buf, bufLen - bufIndex, bufIndex);
             return result + bufLen - bufIndex;
         }
 
@@ -150,7 +150,7 @@ namespace Pfim
 
             if (rowsPerBuffer == 0)
             {
-                int workingSize = Util.ReadFill(str, buffer, 0, bufSize);
+                int workingSize = ReadFill(str, buffer, 0, bufSize);
                 while (workingSize > 0 && dataIndex >= 0)
                 {
                     int copied = 0;
@@ -167,7 +167,7 @@ namespace Pfim
             }
             else
             {
-                int workingSize = Util.ReadFill(str, buffer, 0, bufSize);
+                int workingSize = ReadFill(str, buffer, 0, bufSize);
                 while (workingSize > 0 && dataIndex >= 0)
                 {
                     for (int i = 0; i < rowsToRead; i++)
