@@ -10,7 +10,7 @@
 
 ## How to Use
 
-> **Important:**  
+> # **$$\color{red}Important:$$**  
 > Ensure you have a fresh game installation without mods before proceeding.
 
 ### Backup and Update Process
@@ -81,7 +81,7 @@ On the left side, you will see the folder layout. Select a folder to view its co
 
 ### Extracting Files
 
-To extract all files, click on **Blobset > Extract**. The files will be saved to: Blobset Tools\games<Game Folder><Game Platform (pc-ps3-xbox360)>\Name of Blobset (data-0.blobset.pc)\
+To extract all files, click on **Blobset > Extract**. The files will be saved to: **`Blobset Tools\games<Game Folder><Game Platform (pc-ps3-xbox360)>\Name of Blobset (data-0.blobset.pc)\`**
 
 ### Modifying Blobset Files
 
@@ -89,7 +89,7 @@ To modify blobset files, follow these steps:
 
 1. **Place Your Modded Files**: 
    - Navigate to the following directory:  
-     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (PC)>\mods\`**  
+     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (pc-ps3-xbox360)>\mods\`**  
    - Ensure that your modded files are placed in their corresponding folders.
 
 2. **Modify the Blobset**: 
@@ -97,9 +97,9 @@ To modify blobset files, follow these steps:
 
 > **Note for Older BigAnt Games with Version One Blobset Files**:  
 > To create a new blobset file, place your modded files in the same directory:  
-> **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (PC)>\mods\`**  
+> **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (pc-ps3-xbox360)>\mods\`**  
 > After placing your files, click on **Blobset > Create**.  
-> **Important**: Ensure that the main blobset file is loaded before creating a new one; do not use an update blobset.
+> **$$\color{red}Important:$$** Ensure that the main blobset file is loaded before creating a new one; don't have the update(dlc) blobset loaded.
 
 ![Image 6](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/6.jpg?raw=true)
 
@@ -111,25 +111,25 @@ To create a TXPK file, follow these steps:
 
 1. **Prepare the TXPK Folder**: 
    - Ensure that the `txpk` folder is empty. Navigate to:  
-     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (PC)>\txpk\`**
+     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (pc-ps3-xbox360)>\txpk\`**
 
 2. **Select a TXPK File**: 
    - On the right side, select the `dds_txpk` folder and double-click on the desired `.txpk` file to load it into the TXPK Viewer.
 
 3. **Extract the TXPK**: 
    - Click on **Extract TXPK** and choose the destination:  
-     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (PC)\txpk\`**
+     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (pc-ps3-xbox360)\txpk\`**
 
 ![Image 7](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/7.jpg?raw=true)
 
 4. **Modify DDS Files**: 
    - After extraction, navigate to:  
-     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (PC)\txpk\`**  
+     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (pc-ps3-xbox360)\txpk\`**  
    - Make your desired changes to the `.dds` files.
 
 5. **Create the TXPK**: 
    - In Blobset Tools, click on **Tools > TXPK Creator**. Once loaded, click on **Create TXPK** and save it to:  
-     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (PC)\mods\dds_txpk\`**  
+     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (pc-ps3-xbox360)\mods\dds_txpk\`**  
    - You can name the TXPK file as you wish, but ensure that the corresponding `.xml` file has the same name.
 
 ---
@@ -144,7 +144,7 @@ To create an M3MP file, follow these steps:
 
 1. **Prepare the M3MP Folder**: 
    - Ensure that the `m3mp` folder is empty. Navigate to:  
-     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (PC)>\m3mp\`**.
+     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (pc-ps3-xbox360)>\m3mp\`**.
 
 2. **Select the M3MP File**: 
    - On the right side, choose either the `m3mp\uncompressed` or `m3mp\compressed` folder.
@@ -152,19 +152,19 @@ To create an M3MP file, follow these steps:
 
 3. **Extract the M3MP File**: 
    - Click on **Extract M3MP** and select the destination:  
-     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (PC)>\m3mp\`**.
+     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (pc-ps3-xbox360)>\m3mp\`**.
 
 ![Image 10](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/10.jpg?raw=true)
 
 4. **Modify the Extracted Files**: 
    - After extraction, navigate to the folder:  
-     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (PC)>\m3mp\`**.
+     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (pc-ps3-xbox360)>\m3mp\`**.
    - Make your desired changes to the files.
 
 5. **Create the M3MP File**: 
    - In Blobset Tools, click on **Tools > M3MP Creator**.
    - Once loaded, click on **Create M3MP** and save it to:  
-     **`Blobset Tools\games\<The Game You Picked Folder>\mods\m3mp\uncompressed\`** (if it was extracted from the uncompressed folder).
+     **`Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (pc-ps3-xbox360)>\mods\m3mp\uncompressed\`** (if it was extracted from the uncompressed folder).
    - You can name the `.m3mp` file as you wish, but ensure that the corresponding `.xml` file has the same name.
 
 ![Image 11](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/11.jpg?raw=true)
