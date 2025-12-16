@@ -14,7 +14,7 @@ namespace Blobset_Tools
         private BackgroundWorker? M3MPExtract_bgw = null;
         private ImageList? myImageList = null;
         private bool isCompressed = false;
-        private int blobsetVersion = 4;
+        private int blobsetVersion = 3;
         private uint MainFinalOffset = 0;
         private uint MainUnCompressedSize = 0;
 

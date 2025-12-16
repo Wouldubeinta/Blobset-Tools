@@ -87,6 +87,7 @@ namespace Blobset_Tools
             datFileToolStripMenuItem = new ToolStripMenuItem();
             blobset_ofd = new OpenFileDialog();
             blobset_sfd = new SaveFileDialog();
+            BSBCreatorToolStripMenuItem = new ToolStripMenuItem();
             statusStrip1.SuspendLayout();
             menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
@@ -227,7 +228,7 @@ namespace Blobset_Tools
             // 
             // toolsToolStripMenuItem
             // 
-            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { tXPKCreatorToolStripMenuItem, m3MPCreatorToolStripMenuItem, fileMappingEditorToolStripMenuItem });
+            toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { tXPKCreatorToolStripMenuItem, m3MPCreatorToolStripMenuItem, BSBCreatorToolStripMenuItem, fileMappingEditorToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new Size(47, 23);
             toolsToolStripMenuItem.Text = "Tools";
@@ -236,7 +237,7 @@ namespace Blobset_Tools
             // 
             tXPKCreatorToolStripMenuItem.Image = (Image)resources.GetObject("tXPKCreatorToolStripMenuItem.Image");
             tXPKCreatorToolStripMenuItem.Name = "tXPKCreatorToolStripMenuItem";
-            tXPKCreatorToolStripMenuItem.Size = new Size(177, 22);
+            tXPKCreatorToolStripMenuItem.Size = new Size(184, 26);
             tXPKCreatorToolStripMenuItem.Text = "TXPK Creator";
             tXPKCreatorToolStripMenuItem.ToolTipText = "To create DDS TXPK files.";
             tXPKCreatorToolStripMenuItem.Click += txpkCreatorToolStripMenuItem_Click;
@@ -245,7 +246,7 @@ namespace Blobset_Tools
             // 
             m3MPCreatorToolStripMenuItem.Image = (Image)resources.GetObject("m3MPCreatorToolStripMenuItem.Image");
             m3MPCreatorToolStripMenuItem.Name = "m3MPCreatorToolStripMenuItem";
-            m3MPCreatorToolStripMenuItem.Size = new Size(177, 22);
+            m3MPCreatorToolStripMenuItem.Size = new Size(184, 26);
             m3MPCreatorToolStripMenuItem.Text = "M3MP Creator";
             m3MPCreatorToolStripMenuItem.ToolTipText = "To Create M3MP files.";
             m3MPCreatorToolStripMenuItem.Click += m3mpCreatorToolStripMenuItem_Click;
@@ -254,7 +255,7 @@ namespace Blobset_Tools
             // 
             fileMappingEditorToolStripMenuItem.Image = Properties.Resources.file_mapping_32;
             fileMappingEditorToolStripMenuItem.Name = "fileMappingEditorToolStripMenuItem";
-            fileMappingEditorToolStripMenuItem.Size = new Size(177, 22);
+            fileMappingEditorToolStripMenuItem.Size = new Size(184, 26);
             fileMappingEditorToolStripMenuItem.Text = "File Mapping Editor";
             fileMappingEditorToolStripMenuItem.Click += fileMappingEditorToolStripMenuItem_Click;
             // 
@@ -269,7 +270,7 @@ namespace Blobset_Tools
             // 
             updateFileMappingDataToolStripMenuItem.Image = Properties.Resources.mapping_32;
             updateFileMappingDataToolStripMenuItem.Name = "updateFileMappingDataToolStripMenuItem";
-            updateFileMappingDataToolStripMenuItem.Size = new Size(211, 22);
+            updateFileMappingDataToolStripMenuItem.Size = new Size(215, 26);
             updateFileMappingDataToolStripMenuItem.Text = "Update File Mapping Data";
             updateFileMappingDataToolStripMenuItem.ToolTipText = "This update's the file mapping files in the data folder.";
             updateFileMappingDataToolStripMenuItem.Click += updateFileMappingDataToolStripMenuItem_Click;
@@ -279,7 +280,7 @@ namespace Blobset_Tools
             loadGameToolStripMenuItem.CheckOnClick = true;
             loadGameToolStripMenuItem.Image = Properties.Resources.loading_32;
             loadGameToolStripMenuItem.Name = "loadGameToolStripMenuItem";
-            loadGameToolStripMenuItem.Size = new Size(211, 22);
+            loadGameToolStripMenuItem.Size = new Size(215, 26);
             loadGameToolStripMenuItem.Text = "Load Game";
             loadGameToolStripMenuItem.ToolTipText = "If ticked, this will load the game after modifing the blobset.";
             loadGameToolStripMenuItem.Click += loadGameToolStripMenuItem_Click;
@@ -288,7 +289,7 @@ namespace Blobset_Tools
             // 
             validateSteamGameFilesToolStripMenuItem.Image = (Image)resources.GetObject("validateSteamGameFilesToolStripMenuItem.Image");
             validateSteamGameFilesToolStripMenuItem.Name = "validateSteamGameFilesToolStripMenuItem";
-            validateSteamGameFilesToolStripMenuItem.Size = new Size(211, 22);
+            validateSteamGameFilesToolStripMenuItem.Size = new Size(215, 26);
             validateSteamGameFilesToolStripMenuItem.Text = "Validate Steam Game Files";
             validateSteamGameFilesToolStripMenuItem.ToolTipText = "This will repair game files, If something stuffs up.";
             validateSteamGameFilesToolStripMenuItem.Click += validateSteamGameFilesToolStripMenuItem_Click;
@@ -298,7 +299,7 @@ namespace Blobset_Tools
             skipUnknownFilesToolStripMenuItem.CheckOnClick = true;
             skipUnknownFilesToolStripMenuItem.Image = Properties.Resources.skip_32;
             skipUnknownFilesToolStripMenuItem.Name = "skipUnknownFilesToolStripMenuItem";
-            skipUnknownFilesToolStripMenuItem.Size = new Size(211, 22);
+            skipUnknownFilesToolStripMenuItem.Size = new Size(215, 26);
             skipUnknownFilesToolStripMenuItem.Text = "Skip Unknown Files";
             skipUnknownFilesToolStripMenuItem.ToolTipText = "When ticked, this will skip extracting unknown file types, like meshes and animation files ect...";
             skipUnknownFilesToolStripMenuItem.Click += skipUnknownFilesToolStripMenuItem_Click;
@@ -307,7 +308,7 @@ namespace Blobset_Tools
             // 
             restoreBackupFilesToolStripMenuItem.Image = Properties.Resources.restore_backup_32;
             restoreBackupFilesToolStripMenuItem.Name = "restoreBackupFilesToolStripMenuItem";
-            restoreBackupFilesToolStripMenuItem.Size = new Size(211, 22);
+            restoreBackupFilesToolStripMenuItem.Size = new Size(215, 26);
             restoreBackupFilesToolStripMenuItem.Text = "Restore Backup Files";
             restoreBackupFilesToolStripMenuItem.ToolTipText = "This will restore the backed up files that you replaced with mods.";
             restoreBackupFilesToolStripMenuItem.Click += restoreBackupFilesToolStripMenuItem_Click;
@@ -316,7 +317,7 @@ namespace Blobset_Tools
             // 
             resetBlobsetToolStripMenuItem.Image = Properties.Resources.restore_backup_32;
             resetBlobsetToolStripMenuItem.Name = "resetBlobsetToolStripMenuItem";
-            resetBlobsetToolStripMenuItem.Size = new Size(211, 22);
+            resetBlobsetToolStripMenuItem.Size = new Size(215, 26);
             resetBlobsetToolStripMenuItem.Text = "Reset Blobset";
             resetBlobsetToolStripMenuItem.ToolTipText = "Reset blobset files to their original state.";
             resetBlobsetToolStripMenuItem.Click += resetBlobsetToolStripMenuItem_Click;
@@ -592,6 +593,13 @@ namespace Blobset_Tools
             // 
             blobset_sfd.Title = "Make a name for your created blobset.";
             // 
+            // BSBCreatorToolStripMenuItem
+            // 
+            BSBCreatorToolStripMenuItem.Image = Properties.Resources.bsb_32;
+            BSBCreatorToolStripMenuItem.Name = "BSBCreatorToolStripMenuItem";
+            BSBCreatorToolStripMenuItem.Size = new Size(184, 26);
+            BSBCreatorToolStripMenuItem.Text = "BSB Creator";
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -689,5 +697,6 @@ namespace Blobset_Tools
         private ToolStripMenuItem modifyBlobset_ToolStripMenuItem;
         private ToolStripMenuItem createToolStripMenuItem;
         private SaveFileDialog blobset_sfd;
+        private ToolStripMenuItem BSBCreatorToolStripMenuItem;
     }
 }

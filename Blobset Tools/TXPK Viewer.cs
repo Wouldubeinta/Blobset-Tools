@@ -105,6 +105,7 @@ namespace Blobset_Tools
 
         private void files_listView_SelectedIndexChanged(object sender, EventArgs e)
         {
+            fileIndex = UI.getLVSelectedIndex(files_listView);
             LoadImage(alphaToolStripMenuItem.Checked);
             pictureBox1.Refresh();
         }
@@ -117,8 +118,6 @@ namespace Blobset_Tools
             {
                 string txpkName = Path.Combine(Global.currentPath, "temp", Path.GetFileName(filename));
                 br = new Reader(txpkName);
-
-                fileIndex = UI.getLVSelectedIndex(files_listView);
 
                 if (fileIndex == -1) return;
 
@@ -612,7 +611,7 @@ namespace Blobset_Tools
 
         private void extractToPNGToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string path = files_listView.SelectedItems[fileIndex].Text;
+            string path = files_listView.SelectedItems[0].Text;
 
             saveFileDialog.Title = "Save PNG File";
             saveFileDialog.Filter = "PNG" + " File|*.png";

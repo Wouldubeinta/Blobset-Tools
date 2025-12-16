@@ -382,10 +382,10 @@ namespace Blobset_Tools
                 outStream = new();
                 encoder = new();
 
+                encoder.WriteCoderProperties(outStream);
                 encoder.Code(inStream, outStream, input.Length, -1, null);
 
-                byte[]? output = new byte[outStream.Length];
-                outStream.Write(output, 0, output.Length);
+                byte[]? output = outStream.ToArray();
                 int compressedSize = output.Length + 4;
                 writer.Write(BitConverter.GetBytes(compressedSize), 0, 4);
                 writer.Write(output, 0, output.Length);
@@ -401,6 +401,47 @@ namespace Blobset_Tools
                 if (outStream != null) { outStream.Dispose(); outStream = null; }
                 if (encoder != null) { encoder = null; }
             }
+        }
+
+        /// <summary>
+        /// M3MP Compresses chunk data and appends to output file.
+        /// </summary>
+        /// <param name="input">Byte array to be compressed.</param>
+        /// <param name="writer">FileStream output writer.</param>
+        /// <history>
+        /// [Wouldubeinta]		16/07/2025	Created
+        /// </history>
+        public static int M3MPCompressAndWrite(byte[] input, FileStream writer)
+        {
+            MemoryStream? inStream = null;
+            MemoryStream? outStream = null;
+            Encoder? encoder = null;
+            int compressedSize = 0;
+
+            try
+            {
+                inStream = new(input);
+                outStream = new();
+                encoder = new();
+                encoder.WriteCoderProperties(outStream);
+                encoder.Code(inStream, outStream, input.Length, -1, null);
+
+                byte[]? output = outStream.ToArray();
+                writer.Write(output, 0, output.Length);
+                writer.Flush();
+                compressedSize = output.Length;
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (inStream != null) { inStream.Dispose(); inStream = null; }
+                if (outStream != null) { outStream.Dispose(); outStream = null; }
+                if (encoder != null) { encoder = null; }
+            }
+            return compressedSize;
         }
 
         /// <summary>

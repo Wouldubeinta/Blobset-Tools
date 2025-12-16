@@ -1293,6 +1293,18 @@ namespace Blobset_Tools
         }
         #endregion
 
+        #region Write File Mapping
+        /// <summary>
+        /// Write file mapping.
+        /// </summary>
+        /// <param name="bw">Binary Writer</param>
+        /// <param name="index">File index</param>
+        /// <param name="assetName">File path to asset</param>
+        /// <param name="folderName">Folder hash name</param>
+        /// <param name="fileName">File hash name</param>
+        /// <history>
+        /// [Wouldubeinta]		11/07/2025	Created
+        /// </history>
         private static void WriteMapping(BinaryWriter? bw, int index, string assetName, string folderName, string fileName)
         {
             bw.Write(index);
@@ -1302,7 +1314,16 @@ namespace Blobset_Tools
             bw.Flush();
             if (bw != null) { bw.Close(); bw = null; }
         }
+        #endregion
 
+        #region Delete File
+        /// <summary>
+        /// Delete file if exist.
+        /// </summary>
+        /// <param name="filePath">File path</param>
+        /// <history>
+        /// [Wouldubeinta]		11/07/2025	Created
+        /// </history>
         private static void DeleteFileIfExists(string filePath)
         {
             if (File.Exists(filePath))
@@ -1310,10 +1331,11 @@ namespace Blobset_Tools
                 File.Delete(filePath);
             }
         }
+        #endregion
 
         #region Create Mod Folders
         /// <summary>
-        /// Creates all the folders for mods.
+        /// Creates all the folders for mods and reorders filemapping in alphabetical order.
         /// </summary>
         /// <history>
         /// [Wouldubeinta]		11/07/2025	Created
@@ -1331,7 +1353,6 @@ namespace Blobset_Tools
                 string baseName = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt);
 
                 string blobsetFilename = Path.GetFileName(Global.gameInfo.GameLocation);
-
                 string BlobsetFileMapping = Path.Combine(baseName, "data", blobsetFilename + ".mapping");
 
                 if (File.Exists(BlobsetFileMapping))

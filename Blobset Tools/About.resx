@@ -245,7 +245,12 @@ IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL ANY C
 If the disclaimer of warranty and limitation of liability provided above cannot be given local legal effect according to their terms, reviewing courts shall apply local law that most closely approximates an absolute waiver of all civil liability in connection with the Program, unless a warranty or assumption of liability accompanies a copy of the Program in return for a fee.</value>
   </data>
   <data name="changelog_richTextBox.Text" xml:space="preserve">
-    <value>-1.1.5.35-
+    <value>-1.1.6.37-
+* Fixed a bug in Modify blobset section for version 4 blobsets having wrong file paths. (I forgot to change them to the new paths)
+* Fixed a bug in the TXPK Viewer when trying to save image as a png.
+* Fixed a bug with M3MP Creator, not having the right LZMA compression for the older games.
+
+-1.1.5.35-
 * Fixed a major bug with Create TXPK and M3MP. Got broke after adding console support.
 * Fixed bug with Modify Blobset. Happened the same as the first bug.
 * Added Open Blobset file for version one blobset earlier games.

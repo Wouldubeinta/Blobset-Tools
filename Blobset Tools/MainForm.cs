@@ -121,6 +121,7 @@ namespace Blobset_Tools
             {
                 openToolStripMenuItem.Visible = false;
                 createToolStripMenuItem.Visible = false;
+                BSBCreatorToolStripMenuItem.Visible = false;
                 resetBlobsetToolStripMenuItem.Visible = false;
             }
         }
@@ -1216,16 +1217,17 @@ namespace Blobset_Tools
             {
                 foreach (string file in files)
                 {
-                    string? folder = Path.GetDirectoryName(file.Replace(backupFilePath, string.Empty));
-                    string filePath = gameLocation + folder + @"\" + Path.GetFileName(file);
+                    string? folder = Path.GetDirectoryName(file.Replace(backupFilePath + "\\", string.Empty));
 
-                    if (folder == string.Empty)
-                        filePath = gameLocation + folder + Path.GetFileName(file);
-
-                    if (File.Exists(filePath))
+                    if (!string.IsNullOrEmpty(folder)) 
                     {
-                        File.Delete(filePath);
-                        File.Move(file, filePath);
+                        string filePath = Path.Combine(gameLocation, folder, Path.GetFileName(file));
+
+                        if (File.Exists(filePath))
+                        {
+                            File.Delete(filePath);
+                            File.Move(file, filePath);
+                        }
                     }
                 }
 

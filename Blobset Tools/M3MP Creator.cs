@@ -10,6 +10,7 @@ namespace Blobset_Tools
     {
         private BackgroundWorker? M3MP_Create_bgw = null;
         private ExtractFileInfo? M3MP_Xml_In = null;
+        private int blobsetVersion = 3;
 
         public M3MP_Creator()
         {
@@ -30,6 +31,7 @@ namespace Blobset_Tools
                 m3mp_richTextBox.AppendText("Click on Create M3MP.");
                 m3mp_richTextBox.AppendText(Environment.NewLine);
                 m3mp_richTextBox.AppendText(Environment.NewLine);
+                blobsetVersion = Global.gameInfo.BlobsetVersion;
             }
             else
                 m3mp_richTextBox.AppendText("Could not find M3MP_List.xml. Make sure you place the files and M3MP_List.xml in the m3mp folder");
@@ -234,7 +236,16 @@ namespace Blobset_Tools
                 {
                     byte[] buffer2 = br.ReadBytes((int)chunkSizes[i]);
                     int chunkCOffset = 0;
-                    int chunkCSize = ZSTD_IO.CompressAndWrite(buffer2, writer, ref chunkCOffset, (int)chunkSizes[i]);
+                    int chunkCSize = 0;
+
+                    if (blobsetVersion > 2) 
+                        chunkCSize = ZSTD_IO.CompressAndWrite(buffer2, writer, ref chunkCOffset, (int)chunkSizes[i]);
+                    else 
+                    {
+                        chunkCOffset = (int)writer.Position;
+                        chunkCSize = LZMA_IO.M3MPCompressAndWrite(buffer2, writer);
+                    }
+
                     m3mp.CompressedEntries[i].CompressedDataInfo.Offset = (uint)chunkCOffset + (uint)m3mpHeaderSize;
                     m3mp.CompressedEntries[i].CompressedDataInfo.CompressedSize = (uint)chunkCSize;
                     m3mp.CompressedEntries[i].CompressedDataInfo.UnCompressedSize = (uint)buffer2.Length;

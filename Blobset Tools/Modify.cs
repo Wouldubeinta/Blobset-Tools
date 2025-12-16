@@ -87,7 +87,7 @@ namespace Blobset_Tools
 
                 string blobsetFilename = Path.GetFileName(blobsetFile);
 
-                fileMapping_br = new(Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "data", blobsetFilename + ".mapping"));
+                fileMapping_br = new(Path.Combine(basePath, "data", blobsetFilename + ".mapping"));
 
                 FileMapping fileMapping = new();
                 fileMapping.Read(fileMapping_br);
@@ -745,7 +745,8 @@ namespace Blobset_Tools
                 string platformExt = platformDetails["PlatformExt"];
 
                 int blobsetFileCount = (int)Global.blobsetHeaderData.FilesCount;
-                string modsFolder = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "mods");
+                string basePath = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt);
+                string modsFolder = Path.Combine(basePath, "mods");
 
                 // Define an array of file extensions to search for
                 string[] fileExtensions = { "dds", "txpk", "m3mp", "wem", "bnk" };
@@ -770,7 +771,7 @@ namespace Blobset_Tools
 
                 string blobsetFilename = Path.GetFileName(blobsetFile);
 
-                fileMapping_br = new(Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, "data", blobsetFilename + ".mapping"));
+                fileMapping_br = new(Path.Combine(basePath, "data", blobsetFilename + ".mapping"));
 
                 FileMapping fileMapping = new();
                 fileMapping.Read(fileMapping_br);
@@ -787,8 +788,8 @@ namespace Blobset_Tools
                 List<int> vramUncompressedSize = [];
                 List<int> headerIndex = [];
 
-                string filePathRemove = modsFolder;
-                string backupFilePath = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, "backup");
+                string filePathRemove = modsFolder + "\\";
+                string backupFilePath = Path.Combine(basePath, "backup");
 
                 string gameLocation = Path.GetDirectoryName(blobsetFile);
 
@@ -945,12 +946,12 @@ namespace Blobset_Tools
 
                     string folderName = fm.Entries[0].FolderHash;
                     string fileName = fm.Entries[0].FileNameHash;
-                    string filePath = gameLocation + folderName + @"\" + fileName;
+                    string filePath = Path.Combine(gameLocation, folderName, fileName);
                     _filePath = filePath;
 
-                    if (!File.Exists(backupFilePath + folderName + @"\" + fileName))
+                    if (!File.Exists(Path.Combine(backupFilePath, folderName, fileName)))
                     {
-                        Directory.CreateDirectory(backupFilePath + folderName + @"\");
+                        Directory.CreateDirectory(Path.Combine(backupFilePath, folderName));
                         File.Move(filePath, backupFilePath + folderName + @"\" + fileName);
                     }
 
@@ -1079,9 +1080,11 @@ namespace Blobset_Tools
                     if (writer != null) { writer.Dispose(); writer = null; }
                 }
 
-                if (!File.Exists(backupFilePath + "data-0.blobset.pc"))
+                string backupBlobsetPath = Path.Combine(backupFilePath, "data-0.blobset.pc");
+
+                if (!File.Exists(backupBlobsetPath))
                 {
-                    File.Copy(blobsetFile, backupFilePath + "data-0.blobset.pc");
+                    File.Copy(blobsetFile, backupBlobsetPath);
                 }
 
                 blobsetHeader_bw = new Writer(blobsetFile);
@@ -1120,10 +1123,12 @@ namespace Blobset_Tools
         #region Backup Files
         private static void BackupFilesV3V4(string filePath, string folderName, string fileName, string backupFilePath)
         {
-            if (!File.Exists(backupFilePath + folderName + @"\" + fileName))
+            string backupFile = Path.Combine(backupFilePath, folderName, fileName);
+
+            if (!File.Exists(backupFile))
             {
-                Directory.CreateDirectory(backupFilePath + folderName + @"\");
-                File.Move(filePath, backupFilePath + folderName + @"\" + fileName);
+                Directory.CreateDirectory(Path.Combine(backupFilePath, folderName));
+                File.Move(filePath, backupFile);
             }
 
             if (File.Exists(filePath))
