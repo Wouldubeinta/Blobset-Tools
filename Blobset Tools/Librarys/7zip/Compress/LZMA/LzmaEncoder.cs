@@ -60,7 +60,7 @@ namespace SevenZip.Compression.LZMA
                 _repDistances[i] = 0;
         }
 
-        private const int kDefaultDictionaryLogSize = 22;
+        private const int kDefaultDictionaryLogSize = 23;
         private const uint kNumFastBytesDefault = 32;
 
         private class LiteralEncoder

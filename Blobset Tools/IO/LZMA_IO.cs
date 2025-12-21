@@ -197,6 +197,12 @@ namespace Blobset_Tools
                 encoder = new();
                 outStream = new();
                 inStream = new MemoryStream(input);
+
+                // Set the coder properties
+                encoder.SetCoderProperties(SevenZipHelper.propIDs, SevenZipHelper.properties);
+
+                // Write the encoder properties to the output stream (necessary for decompression)
+                encoder.WriteCoderProperties(outStream);
                 encoder.Code(inStream, outStream, input.Length, -1, null);
 
                 buffer = new byte[outStream.Length];
@@ -321,7 +327,13 @@ namespace Blobset_Tools
                     outStream = new();
                     encoder = new();
                     // Compress the chunk
+
+                    // Set the coder properties
+                    encoder.SetCoderProperties(SevenZipHelper.propIDs, SevenZipHelper.properties);
+
+                    // Write the encoder properties to the output stream (necessary for decompression)
                     encoder.WriteCoderProperties(outStream);
+
                     encoder.Code(inStream, outStream, currentChunkSize, -1, null);
                     byte[] output = outStream.ToArray(); // Get compressed data
                     writer.Write(output, 0, output.Length);
@@ -382,7 +394,12 @@ namespace Blobset_Tools
                 outStream = new();
                 encoder = new();
 
+                // Set the coder properties
+                encoder.SetCoderProperties(SevenZipHelper.propIDs, SevenZipHelper.properties);
+
+                // Write the encoder properties to the output stream (necessary for decompression)
                 encoder.WriteCoderProperties(outStream);
+
                 encoder.Code(inStream, outStream, input.Length, -1, null);
 
                 byte[]? output = outStream.ToArray();
@@ -423,7 +440,13 @@ namespace Blobset_Tools
                 inStream = new(input);
                 outStream = new();
                 encoder = new();
+
+                // Set the coder properties
+                encoder.SetCoderProperties(SevenZipHelper.propIDs, SevenZipHelper.properties);
+
+                // Write the encoder properties to the output stream (necessary for decompression)
                 encoder.WriteCoderProperties(outStream);
+
                 encoder.Code(inStream, outStream, input.Length, -1, null);
 
                 byte[]? output = outStream.ToArray();
@@ -618,7 +641,7 @@ namespace Blobset_Tools
         /// </history>
         public static Mini_TXPK ReadMiniTXPKInfo(List<Structs.FileIndexInfo> list)
         {
-            Reader? br = null;
+            Reader? blobset_br = null;
             Reader? mini_txpk_br = null;
             Mini_TXPK? mini_txpk = null;
 
@@ -629,7 +652,7 @@ namespace Blobset_Tools
                 if (Global.isBigendian)
                     endian = Endian.Big;
 
-                br = new(Global.gameInfo.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber), endian);
+                blobset_br = new(Global.gameInfo.GameLocation.Replace("-0", "-" + Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].BlobSetNumber), endian);
 
                 uint MainFinalOffset = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainFinalOffSet;
                 uint MainCompressedSize = Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
@@ -637,33 +660,33 @@ namespace Blobset_Tools
 
                 byte[] txpkData = new byte[MainUnCompressedSize];
 
-                br.Position = MainFinalOffset;
+                blobset_br.Position = MainFinalOffset;
 
                 if (MainCompressedSize != MainUnCompressedSize)
                 {
-                    int chunkCount = br.ReadInt32();
+                    int chunkCount = blobset_br.ReadInt32();
                     int[] chunkCompressedSize = new int[chunkCount];
                     int size = 0;
 
                     for (int j = 0; j < chunkCount; j++)
                     {
-                        chunkCompressedSize[j] = br.ReadInt32();
+                        chunkCompressedSize[j] = blobset_br.ReadInt32();
                         chunkCompressedSize[j] = chunkCompressedSize[j] -= 4;
                     }
 
                     for (int j = 0; j < chunkCount; j++)
                     {
-                        int chunkUnCompressedSize = br.ReadInt32();
+                        int chunkUnCompressedSize = blobset_br.ReadInt32();
 
                         if (chunkCompressedSize[j] == chunkUnCompressedSize)
                         {
-                            byte[] tmptxpkData = br.ReadBytes(chunkUnCompressedSize, Endian.Little);
+                            byte[] tmptxpkData = blobset_br.ReadBytes(chunkUnCompressedSize, Endian.Little);
                             Buffer.BlockCopy(tmptxpkData, 0, txpkData, size, tmptxpkData.Length);
                             size += tmptxpkData.Length;
                         }
                         else
                         {
-                            byte[] compressedTmptxpkData = br.ReadBytes(chunkCompressedSize[j], Endian.Little);
+                            byte[] compressedTmptxpkData = blobset_br.ReadBytes(chunkCompressedSize[j], Endian.Little);
                             byte[] tmpMiniTxpkData = DecompressAndRead(compressedTmptxpkData, chunkUnCompressedSize);
                             Buffer.BlockCopy(tmpMiniTxpkData, 0, txpkData, size, tmpMiniTxpkData.Length);
                             size += tmpMiniTxpkData.Length;
@@ -672,7 +695,7 @@ namespace Blobset_Tools
                 }
                 else
                 {
-                    txpkData = br.ReadBytes(Convert.ToInt32(MainUnCompressedSize), Endian.Little);
+                    txpkData = blobset_br.ReadBytes(Convert.ToInt32(MainUnCompressedSize), Endian.Little);
                 }
 
                 mini_txpk_br = new(txpkData);
@@ -687,7 +710,7 @@ namespace Blobset_Tools
             }
             finally
             {
-                if (br != null) { br.Close(); br = null; }
+                if (blobset_br != null) { blobset_br.Close(); blobset_br = null; }
                 if (mini_txpk_br != null) { mini_txpk_br.Close(); mini_txpk_br = null; }
             }
             return mini_txpk;

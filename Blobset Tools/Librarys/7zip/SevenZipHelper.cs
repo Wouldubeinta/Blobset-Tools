@@ -2,17 +2,7 @@ namespace SevenZip.Compression.LZMA
 {
     public static class SevenZipHelper
     {
-
-        private static readonly int dictionary = 1 << 23;
-        private static readonly int posStateBits = 2;
-        private static readonly int litContextBits = 3; // for normal files
-        private static readonly int litPosBits = 0;
-        private static readonly int algorithm = 2;
-        private static readonly int numFastBytes = 128;
-        private static readonly string matchFinder = "bt4";
-        private static readonly bool eos = false;
-
-        private static readonly CoderPropID[] propIDs =
+        public static readonly CoderPropID[] propIDs =
         {
             CoderPropID.DictionarySize,
             CoderPropID.PosStateBits,
@@ -25,16 +15,16 @@ namespace SevenZip.Compression.LZMA
         };
 
         // these are the default properties, keeping it simple for now:
-        private static readonly object[] properties =
+        public static readonly object[] properties =
         {
-            dictionary,
-            posStateBits,
-            litContextBits,
-            litPosBits,
-            algorithm,
-            numFastBytes,
-            matchFinder,
-            eos
+                1 << 21, // dictionary size (default 2^23 = 8 MB)
+                2,       // posStateBits (default)
+                3,       // litContextBits (default)
+                0,       // litPosBits (default)
+                1,       // algorithm (LZMA2)
+                5,      // numFastBytes
+            "BT4",       // matchFinder (default)
+             false        // eos (default)
         };
 
         public static byte[] Compress(byte[] inputBytes)

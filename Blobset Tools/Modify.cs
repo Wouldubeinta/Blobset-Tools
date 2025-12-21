@@ -949,14 +949,7 @@ namespace Blobset_Tools
                     string filePath = Path.Combine(gameLocation, folderName, fileName);
                     _filePath = filePath;
 
-                    if (!File.Exists(Path.Combine(backupFilePath, folderName, fileName)))
-                    {
-                        Directory.CreateDirectory(Path.Combine(backupFilePath, folderName));
-                        File.Move(filePath, backupFilePath + folderName + @"\" + fileName);
-                    }
-
-                    if (File.Exists(filePath))
-                        File.Delete(filePath);
+                    BackupFilesV3V4(filePath, folderName, fileName, backupFilePath);
 
                     int mainUncompSize = m3mpFileInfo.MainUnCompressedSize;
                     int mainChunkCount = Utilities.ChunkAmount(mainUncompSize);
@@ -1127,7 +1120,8 @@ namespace Blobset_Tools
 
             if (!File.Exists(backupFile))
             {
-                Directory.CreateDirectory(Path.Combine(backupFilePath, folderName));
+                string dir = Path.Combine(backupFilePath, folderName);
+                Directory.CreateDirectory(dir);
                 File.Move(filePath, backupFile);
             }
 

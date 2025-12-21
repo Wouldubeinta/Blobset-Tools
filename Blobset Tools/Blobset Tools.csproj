@@ -15,11 +15,11 @@
     <ApplicationIcon>Blobset_Tools.ico</ApplicationIcon>
     <Company>Wouldy Mods</Company>
     <Title>$(AssemblyName)</Title>
-    <Version>1.1.6.37</Version>
+    <Version>1.1.7.38</Version>
     <NuGetAudit>False</NuGetAudit>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <AssemblyVersion>1.1.6.37</AssemblyVersion>
-    <FileVersion>1.1.6.37</FileVersion>
+    <AssemblyVersion>1.1.7.38</AssemblyVersion>
+    <FileVersion>1.1.7.38</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
