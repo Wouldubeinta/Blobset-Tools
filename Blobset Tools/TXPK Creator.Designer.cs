@@ -43,54 +43,59 @@
             // 
             // menuStrip1
             // 
+            menuStrip1.ImageScalingSize = new Size(20, 20);
             menuStrip1.Items.AddRange(new ToolStripItem[] { createTXPKToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Size = new Size(800, 24);
+            menuStrip1.Padding = new Padding(7, 3, 0, 3);
+            menuStrip1.Size = new Size(914, 30);
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "menuStrip1";
             // 
             // createTXPKToolStripMenuItem
             // 
             createTXPKToolStripMenuItem.Name = "createTXPKToolStripMenuItem";
-            createTXPKToolStripMenuItem.Size = new Size(84, 20);
+            createTXPKToolStripMenuItem.Size = new Size(104, 24);
             createTXPKToolStripMenuItem.Text = "Create TXPK";
             createTXPKToolStripMenuItem.Click += createTXPKToolStripMenuItem_Click;
             // 
             // statusStrip1
             // 
+            statusStrip1.ImageScalingSize = new Size(20, 20);
             statusStrip1.Items.AddRange(new ToolStripItem[] { status_Label, progressStripStatusLabel, toolStripProgressBar });
-            statusStrip1.Location = new Point(0, 428);
+            statusStrip1.Location = new Point(0, 573);
             statusStrip1.Name = "statusStrip1";
-            statusStrip1.Size = new Size(800, 22);
+            statusStrip1.Padding = new Padding(1, 0, 16, 0);
+            statusStrip1.Size = new Size(914, 27);
             statusStrip1.TabIndex = 1;
             statusStrip1.Text = "statusStrip1";
             // 
             // status_Label
             // 
             status_Label.Name = "status_Label";
-            status_Label.Size = new Size(552, 17);
+            status_Label.Size = new Size(666, 21);
             status_Label.Spring = true;
             status_Label.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // progressStripStatusLabel
             // 
             progressStripStatusLabel.Name = "progressStripStatusLabel";
-            progressStripStatusLabel.Size = new Size(0, 17);
+            progressStripStatusLabel.Size = new Size(0, 21);
             // 
             // toolStripProgressBar
             // 
             toolStripProgressBar.Name = "toolStripProgressBar";
-            toolStripProgressBar.Size = new Size(200, 16);
+            toolStripProgressBar.Size = new Size(229, 19);
             // 
             // txpk_richTextBox
             // 
             txpk_richTextBox.BackColor = Color.Black;
             txpk_richTextBox.Dock = DockStyle.Fill;
             txpk_richTextBox.ForeColor = Color.Gold;
-            txpk_richTextBox.Location = new Point(0, 24);
+            txpk_richTextBox.Location = new Point(0, 30);
+            txpk_richTextBox.Margin = new Padding(3, 4, 3, 4);
             txpk_richTextBox.Name = "txpk_richTextBox";
-            txpk_richTextBox.Size = new Size(800, 404);
+            txpk_richTextBox.Size = new Size(914, 543);
             txpk_richTextBox.TabIndex = 2;
             txpk_richTextBox.Text = "";
             // 
@@ -101,14 +106,15 @@
             // 
             // TXPK_Creator
             // 
-            AutoScaleDimensions = new SizeF(7F, 15F);
-            AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 450);
+            AutoScaleDimensions = new SizeF(120F, 120F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            ClientSize = new Size(914, 600);
             Controls.Add(txpk_richTextBox);
             Controls.Add(statusStrip1);
             Controls.Add(menuStrip1);
             Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
+            Margin = new Padding(3, 4, 3, 4);
             Name = "TXPK_Creator";
             Text = "TXPK Creator";
             Load += TXPK_Creator_Load;

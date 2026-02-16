@@ -52,10 +52,10 @@
             // 
             statusStrip1.ImageScalingSize = new Size(20, 20);
             statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1 });
-            statusStrip1.Location = new Point(0, 445);
+            statusStrip1.Location = new Point(0, 601);
             statusStrip1.Name = "statusStrip1";
-            statusStrip1.Padding = new Padding(1, 0, 17, 0);
-            statusStrip1.Size = new Size(676, 22);
+            statusStrip1.Padding = new Padding(1, 0, 19, 0);
+            statusStrip1.Size = new Size(773, 22);
             statusStrip1.TabIndex = 0;
             statusStrip1.Text = "statusStrip1";
             // 
@@ -63,16 +63,16 @@
             // 
             toolStripStatusLabel1.ForeColor = Color.MediumBlue;
             toolStripStatusLabel1.Name = "toolStripStatusLabel1";
-            toolStripStatusLabel1.Size = new Size(0, 17);
+            toolStripStatusLabel1.Size = new Size(0, 16);
             // 
             // pictureBox1
             // 
             pictureBox1.BackgroundImage = Properties.Resources.grid_light;
             pictureBox1.Dock = DockStyle.Fill;
-            pictureBox1.Location = new Point(0, 28);
-            pictureBox1.Margin = new Padding(4);
+            pictureBox1.Location = new Point(0, 34);
+            pictureBox1.Margin = new Padding(5, 5, 5, 5);
             pictureBox1.Name = "pictureBox1";
-            pictureBox1.Size = new Size(676, 417);
+            pictureBox1.Size = new Size(773, 567);
             pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox1.TabIndex = 1;
             pictureBox1.TabStop = false;
@@ -84,8 +84,8 @@
             menuStrip1.Items.AddRange(new ToolStripItem[] { gridToolStripMenuItem, toolStripComboBox });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Padding = new Padding(7, 2, 0, 2);
-            menuStrip1.Size = new Size(676, 28);
+            menuStrip1.Padding = new Padding(8, 3, 0, 3);
+            menuStrip1.Size = new Size(773, 34);
             menuStrip1.TabIndex = 2;
             menuStrip1.Text = "menuStrip1";
             // 
@@ -94,7 +94,7 @@
             gridToolStripMenuItem.CheckOnClick = true;
             gridToolStripMenuItem.Image = Properties.Resources.grid_light;
             gridToolStripMenuItem.Name = "gridToolStripMenuItem";
-            gridToolStripMenuItem.Size = new Size(124, 24);
+            gridToolStripMenuItem.Size = new Size(150, 28);
             gridToolStripMenuItem.Text = "Grid (Light/Dark";
             gridToolStripMenuItem.Click += gridToolStripMenuItem_Click;
             // 
@@ -104,20 +104,21 @@
             toolStripComboBox.DropDownWidth = 100;
             toolStripComboBox.Items.AddRange(new object[] { "Normal", "StretchImage", "AutoSize", "CenterImage", "Zoom" });
             toolStripComboBox.Name = "toolStripComboBox";
-            toolStripComboBox.Size = new Size(116, 24);
+            toolStripComboBox.Size = new Size(132, 28);
             toolStripComboBox.SelectedIndexChanged += toolStripComboBox_SelectedIndexChanged;
             // 
             // contextMenuStrip1
             // 
+            contextMenuStrip1.ImageScalingSize = new Size(20, 20);
             contextMenuStrip1.Items.AddRange(new ToolStripItem[] { flipImageToolStripMenuItem, alphaToolStripMenuItem, extractToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
-            contextMenuStrip1.Size = new Size(130, 70);
+            contextMenuStrip1.Size = new Size(153, 82);
             // 
             // flipImageToolStripMenuItem
             // 
             flipImageToolStripMenuItem.Image = Properties.Resources.flip_image_32;
             flipImageToolStripMenuItem.Name = "flipImageToolStripMenuItem";
-            flipImageToolStripMenuItem.Size = new Size(129, 22);
+            flipImageToolStripMenuItem.Size = new Size(152, 26);
             flipImageToolStripMenuItem.Text = "Flip Image";
             flipImageToolStripMenuItem.Click += flipImageToolStripMenuItem_Click;
             // 
@@ -128,7 +129,7 @@
             alphaToolStripMenuItem.CheckState = CheckState.Checked;
             alphaToolStripMenuItem.Image = Properties.Resources.alpha_32;
             alphaToolStripMenuItem.Name = "alphaToolStripMenuItem";
-            alphaToolStripMenuItem.Size = new Size(129, 22);
+            alphaToolStripMenuItem.Size = new Size(152, 26);
             alphaToolStripMenuItem.Text = "Alpha";
             alphaToolStripMenuItem.Click += alphaToolStripMenuItem_Click;
             // 
@@ -137,28 +138,28 @@
             extractToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { pngFileToolStripMenuItem });
             extractToolStripMenuItem.Image = Properties.Resources.extract_32;
             extractToolStripMenuItem.Name = "extractToolStripMenuItem";
-            extractToolStripMenuItem.Size = new Size(129, 22);
+            extractToolStripMenuItem.Size = new Size(152, 26);
             extractToolStripMenuItem.Text = "Extract";
             // 
             // pngFileToolStripMenuItem
             // 
             pngFileToolStripMenuItem.Image = Properties.Resources.png_32;
             pngFileToolStripMenuItem.Name = "pngFileToolStripMenuItem";
-            pngFileToolStripMenuItem.Size = new Size(119, 22);
+            pngFileToolStripMenuItem.Size = new Size(148, 26);
             pngFileToolStripMenuItem.Text = "PNG File";
             pngFileToolStripMenuItem.Click += pngFileToolStripMenuItem_Click;
             // 
             // DDS_Viewer
             // 
-            AutoScaleDimensions = new SizeF(7F, 15F);
-            AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(676, 467);
+            AutoScaleDimensions = new SizeF(120F, 120F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            ClientSize = new Size(773, 623);
             Controls.Add(pictureBox1);
             Controls.Add(statusStrip1);
             Controls.Add(menuStrip1);
             Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
-            Margin = new Padding(4);
+            Margin = new Padding(5, 5, 5, 5);
             Name = "DDS_Viewer";
             Text = "DDS Viewer";
             Load += TexturePreview_Load;

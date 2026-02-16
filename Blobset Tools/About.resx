@@ -117,6 +117,94 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="changelog_richTextBox.Text" xml:space="preserve">
+    <value>-1.1.7.40-
+* Updated file mapping for RL26 - v1.0.3731
+* Updated file mapping for Rugby 25 - v1.0.4206
+* Added some better error handling, if a game folder is missing.
+* Added support for dpi scale change.
+* Some minor improvements.
+
+-1.1.7.38-
+* Fixed a bug with the backup of m3mp in v4 modify blobsets.
+
+-1.1.6.37-
+* Fixed a bug in Modify blobset section for version 4 blobsets having wrong file paths. (I forgot to change them to the new paths)
+* Fixed a bug in the TXPK Viewer when trying to save image as a png.
+* Fixed a bug with M3MP Creator, not having the right LZMA compression for the older games.
+
+-1.1.5.35-
+* Fixed a major bug with Create TXPK and M3MP. Got broke after adding console support.
+* Fixed bug with Modify Blobset. Happened the same as the first bug.
+* Added Open Blobset file for version one blobset earlier games.
+* Added Create Update Blobset file for version one blobset earlier games. Mainly for console games.
+
+-1.1.4.30-
+* Added support for AFLL, RLL2, RLL2-WCE, DBC14, TTC.
+* Added new Hex Viewer, it's faster, but looks like crap lol.
+* Added new startup menu.
+* Now can change game selection, once Blobset Tools is loaded.
+* Added alpha checkbox next to the image flip and they will both keep the settings.
+* A lot of code optimizing improvements.
+* Will be adding a File Mapping Editor down the track.
+* A lot of other stuff I can't remember doing lol.
+
+-1.0.4.22-
+* Fixed Cricket 26 showing .badds instead of .dds in file name. * I don't know why Bigant added this tbh!!!
+* Updated some file types for old games.
+
+-1.0.3.21-
+* Broke filemapping and extraction code, fixed now.
+* Updated file mapping for RL26 - v1.0.3326
+* Updated file mapping for Rugby 25 - v1.0.4016
+
+-1.0.2.20-
+* Added Cricket 26.
+* Added some code for RLL2, DBC14 and RLL3, still not complete yet.
+* Code improvements.
+
+-1.0.2.11-
+* Updated file mapping for RL26 - v1.0.3293
+* Updated file mapping for Rugby 25 - v1.0.3995
+* Update file mapping for Cricket 24 - v0.2.5521
+* Updated file mapping for AFL 23 - v1.0.6618
+
+-1.0.2.10-
+* If there is a game update, it will popup to update the file mapping now.
+* Minor code improvements.
+
+-1.0.2.3-
+* Now displays the right DDS file format.
+* Added some code for reading AFL Live blobset files, still not finished though.
+
+-1.0.2.2-
+* Fixed corrupted uncompressed m3mp files when extracting all files.
+* File Mapping Data is now 2 times faster.
+* Extract all files is a lot faster now.
+
+-1.0.2.1-
+* Fixed major issues in Modify Class, stupid me for not noticing this :(
+* Fixed TXPK Creator code.
+* Prevented program from running multiple instances.
+* Added a restore backup files, the ones you replace with mods. It's not fool proof, but it's better then nothing. 
+
+-1.0.2.0-
+* Fixed missing TXPK files when reading blobset, all TXPK files will show up now.
+* Fixed the TXPK Viewer not showing all images.
+* The file mapping wont be automatic now, you have to do it manually. When you load the blobset tools on the info text box you will see the version colour either green or red, if it's red that means you need to update file mapping data in the Options.
+* Added when selecting a wem audio file it will play the sound. Also if you right click, you can save as .wem, .ogg or .wav file.
+* Minor code cleanup.
+
+-1.0.1.0-
+* Now detects steam games on another hard drive in SteamLibrary folder.
+* ArrayPoolAllocator is added for buffer pooling, which can reduce memory allocations and garbage collection overhead for dds decoding on PictureBox.
+* Hopefully fixed the Index not found issue, when applying mods.
+* Added code for wem files and ogg files, this will be used later.
+* Minor improvements. 
+
+-1.0.0.0-
+Initial Release</value>
+  </data>
   <data name="credits_richTextBox.Text" xml:space="preserve">
     <value>*** Special Thanks To ***
 
@@ -243,87 +331,6 @@ THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT LIMITED TO LOSS OF DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER PROGRAMS), EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 17. Interpretation of Sections 15 and 16.
 If the disclaimer of warranty and limitation of liability provided above cannot be given local legal effect according to their terms, reviewing courts shall apply local law that most closely approximates an absolute waiver of all civil liability in connection with the Program, unless a warranty or assumption of liability accompanies a copy of the Program in return for a fee.</value>
-  </data>
-  <data name="changelog_richTextBox.Text" xml:space="preserve">
-    <value>-1.1.7.38-
-* Fixed a bug with the backup of m3mp in v4 modify blobsets.
-
--1.1.6.37-
-* Fixed a bug in Modify blobset section for version 4 blobsets having wrong file paths. (I forgot to change them to the new paths)
-* Fixed a bug in the TXPK Viewer when trying to save image as a png.
-* Fixed a bug with M3MP Creator, not having the right LZMA compression for the older games.
-
--1.1.5.35-
-* Fixed a major bug with Create TXPK and M3MP. Got broke after adding console support.
-* Fixed bug with Modify Blobset. Happened the same as the first bug.
-* Added Open Blobset file for version one blobset earlier games.
-* Added Create Update Blobset file for version one blobset earlier games. Mainly for console games.
-
--1.1.4.30-
-* Added support for AFLL, RLL2, RLL2-WCE, DBC14, TTC.
-* Added new Hex Viewer, it's faster, but looks like crap lol.
-* Added new startup menu.
-* Now can change game selection, once Blobset Tools is loaded.
-* Added alpha checkbox next to the image flip and they will both keep the settings.
-* A lot of code optimizing improvements.
-* Will be adding a File Mapping Editor down the track.
-* A lot of other stuff I can't remember doing lol.
-
--1.0.4.22-
-* Fixed Cricket 26 showing .badds instead of .dds in file name. * I don't know why Bigant added this tbh!!!
-* Updated some file types for old games.
-
--1.0.3.21-
-* Broke filemapping and extraction code, fixed now.
-* Updated file mapping for RL26 - v1.0.3326
-* Updated file mapping for Rugby 25 - v1.0.4016
-
--1.0.2.20-
-* Added Cricket 26.
-* Added some code for RLL2, DBC14 and RLL3, still not complete yet.
-* Code improvements.
-
--1.0.2.11-
-* Updated file mapping for RL26 - v1.0.3293
-* Updated file mapping for Rugby 25 - v1.0.3995
-* Update file mapping for Cricket 24 - v0.2.5521
-* Updated file mapping for AFL 23 - v1.0.6618
-
--1.0.2.10-
-* If there is a game update, it will popup to update the file mapping now.
-* Minor code improvements.
-
--1.0.2.3-
-* Now displays the right DDS file format.
-* Added some code for reading AFL Live blobset files, still not finished though.
-
--1.0.2.2-
-* Fixed corrupted uncompressed m3mp files when extracting all files.
-* File Mapping Data is now 2 times faster.
-* Extract all files is a lot faster now.
-
--1.0.2.1-
-* Fixed major issues in Modify Class, stupid me for not noticing this :(
-* Fixed TXPK Creator code.
-* Prevented program from running multiple instances.
-* Added a restore backup files, the ones you replace with mods. It's not fool proof, but it's better then nothing. 
-
--1.0.2.0-
-* Fixed missing TXPK files when reading blobset, all TXPK files will show up now.
-* Fixed the TXPK Viewer not showing all images.
-* The file mapping wont be automatic now, you have to do it manually. When you load the blobset tools on the info text box you will see the version colour either green or red, if it's red that means you need to update file mapping data in the Options.
-* Added when selecting a wem audio file it will play the sound. Also if you right click, you can save as .wem, .ogg or .wav file.
-* Minor code cleanup.
-
--1.0.1.0-
-* Now detects steam games on another hard drive in SteamLibrary folder.
-* ArrayPoolAllocator is added for buffer pooling, which can reduce memory allocations and garbage collection overhead for dds decoding on PictureBox.
-* Hopefully fixed the Index not found issue, when applying mods.
-* Added code for wem files and ogg files, this will be used later.
-* Minor improvements. 
-
--1.0.0.0-
-Initial Release</value>
   </data>
   <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
   <data name="$this.Icon" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">

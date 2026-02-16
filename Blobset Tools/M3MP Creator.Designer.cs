@@ -44,54 +44,59 @@
             // 
             // menuStrip1
             // 
+            menuStrip1.ImageScalingSize = new Size(20, 20);
             menuStrip1.Items.AddRange(new ToolStripItem[] { createToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Size = new Size(800, 24);
+            menuStrip1.Padding = new Padding(7, 3, 0, 3);
+            menuStrip1.Size = new Size(914, 30);
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "menuStrip1";
             // 
             // createToolStripMenuItem
             // 
             createToolStripMenuItem.Name = "createToolStripMenuItem";
-            createToolStripMenuItem.Size = new Size(91, 20);
+            createToolStripMenuItem.Size = new Size(112, 24);
             createToolStripMenuItem.Text = "Create M3MP";
             createToolStripMenuItem.Click += createToolStripMenuItem_Click;
             // 
             // statusStrip1
             // 
+            statusStrip1.ImageScalingSize = new Size(20, 20);
             statusStrip1.Items.AddRange(new ToolStripItem[] { status_Label, progressStripStatusLabel, toolStripProgressBar1 });
-            statusStrip1.Location = new Point(0, 428);
+            statusStrip1.Location = new Point(0, 573);
             statusStrip1.Name = "statusStrip1";
-            statusStrip1.Size = new Size(800, 22);
+            statusStrip1.Padding = new Padding(1, 0, 16, 0);
+            statusStrip1.Size = new Size(914, 27);
             statusStrip1.TabIndex = 1;
             statusStrip1.Text = "statusStrip1";
             // 
             // status_Label
             // 
             status_Label.Name = "status_Label";
-            status_Label.Size = new Size(583, 17);
+            status_Label.Size = new Size(666, 21);
             status_Label.Spring = true;
             status_Label.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // progressStripStatusLabel
             // 
             progressStripStatusLabel.Name = "progressStripStatusLabel";
-            progressStripStatusLabel.Size = new Size(0, 17);
+            progressStripStatusLabel.Size = new Size(0, 21);
             // 
             // toolStripProgressBar1
             // 
             toolStripProgressBar1.Name = "toolStripProgressBar1";
-            toolStripProgressBar1.Size = new Size(200, 16);
+            toolStripProgressBar1.Size = new Size(229, 19);
             // 
             // m3mp_richTextBox
             // 
             m3mp_richTextBox.BackColor = Color.Black;
             m3mp_richTextBox.Dock = DockStyle.Fill;
             m3mp_richTextBox.ForeColor = Color.Gold;
-            m3mp_richTextBox.Location = new Point(0, 24);
+            m3mp_richTextBox.Location = new Point(0, 30);
+            m3mp_richTextBox.Margin = new Padding(3, 4, 3, 4);
             m3mp_richTextBox.Name = "m3mp_richTextBox";
-            m3mp_richTextBox.Size = new Size(800, 404);
+            m3mp_richTextBox.Size = new Size(914, 543);
             m3mp_richTextBox.TabIndex = 2;
             m3mp_richTextBox.Text = "";
             // 
@@ -103,14 +108,15 @@
             // 
             // M3MP_Creator
             // 
-            AutoScaleDimensions = new SizeF(7F, 15F);
-            AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 450);
+            AutoScaleDimensions = new SizeF(120F, 120F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            ClientSize = new Size(914, 600);
             Controls.Add(m3mp_richTextBox);
             Controls.Add(statusStrip1);
             Controls.Add(menuStrip1);
             Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
+            Margin = new Padding(3, 4, 3, 4);
             Name = "M3MP_Creator";
             Text = "M3MP Creator";
             FormClosing += M3MP_Creator_FormClosing;

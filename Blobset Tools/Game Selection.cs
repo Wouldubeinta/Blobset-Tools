@@ -17,13 +17,20 @@ namespace Blobset_Tools
 
         private void GameSelection_Load(object sender, EventArgs e)
         {
-            Global.currentPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            GameSelection_ComboBox.Items.AddRange(GameList);
-            settingsIni = new IniFile(Path.Combine(Global.currentPath, "Settings.ini"));
-            defaultGame = Convert.ToInt32(settingsIni.Read("DefaultGame", "Settings"));
-            GameSelection_ComboBox.SelectedIndex = defaultGame;
-            platform = Convert.ToInt32(settingsIni.Read("Platform", "Settings"));
-            Platform_ComboBox.SelectedIndex = 0;
+            try 
+            {
+                Global.currentPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                GameSelection_ComboBox.Items.AddRange(GameList);
+                settingsIni = new IniFile(Path.Combine(Global.currentPath, "Settings.ini"));
+                defaultGame = Convert.ToInt32(settingsIni.Read("DefaultGame", "Settings"));
+                GameSelection_ComboBox.SelectedIndex = defaultGame;
+                platform = Convert.ToInt32(settingsIni.Read("Platform", "Settings"));
+                Platform_ComboBox.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
         }
 
         private void load_button_Click(object sender, EventArgs e)
@@ -499,15 +506,27 @@ namespace Blobset_Tools
 
         private bool GetGameLocation(string game, string iniPath)
         {
-            string steamLocation = UI.getSteamLocation();
-            IniFile iniFile = new(iniPath);
-            string gameLocation = Path.Combine(steamLocation, "steamapps", "common", game);
+            if (!File.Exists(iniPath)) 
+                throw new Exception("GameInfo.ini not found");
 
-            // Check if the Steam location is valid
-            if (!string.IsNullOrEmpty(steamLocation) && File.Exists(gameLocation))
+            string steamLocation = @"C:\Program Files (x86)\Steam";
+            IniFile iniFile = new(iniPath);
+
+            try 
             {
-                SetGameLocation(gameLocation, iniFile);
-                return false; // Game location found
+                steamLocation = UI.getSteamLocation();
+                string gameLocation = Path.Combine(steamLocation, "steamapps", "common", game);
+
+                // Check if the Steam location is valid
+                if (!string.IsNullOrEmpty(steamLocation) && File.Exists(gameLocation))
+                {
+                    SetGameLocation(gameLocation, iniFile);
+                    return false; // Game location found
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
 
             // If the game location is not found, prompt the user to select a file
@@ -539,145 +558,145 @@ namespace Blobset_Tools
             switch (GameSelection_ComboBox.SelectedIndex)
             {
                 case 0:
-                    load_button.Image = Resources.AFLL;
+                    load_button.BackgroundImage = Resources.AFLL;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.AddRange(AllPlatforms);
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 1:
-                    load_button.Image = Resources.RLL2;
+                    load_button.BackgroundImage = Resources.RLL2;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.AddRange(ConsolePlatforms);
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 2:
-                    load_button.Image = Resources.RLL2_WCE;
+                    load_button.BackgroundImage = Resources.RLL2_WCE;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.AddRange(ConsolePlatforms);
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 3:
-                    load_button.Image = Resources.Don_Bradman_Cricket_14;
+                    load_button.BackgroundImage = Resources.Don_Bradman_Cricket_14;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.AddRange(AllPlatforms);
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 4:
-                    load_button.Image = Resources.RLL3;
+                    load_button.BackgroundImage = Resources.RLL3;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.AddRange(AllPlatforms);
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 5:
-                    load_button.Image = Resources.TTC;
+                    load_button.BackgroundImage = Resources.TTC;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.AddRange(AllPlatforms);
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 6:
-                    load_button.Image = Resources.CPL16;
+                    load_button.BackgroundImage = Resources.CPL16;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 7:
-                    load_button.Image = Resources.Don_Bradman_Cricket_17;
+                    load_button.BackgroundImage = Resources.Don_Bradman_Cricket_17;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 8:
-                    load_button.Image = Resources.MTBOD;
+                    load_button.BackgroundImage = Resources.MTBOD;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.AddRange(AllPlatforms);
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 9:
-                    load_button.Image = Resources.Ashes_Cricket;
+                    load_button.BackgroundImage = Resources.Ashes_Cricket;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 10:
-                    load_button.Image = Resources.RLL4;
+                    load_button.BackgroundImage = Resources.RLL4;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 11:
-                    load_button.Image = Resources.AO_International_Tennis;
+                    load_button.BackgroundImage = Resources.AO_International_Tennis;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 12:
-                    load_button.Image = Resources.CPL18;
+                    load_button.BackgroundImage = Resources.CPL18;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 13:
-                    load_button.Image = Resources.Cricket_19;
+                    load_button.BackgroundImage = Resources.Cricket_19;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 14:
-                    load_button.Image = Resources.AO_Tennis_2;
+                    load_button.BackgroundImage = Resources.AO_Tennis_2;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 15:
-                    load_button.Image = Resources.TWT2;
+                    load_button.BackgroundImage = Resources.TWT2;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 16:
-                    load_button.Image = Resources.Cricket_22;
+                    load_button.BackgroundImage = Resources.Cricket_22;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 17:
-                    load_button.Image = Resources.AFL23;
+                    load_button.BackgroundImage = Resources.AFL23;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 18:
-                    load_button.Image = Resources.Cricket_24;
+                    load_button.BackgroundImage = Resources.Cricket_24;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 19:
-                    load_button.Image = Resources.Tiebreak;
+                    load_button.BackgroundImage = Resources.Tiebreak;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 20:
-                    load_button.Image = Resources.Rugby_25;
+                    load_button.BackgroundImage = Resources.Rugby_25;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 21:
-                    load_button.Image = Resources.AFL26;
+                    load_button.BackgroundImage = Resources.AFL26;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 22:
-                    load_button.Image = Resources.RL26;
+                    load_button.BackgroundImage = Resources.RL26;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
                     break;
                 case 23:
-                    load_button.Image = Resources.Cricket_26;
+                    load_button.BackgroundImage = Resources.Cricket_26;
                     Platform_ComboBox.Items.Clear();
                     Platform_ComboBox.Items.Add("Windows");
                     Platform_ComboBox.SelectedIndex = 0;
@@ -687,13 +706,22 @@ namespace Blobset_Tools
 
         private string GameInfo(string gameName)
         {
-            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
-            string platformExt = platformDetails["PlatformExt"];
+            string iniPath = string.Empty;
 
-            GameInfo gameInfo = new();
-            string iniPath = Path.Combine(Global.currentPath, "games", gameName, platformExt, "GameInfo.ini");
-            gameInfo.Deserialize(iniPath);
-            Global.gameInfo = gameInfo;
+            try 
+            {
+                var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+                string platformExt = platformDetails["PlatformExt"];
+
+                GameInfo gameInfo = new();
+                iniPath = Path.Combine(Global.currentPath, "games", gameName, platformExt, "GameInfo.ini");
+                gameInfo.Deserialize(iniPath);
+                Global.gameInfo = gameInfo;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
             return iniPath;
         }
 
