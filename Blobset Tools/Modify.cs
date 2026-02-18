@@ -140,7 +140,7 @@ namespace Blobset_Tools
 
                     if (fm == null)
                     {
-                        MessageBox.Show(fileLists["dds"][i] + " - fileIndex can't be found, make sure the dds file name or location is correct. Example: Don't have this in the file name (1).", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["dds"][i]} - fileIndex can't be found, make sure the dds file name or location is correct. Example: Don't have this in the file name (1).", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -204,7 +204,7 @@ namespace Blobset_Tools
                 {
                     if (!File.Exists(fileLists["txpk"][i].Replace(".txpk", ".xml")))
                     {
-                        MessageBox.Show("Can't find TXPK xml info - " + fileLists["txpk"][i].Replace(".txpk", ".xml"), "XML File Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"Can't find TXPK xml info - {fileLists["txpk"][i].Replace(".txpk", ".xml")}", "XML File Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -212,7 +212,7 @@ namespace Blobset_Tools
 
                     if (txpkXmlInfo == null)
                     {
-                        MessageBox.Show(fileLists["txpk"][i].Replace(".txpk", ".xml") + " - XmlDeserialize failed.", "Modify XML Info Was Null", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["txpk"][i].Replace(".txpk", ".xml")} - XmlDeserialize failed.", "Modify XML Info Was Null", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -220,7 +220,7 @@ namespace Blobset_Tools
 
                     if (fm == null)
                     {
-                        MessageBox.Show(fileLists["txpk"][i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["txpk"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -257,7 +257,7 @@ namespace Blobset_Tools
 
                     if (m3mpFileInfo == null)
                     {
-                        MessageBox.Show(fileLists["m3mp"][i].Replace(".m3mp", ".xml") + " - XmlDeserialize failed.", "Modify XML Info Was Null", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["m3mp"][i].Replace(".m3mp", ".xml")} - XmlDeserialize failed.", "Modify XML Info Was Null", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -265,7 +265,7 @@ namespace Blobset_Tools
 
                     if (fm == null)
                     {
-                        MessageBox.Show(fileLists["m3mp"][i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["m3mp"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -300,7 +300,7 @@ namespace Blobset_Tools
 
                     if (fm == null)
                     {
-                        MessageBox.Show(fileLists["bsb"][i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["bsb"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -338,7 +338,7 @@ namespace Blobset_Tools
 
                     if (fm == null)
                     {
-                        MessageBox.Show(fileLists["bmf"][i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["bmf"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -376,7 +376,7 @@ namespace Blobset_Tools
 
                     if (fm == null)
                     {
-                        MessageBox.Show(fileLists["bank"][i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["bank"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -414,7 +414,7 @@ namespace Blobset_Tools
 
                     if (fm == null)
                     {
-                        MessageBox.Show(fileLists["fsb"][i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["fsb"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -452,7 +452,7 @@ namespace Blobset_Tools
 
                     if (fm == null)
                     {
-                        MessageBox.Show(fileLists["fev"][i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["fev"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -490,7 +490,7 @@ namespace Blobset_Tools
 
                     if (fm == null)
                     {
-                        MessageBox.Show(fileLists["wav"][i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["wav"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -668,7 +668,7 @@ namespace Blobset_Tools
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : \n\nFile: " + _filePath + "\n\n" + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : \n\nFile: {_filePath} \n\n {ex}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                 return true;
             }
             finally
@@ -758,7 +758,7 @@ namespace Blobset_Tools
                 // Iterate over each file extension, populate the dictionary, and calculate total length
                 foreach (var extension in fileExtensions)
                 {
-                    string[] fileList = Utilities.DirectoryInfo(modsFolder, "*." + extension);
+                    string[] fileList = Utilities.DirectoryInfo(modsFolder, $"*.{extension}");
                     fileLists[extension] = fileList;
                     fullListLength += fileList.Length;
                 }
@@ -799,7 +799,7 @@ namespace Blobset_Tools
 
                     if (fm == null)
                     {
-                        MessageBox.Show(fileLists["dds"][i] + " - fileIndex can't be found, make sure the dds file name or location is correct. Example: Don't have this in the file name (1).", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["dds"][i]} - fileIndex can't be found, make sure the dds file name or location is correct. Example: Don't have this in the file name (1).", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -853,7 +853,7 @@ namespace Blobset_Tools
                 {
                     if (!File.Exists(fileLists["txpk"][i].Replace(".txpk", ".xml")))
                     {
-                        MessageBox.Show("Can't find TXPK xml info - " + fileLists["txpk"][i].Replace(".txpk", ".xml"), "XML File Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"Can't find TXPK xml info - {fileLists["txpk"][i].Replace(".txpk", ".xml")}", "XML File Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -861,7 +861,7 @@ namespace Blobset_Tools
 
                     if (txpkXmlInfo == null)
                     {
-                        MessageBox.Show(fileLists["txpk"][i].Replace(".txpk", ".xml") + " - XmlDeserialize failed.", "Modify XML Info Was Null", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["txpk"][i].Replace(".txpk", ".xml")} - XmlDeserialize failed.", "Modify XML Info Was Null", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -869,7 +869,7 @@ namespace Blobset_Tools
 
                     if (fm == null)
                     {
-                        MessageBox.Show(fileLists["txpk"][i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["txpk"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -932,7 +932,7 @@ namespace Blobset_Tools
 
                     if (m3mpFileInfo == null)
                     {
-                        MessageBox.Show(fileLists["m3mp"][i].Replace(".m3mp", ".xml") + " - XmlDeserialize failed.", "Modify XML Info Was Null", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["m3mp"][i].Replace(".m3mp", ".xml")} - XmlDeserialize failed.", "Modify XML Info Was Null", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -940,7 +940,7 @@ namespace Blobset_Tools
 
                     if (fm == null)
                     {
-                        MessageBox.Show(fileLists["m3mp"][i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["m3mp"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -985,7 +985,7 @@ namespace Blobset_Tools
 
                     if (fmIndex == null)
                     {
-                        MessageBox.Show(fileLists["wem"][i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["wem"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -1032,7 +1032,7 @@ namespace Blobset_Tools
 
                     if (fmIndex == null)
                     {
-                        MessageBox.Show(fileLists["bnk"][i] + " - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"{fileLists["bnk"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
@@ -1098,9 +1098,9 @@ namespace Blobset_Tools
                     blobsetHeader_bw.WriteInt32(vramUncompressedSize[i]); // vramUncompressedSize
                 }
             }
-            catch (Exception arg)
+            catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : \n\nFile: " + _filePath + "\n\n" + arg, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : \n\nFile: {_filePath} \n\n {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                 return true;
             }
             finally

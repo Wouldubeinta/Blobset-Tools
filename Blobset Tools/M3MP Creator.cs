@@ -128,7 +128,6 @@ namespace Blobset_Tools
             Reader? br = null;
             Writer? bw = null;
             FileStream? writer = null;
-            bool result = false;
             M3MP? m3mp = new();
 
             try
@@ -164,7 +163,7 @@ namespace Blobset_Tools
                     compressedOffset += 16;
 
                     int percentProgress = (i + 1) * 100 / M3MP_Xml_In.Entries.Length;
-                    M3MP_Create_bgw.ReportProgress(percentProgress, "Getting header data ready: " + M3MP_Xml_In.Entries[i].FilePath);
+                    M3MP_Create_bgw.ReportProgress(percentProgress, $"Getting header data ready: {M3MP_Xml_In.Entries[i].FilePath}");
                 }
 
                 m3mp.CompressedDataOffset = (uint)compressedOffset;
@@ -180,7 +179,7 @@ namespace Blobset_Tools
                     CompressedEntry entry = new();
                     entry.CompressedDataInfo = new();
                     int percentProgress = (i + 1) * 100 / (int)m3mp.ChunksCount;
-                    M3MP_Create_bgw.ReportProgress(percentProgress, "Initializing chunk compressed data info array chunk " + (i + 1).ToString());
+                    M3MP_Create_bgw.ReportProgress(percentProgress, $"Initializing chunk compressed data info array chunk {i + 1}");
                     m3mp.CompressedEntries[i] = entry;
                 }
 
@@ -219,7 +218,7 @@ namespace Blobset_Tools
                     uncompressedOffset += m3mp.UnCompressedEntries[i].UncompressedDataInfo.Size;
 
                     int percentProgress = (i + 1) * 100 / M3MP_Xml_In.Entries.Length;
-                    M3MP_Create_bgw.ReportProgress(percentProgress, "Writing temp data : " + M3MP_Xml_In.Entries[i].FilePath);
+                    M3MP_Create_bgw.ReportProgress(percentProgress, $"Writing temp data : {M3MP_Xml_In.Entries[i].FilePath}");
                 }
 
                 if (writer != null) { writer.Dispose(); writer = null; }
@@ -251,7 +250,7 @@ namespace Blobset_Tools
                     m3mp.CompressedEntries[i].CompressedDataInfo.UnCompressedSize = (uint)buffer2.Length;
 
                     int percentProgress = (i + 1) * 100 / (int)m3mp.ChunksCount;
-                    M3MP_Create_bgw.ReportProgress(percentProgress, "Writing M3MP compressed data chunk " + (i + 1).ToString());
+                    M3MP_Create_bgw.ReportProgress(percentProgress, $"Writing M3MP compressed data chunk {i + 1}");
                 }
 
                 if (writer != null) { writer.Dispose(); writer = null; }
@@ -287,10 +286,10 @@ namespace Blobset_Tools
 
                 DeleteTempFiles();
             }
-            catch (Exception error)
+            catch (Exception ex)
             {
-                result = true;
-                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                return true;
             }
             finally
             {
@@ -298,8 +297,7 @@ namespace Blobset_Tools
                 if (bw != null) { bw.Close(); bw = null; }
                 if (writer != null) { writer.Dispose(); writer = null; }
             }
-
-            return result;
+            return false;
         }
 
         private void DeleteTempFiles()

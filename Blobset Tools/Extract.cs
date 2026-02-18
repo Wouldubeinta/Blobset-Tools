@@ -47,15 +47,13 @@ namespace Blobset_Tools
             Reader? blobsetContent_br = null;
             FileStream? writer = null;
             string progress = string.Empty;
-            bool error = false;
 
             try
             {
                 if (Global.blobsetHeaderData == null)
                 {
-                    error = true;
                     MessageBox.Show("Something went wrong reading the blobset", "Blobset Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return error;
+                    return true;
                 }
 
                 var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
@@ -477,10 +475,10 @@ namespace Blobset_Tools
                     Extract_bgw.ReportProgress(percentProgress, progress);
                 }
             }
-            catch (Exception arg)
+            catch (Exception ex)
             {
-                error = true;
-                MessageBox.Show("Error occurred, report it to Wouldy : " + arg, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                return true;
             }
             finally
             {
@@ -488,7 +486,7 @@ namespace Blobset_Tools
                 DeleteAllTmpFiles(Path.Combine(Global.currentPath, "temp"));
             }
 
-            return error;
+            return false;
         }
         #endregion
 
@@ -831,9 +829,9 @@ namespace Blobset_Tools
                     Extract_bgw.ReportProgress(percentProgress, progress);
                 }
             }
-            catch (Exception arg)
+            catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : \n\nFile: " + _filePath + "\n\n" + arg, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : \n\nFile: {_filePath} \n\n {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                 return true;
             }
             finally

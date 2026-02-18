@@ -70,13 +70,13 @@
             flipImage_contextMenuStrip.ImageScalingSize = new Size(20, 20);
             flipImage_contextMenuStrip.Items.AddRange(new ToolStripItem[] { flipImageToolStripMenuItem, alphaToolStripMenuItem, extractToPNGToolStripMenuItem });
             flipImage_contextMenuStrip.Name = "flipImage_contextMenuStrip";
-            flipImage_contextMenuStrip.Size = new Size(181, 82);
+            flipImage_contextMenuStrip.Size = new Size(157, 82);
             // 
             // flipImageToolStripMenuItem
             // 
             flipImageToolStripMenuItem.Image = Properties.Resources.flip_image_32;
             flipImageToolStripMenuItem.Name = "flipImageToolStripMenuItem";
-            flipImageToolStripMenuItem.Size = new Size(180, 26);
+            flipImageToolStripMenuItem.Size = new Size(156, 26);
             flipImageToolStripMenuItem.Text = "Flip Image";
             flipImageToolStripMenuItem.Click += flipImageToolStripMenuItem_Click;
             // 
@@ -87,7 +87,7 @@
             alphaToolStripMenuItem.CheckState = CheckState.Checked;
             alphaToolStripMenuItem.Image = Properties.Resources.alpha_32;
             alphaToolStripMenuItem.Name = "alphaToolStripMenuItem";
-            alphaToolStripMenuItem.Size = new Size(180, 26);
+            alphaToolStripMenuItem.Size = new Size(156, 26);
             alphaToolStripMenuItem.Text = "Alpha";
             alphaToolStripMenuItem.Click += alphaToolStripMenuItem_Click;
             // 
@@ -95,7 +95,7 @@
             // 
             extractToPNGToolStripMenuItem.Image = Properties.Resources.png_32;
             extractToPNGToolStripMenuItem.Name = "extractToPNGToolStripMenuItem";
-            extractToPNGToolStripMenuItem.Size = new Size(180, 26);
+            extractToPNGToolStripMenuItem.Size = new Size(156, 26);
             extractToPNGToolStripMenuItem.Text = "Extract To PNG";
             extractToPNGToolStripMenuItem.Click += extractToPNGToolStripMenuItem_Click;
             // 
@@ -104,13 +104,13 @@
             extractDDS_contextMenuStrip.ImageScalingSize = new Size(20, 20);
             extractDDS_contextMenuStrip.Items.AddRange(new ToolStripItem[] { extractDDSToolStripMenuItem });
             extractDDS_contextMenuStrip.Name = "extractDDS_contextMenuStrip";
-            extractDDS_contextMenuStrip.Size = new Size(162, 30);
+            extractDDS_contextMenuStrip.Size = new Size(139, 30);
             // 
             // extractDDSToolStripMenuItem
             // 
             extractDDSToolStripMenuItem.Image = Properties.Resources.extract_32;
             extractDDSToolStripMenuItem.Name = "extractDDSToolStripMenuItem";
-            extractDDSToolStripMenuItem.Size = new Size(161, 26);
+            extractDDSToolStripMenuItem.Size = new Size(138, 26);
             extractDDSToolStripMenuItem.Text = "Extract DDS";
             extractDDSToolStripMenuItem.Click += extractDDSToolStripMenuItem_Click;
             // 
@@ -128,15 +128,14 @@
             menuStrip1.Items.AddRange(new ToolStripItem[] { extractTXPKToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Padding = new Padding(7, 3, 0, 3);
-            menuStrip1.Size = new Size(914, 30);
+            menuStrip1.Size = new Size(927, 24);
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "menuStrip1";
             // 
             // extractTXPKToolStripMenuItem
             // 
             extractTXPKToolStripMenuItem.Name = "extractTXPKToolStripMenuItem";
-            extractTXPKToolStripMenuItem.Size = new Size(106, 24);
+            extractTXPKToolStripMenuItem.Size = new Size(85, 20);
             extractTXPKToolStripMenuItem.Text = "Extract TXPK";
             extractTXPKToolStripMenuItem.Click += extractTXPKToolStripMenuItem_Click;
             // 
@@ -144,41 +143,41 @@
             // 
             statusStrip1.ImageScalingSize = new Size(20, 20);
             statusStrip1.Items.AddRange(new ToolStripItem[] { status_Label, DDSInfo_SSLabel, progressStripStatusLabel, toolStripProgressBar });
-            statusStrip1.Location = new Point(0, 573);
+            statusStrip1.Location = new Point(0, 457);
             statusStrip1.Name = "statusStrip1";
-            statusStrip1.Padding = new Padding(1, 0, 16, 0);
-            statusStrip1.Size = new Size(914, 27);
+            statusStrip1.Padding = new Padding(1, 0, 13, 0);
+            statusStrip1.Size = new Size(927, 23);
             statusStrip1.TabIndex = 2;
             statusStrip1.Text = "statusStrip1";
             // 
             // status_Label
             // 
             status_Label.Name = "status_Label";
-            status_Label.Size = new Size(0, 21);
+            status_Label.Size = new Size(0, 18);
             // 
             // DDSInfo_SSLabel
             // 
             DDSInfo_SSLabel.ForeColor = Color.Blue;
             DDSInfo_SSLabel.Name = "DDSInfo_SSLabel";
-            DDSInfo_SSLabel.Size = new Size(666, 21);
+            DDSInfo_SSLabel.Size = new Size(728, 18);
             DDSInfo_SSLabel.Spring = true;
             DDSInfo_SSLabel.TextAlign = ContentAlignment.MiddleRight;
             // 
             // progressStripStatusLabel
             // 
             progressStripStatusLabel.Name = "progressStripStatusLabel";
-            progressStripStatusLabel.Size = new Size(0, 21);
+            progressStripStatusLabel.Size = new Size(0, 18);
             // 
             // toolStripProgressBar
             // 
             toolStripProgressBar.Name = "toolStripProgressBar";
-            toolStripProgressBar.Size = new Size(229, 19);
+            toolStripProgressBar.Size = new Size(183, 17);
             // 
             // splitContainer1
             // 
             splitContainer1.Dock = DockStyle.Fill;
-            splitContainer1.Location = new Point(0, 30);
-            splitContainer1.Margin = new Padding(3, 4, 3, 4);
+            splitContainer1.Location = new Point(0, 24);
+            splitContainer1.Margin = new Padding(2, 3, 2, 3);
             splitContainer1.Name = "splitContainer1";
             // 
             // splitContainer1.Panel1
@@ -188,16 +187,15 @@
             // splitContainer1.Panel2
             // 
             splitContainer1.Panel2.Controls.Add(pictureBox1);
-            splitContainer1.Size = new Size(914, 543);
-            splitContainer1.SplitterDistance = 512;
-            splitContainer1.SplitterWidth = 5;
+            splitContainer1.Size = new Size(927, 433);
+            splitContainer1.SplitterDistance = 519;
             splitContainer1.TabIndex = 3;
             // 
             // splitContainer2
             // 
             splitContainer2.Dock = DockStyle.Fill;
             splitContainer2.Location = new Point(0, 0);
-            splitContainer2.Margin = new Padding(3, 4, 3, 4);
+            splitContainer2.Margin = new Padding(2, 3, 2, 3);
             splitContainer2.Name = "splitContainer2";
             // 
             // splitContainer2.Panel1
@@ -207,9 +205,8 @@
             // splitContainer2.Panel2
             // 
             splitContainer2.Panel2.Controls.Add(files_listView);
-            splitContainer2.Size = new Size(512, 543);
-            splitContainer2.SplitterDistance = 204;
-            splitContainer2.SplitterWidth = 5;
+            splitContainer2.Size = new Size(519, 433);
+            splitContainer2.SplitterDistance = 206;
             splitContainer2.TabIndex = 0;
             // 
             // folder_treeView
@@ -218,9 +215,9 @@
             folder_treeView.Dock = DockStyle.Fill;
             folder_treeView.Font = new Font("Segoe UI", 10F);
             folder_treeView.Location = new Point(0, 0);
-            folder_treeView.Margin = new Padding(3, 4, 3, 4);
+            folder_treeView.Margin = new Padding(2, 3, 2, 3);
             folder_treeView.Name = "folder_treeView";
-            folder_treeView.Size = new Size(204, 543);
+            folder_treeView.Size = new Size(206, 433);
             folder_treeView.TabIndex = 0;
             folder_treeView.AfterSelect += folder_treeView_AfterSelect;
             // 
@@ -233,10 +230,10 @@
             files_listView.HeaderStyle = ColumnHeaderStyle.None;
             files_listView.LabelWrap = false;
             files_listView.Location = new Point(0, 0);
-            files_listView.Margin = new Padding(3, 4, 3, 4);
+            files_listView.Margin = new Padding(2, 3, 2, 3);
             files_listView.MultiSelect = false;
             files_listView.Name = "files_listView";
-            files_listView.Size = new Size(303, 543);
+            files_listView.Size = new Size(309, 433);
             files_listView.TabIndex = 0;
             files_listView.UseCompatibleStateImageBehavior = false;
             files_listView.View = View.List;
@@ -247,9 +244,9 @@
             pictureBox1.BackgroundImageLayout = ImageLayout.Center;
             pictureBox1.Dock = DockStyle.Fill;
             pictureBox1.Location = new Point(0, 0);
-            pictureBox1.Margin = new Padding(3, 4, 3, 4);
+            pictureBox1.Margin = new Padding(2, 3, 2, 3);
             pictureBox1.Name = "pictureBox1";
-            pictureBox1.Size = new Size(397, 543);
+            pictureBox1.Size = new Size(404, 433);
             pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox1.TabIndex = 0;
             pictureBox1.TabStop = false;
@@ -257,15 +254,15 @@
             // 
             // TXPK_Viewer
             // 
-            AutoScaleDimensions = new SizeF(120F, 120F);
+            AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
-            ClientSize = new Size(914, 600);
+            ClientSize = new Size(927, 480);
             Controls.Add(splitContainer1);
             Controls.Add(statusStrip1);
             Controls.Add(menuStrip1);
             Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
-            Margin = new Padding(3, 4, 3, 4);
+            Margin = new Padding(2, 3, 2, 3);
             Name = "TXPK_Viewer";
             Text = "TXPK Viewer";
             Load += TXPK_Viewer_Load;

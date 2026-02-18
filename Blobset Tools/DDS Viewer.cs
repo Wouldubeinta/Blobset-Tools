@@ -35,7 +35,7 @@
             byte[] ddsData = blobsetVersion >= 2 ? UI.GetDDSData_V3_V4(Global.filelist) : UI.GetDDSData_V1_V2(Global.filelist);
             Bitmap bitmap = UI.DDStoBitmap(ddsData, hasAlpha, ref ddsInfo);
 
-            string ddsFormat = ddsInfo.isDX10 ? ddsInfo.dxgiFormat.ToString() + " - DX11+" : ddsInfo.CompressionAlgorithm.ToString();
+            string ddsFormat = ddsInfo.isDX10 ? $"{ddsInfo.dxgiFormat.ToString()} - DX11+" : ddsInfo.CompressionAlgorithm.ToString();
 
             pictureBox1.Image = null;
 
@@ -45,7 +45,7 @@
                 pictureBox1.Height = bitmap.Height;
                 pictureBox1.Image = bitmap;
 
-                toolStripStatusLabel1.Text = "Format: " + ddsFormat + "    Height: " + bitmap.Height.ToString() + "     Width: " + bitmap.Width.ToString() + "     MipMaps: 1/" + ddsInfo.MipMap.ToString();
+                toolStripStatusLabel1.Text = $"Format: {ddsFormat} | Height: {bitmap.Height.ToString()} | Width: {bitmap.Width.ToString()} | MipMaps: 1/{ddsInfo.MipMap.ToString()}";
             }
         }
 
@@ -125,7 +125,7 @@
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
                 pictureBox1.Image.Save(saveFileDialog.FileName);
-                MessageBox.Show("PNG File has been saved to - " + saveFileDialog.FileName, "Save PNG File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                MessageBox.Show($"PNG File has been saved to - {saveFileDialog.FileName}", "Save PNG File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
             saveFileDialog.Dispose();
         }

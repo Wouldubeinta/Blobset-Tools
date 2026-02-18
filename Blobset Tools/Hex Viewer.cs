@@ -37,7 +37,7 @@ namespace Blobset_Tools
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : \n\nFile: " + filename + "\n\n" + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : \n\nFile:  {filename} \n\n {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
             finally
             {

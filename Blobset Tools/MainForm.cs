@@ -348,9 +348,9 @@ namespace Blobset_Tools
                         break;
                 }
             }
-            catch (Exception error)
+            catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
         }
 
@@ -781,6 +781,7 @@ namespace Blobset_Tools
                     errorCheck = Modify.BlobsetV3(blobsetFile, Modify_bgw);
                     break;
                 case BlobsetVersion.v4:
+                    restoreBackupFiles(false);
                     errorCheck = Modify.BlobsetV4(blobsetFile, Modify_bgw);
                     break;
             }
@@ -866,12 +867,12 @@ namespace Blobset_Tools
                     settingsIni.Write("LoadGame", "false", "Settings");
             }
             else
-                MessageBox.Show("Can't find - " + settingsFile + " file.", "Settings Ini File Missing", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Can't find - {settingsFile} file.", "Settings Ini File Missing", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         private void validateSteamGameFilesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            status_Label.Text = "Validating " + Global.gameInfo.GameName + " files";
+            status_Label.Text = $"Validating {Global.gameInfo.GameName} files";
             UI.ValidateSteamGame();
         }
 
@@ -889,7 +890,7 @@ namespace Blobset_Tools
                     settingsIni.Write("SkipUnknown", "false", "Settings");
             }
             else
-                MessageBox.Show("Can't find - " + settingsFile + " file.", "Settings Ini File Missing", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Can't find - {settingsFile} file.", "Settings Ini File Missing", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         private void txpkCreatorToolStripMenuItem_Click(object sender, EventArgs e)
@@ -954,7 +955,7 @@ namespace Blobset_Tools
 
                 fileInfo_richTextBox.Clear();
                 fileInfo_richTextBox.AppendText("DDS File has been saved to - " + saveFileDialog.FileName);
-                MessageBox.Show("DDS File has been saved to - " + saveFileDialog.FileName, "Save DDS File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                MessageBox.Show($"DDS File has been saved to - {saveFileDialog.FileName}", "Save DDS File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
             saveFileDialog.Dispose();
         }
@@ -974,8 +975,8 @@ namespace Blobset_Tools
                 dds_pictureBox.Image.Save(saveFileDialog.FileName);
 
                 fileInfo_richTextBox.Clear();
-                fileInfo_richTextBox.AppendText("PNG File has been saved to - " + saveFileDialog.FileName);
-                MessageBox.Show("PNG File has been saved to - " + saveFileDialog.FileName, "Save PNG File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                fileInfo_richTextBox.AppendText($"PNG File has been saved to - {saveFileDialog.FileName}");
+                MessageBox.Show($"PNG File has been saved to - {saveFileDialog.FileName}", "Save PNG File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
             saveFileDialog.Dispose();
         }
@@ -998,8 +999,8 @@ namespace Blobset_Tools
                 string blobsetFilePath = Path.Combine(Global.gameInfo.GameLocation.Replace("data-0.blobset.pc", string.Empty), list[Global.fileIndex].FolderHash, list[Global.fileIndex].FileHash);
                 IO.ReadWriteData(blobsetFilePath, saveFileDialog.FileName);
                 fileInfo_richTextBox.Clear();
-                fileInfo_richTextBox.AppendText("WEM File has been saved to - " + saveFileDialog.FileName);
-                MessageBox.Show("WEM File has been saved to - " + saveFileDialog.FileName, "Save WEM File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                fileInfo_richTextBox.AppendText($"WEM File has been saved to - {saveFileDialog.FileName}");
+                MessageBox.Show($"WEM File has been saved to - {saveFileDialog.FileName}", "Save WEM File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
             saveFileDialog.Dispose();
         }
@@ -1023,8 +1024,8 @@ namespace Blobset_Tools
                 {
                     File.WriteAllBytes(saveFileDialog.FileName, oggData);
                     fileInfo_richTextBox.Clear();
-                    fileInfo_richTextBox.AppendText("OGG File has been saved to - " + saveFileDialog.FileName);
-                    MessageBox.Show("OGG File has been saved to - " + saveFileDialog.FileName, "Save OGG File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                    fileInfo_richTextBox.AppendText($"OGG File has been saved to - {saveFileDialog.FileName}");
+                    MessageBox.Show($"OGG File has been saved to - {saveFileDialog.FileName}", "Save OGG File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
                 }
             }
             saveFileDialog.Dispose();
@@ -1049,8 +1050,8 @@ namespace Blobset_Tools
                 {
                     File.WriteAllBytes(saveFileDialog.FileName, wavData);
                     fileInfo_richTextBox.Clear();
-                    fileInfo_richTextBox.AppendText("WAV File has been saved to - " + saveFileDialog.FileName);
-                    MessageBox.Show("WAV File has been saved to - " + saveFileDialog.FileName, "Save WAV File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                    fileInfo_richTextBox.AppendText($"WAV File has been saved to - {saveFileDialog.FileName}");
+                    MessageBox.Show($"WAV File has been saved to - {saveFileDialog.FileName}", "Save WAV File", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
                 }
             }
             saveFileDialog.Dispose();
@@ -1182,9 +1183,9 @@ namespace Blobset_Tools
                     return;
                 }
             }
-            catch (Exception error)
+            catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
         }
 
@@ -1203,13 +1204,13 @@ namespace Blobset_Tools
                 Search();
         }
 
-        private void restoreBackupFilesToolStripMenuItem_Click(object sender, EventArgs e)
+        private void restoreBackupFiles(bool isPopup)  
         {
             var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
             string platformExt = platformDetails["PlatformExt"];
 
             string backupFilePath = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt, "backup");
-            string gameLocation = Global.gameInfo.GameLocation.Replace("data-0.blobset.pc", "");
+            string gameLocation = Global.gameInfo.GameLocation.Replace("data-0.blobset.pc", string.Empty);
 
             string[] files = Utilities.DirectoryInfo(backupFilePath, "*");
 
@@ -1218,24 +1219,30 @@ namespace Blobset_Tools
                 foreach (string file in files)
                 {
                     string? folder = Path.GetDirectoryName(file.Replace(backupFilePath + "\\", string.Empty));
+                    string filePath = Path.Combine(gameLocation, folder, Path.GetFileName(file));
 
-                    if (!string.IsNullOrEmpty(folder)) 
+                    if (File.Exists(filePath))
                     {
-                        string filePath = Path.Combine(gameLocation, folder, Path.GetFileName(file));
-
-                        if (File.Exists(filePath))
-                        {
-                            File.Delete(filePath);
-                            File.Move(file, filePath);
-                        }
+                        File.Delete(filePath);
+                        File.Move(file, filePath);
                     }
                 }
 
                 UI.BlobsetHeaderData();
-                MessageBox.Show("Backup files have been restored.", "Restore Backup Files", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+
+                if (isPopup)
+                    MessageBox.Show("Backup files have been restored.", "Restore Backup Files", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
-            else
-                MessageBox.Show("No files to restore.", "Restore Backup Files", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            else 
+            {
+                if (isPopup)
+                    MessageBox.Show("No files to restore.", "Restore Backup Files", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void restoreBackupFilesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            restoreBackupFiles(true);
         }
 
         private void resetBlobsetToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1273,18 +1280,17 @@ namespace Blobset_Tools
 
                 if (File.Exists(filePath))
                     File.Delete(filePath);
-
-                MessageBox.Show("Blobset file has been reset to it's original state", "Resetting Blobset has finished", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                 return;
             }
             finally
             {
                 if (bw != null) { bw.Close(); }
                 UI.BlobsetHeaderData();
+                MessageBox.Show("Blobset file has been reset to it's original state", "Resetting Blobset has finished", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 

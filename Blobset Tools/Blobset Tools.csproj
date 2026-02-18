@@ -15,7 +15,7 @@
     <ApplicationIcon>Blobset_Tools.ico</ApplicationIcon>
     <Company>Wouldy Mods</Company>
     <Title>$(AssemblyName)</Title>
-    <Version>1.1.7.40</Version>
+    <Version>1.1.8.42</Version>
     <NuGetAudit>False</NuGetAudit>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <AssemblyVersion>$(VersionPrefix)</AssemblyVersion>

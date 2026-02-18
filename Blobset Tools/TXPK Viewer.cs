@@ -55,7 +55,7 @@ namespace Blobset_Tools
 
                 for (int i = 0; i < txpkData.FilesCount; i++)
                 {
-                    ddsPaths[i] = txpkData.Entries[i].DDSFilePath + ".dds";
+                    ddsPaths[i] = $"{txpkData.Entries[i].DDSFilePath}.dds";
                 }
 
                 folder_treeView.Nodes.Add(UI.MakeTreeFromPaths(ddsPaths, Path.GetFileName(filename)));
@@ -100,7 +100,7 @@ namespace Blobset_Tools
                 lvi = files_listView.Items.Add(new ListViewItem { ImageIndex = icon, Text = list[i].FileName });
             }
 
-            status_Label.Text = list.Count + " items in " + folder_treeView.SelectedNode.Text + " folder";
+            status_Label.Text = $"{list.Count} items in {folder_treeView.SelectedNode.Text} folder";
         }
 
         private void files_listView_SelectedIndexChanged(object sender, EventArgs e)
@@ -155,13 +155,13 @@ namespace Blobset_Tools
                         pictureBox1.Refresh();
                     }
 
-                    DDSInfo_SSLabel.Text = "Format: " + ddsFormat + "    Height: " + bitmap.Height.ToString() + "     Width: " + bitmap.Width.ToString() + "     MipMaps: 1/" + ddsInfo.MipMap.ToString();
+                    DDSInfo_SSLabel.Text = $"Format: {ddsFormat} | Height: {bitmap.Height.ToString()} | Width: {bitmap.Width.ToString()} | MipMaps: 1/{ddsInfo.MipMap.ToString()}";
                 }
                 if (br != null) { br.Close(); br = null; }
             }
-            catch (Exception error)
+            catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
             finally
             {
@@ -274,7 +274,7 @@ namespace Blobset_Tools
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                 return true;
             }
             finally
@@ -288,7 +288,6 @@ namespace Blobset_Tools
         {
             Reader? br = null;
             FileStream? fsWriter = null;
-            bool error = false;
 
             try
             {
@@ -379,15 +378,15 @@ namespace Blobset_Tools
             }
             catch (Exception ex)
             {
-                error = true;
-                MessageBox.Show("Error occurred, report it to Wouldy : " + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                return true;
             }
             finally
             {
                 if (br != null) { br.Close(); br = null; }
                 if (fsWriter != null) { fsWriter.Dispose(); fsWriter = null; }
             }
-            return error;
+            return false;
         }
 
         private void TXPKExtractBgw()
@@ -441,7 +440,6 @@ namespace Blobset_Tools
         {
             Reader? br = null;
             FileStream? writer = null;
-            bool errorCheck = true;
 
             try
             {
@@ -548,18 +546,17 @@ namespace Blobset_Tools
 
                 if (br != null) { br.Close(); br = null; }
             }
-            catch (Exception error)
+            catch (Exception ex)
             {
-                errorCheck = true;
-                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                return true;
             }
             finally
             {
                 if (br != null) { br.Close(); br = null; }
                 if (writer != null) { writer.Dispose(); writer = null; }
-                errorCheck = false;
             }
-            return errorCheck;
+            return false;
         }
 
         private int Get_DDS_Index(string ddsFileName, TXPK txpk)
@@ -622,7 +619,7 @@ namespace Blobset_Tools
             {
                 pictureBox1.Image.Save(saveFileDialog.FileName);
 
-                MessageBox.Show("PNG File has been saved to - " + saveFileDialog.FileName, "PNG File Extracted :)", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                MessageBox.Show($"PNG File has been saved to - {saveFileDialog.FileName}", "PNG File Extracted :)", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
             }
             saveFileDialog.Dispose();
         }

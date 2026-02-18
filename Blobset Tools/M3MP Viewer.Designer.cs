@@ -53,15 +53,14 @@
             menuStrip1.Items.AddRange(new ToolStripItem[] { extractM3MPToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Padding = new Padding(7, 3, 0, 3);
-            menuStrip1.Size = new Size(914, 30);
+            menuStrip1.Size = new Size(927, 24);
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "menuStrip1";
             // 
             // extractM3MPToolStripMenuItem
             // 
             extractM3MPToolStripMenuItem.Name = "extractM3MPToolStripMenuItem";
-            extractM3MPToolStripMenuItem.Size = new Size(114, 24);
+            extractM3MPToolStripMenuItem.Size = new Size(92, 20);
             extractM3MPToolStripMenuItem.Text = "Extract M3MP";
             extractM3MPToolStripMenuItem.Click += extractM3MPToolStripMenuItem_Click;
             // 
@@ -69,35 +68,35 @@
             // 
             statusStrip1.ImageScalingSize = new Size(20, 20);
             statusStrip1.Items.AddRange(new ToolStripItem[] { status_Label, progressStripStatusLabel, toolStripProgressBar });
-            statusStrip1.Location = new Point(0, 573);
+            statusStrip1.Location = new Point(0, 457);
             statusStrip1.Name = "statusStrip1";
-            statusStrip1.Padding = new Padding(1, 0, 16, 0);
-            statusStrip1.Size = new Size(914, 27);
+            statusStrip1.Padding = new Padding(1, 0, 13, 0);
+            statusStrip1.Size = new Size(927, 23);
             statusStrip1.TabIndex = 1;
             statusStrip1.Text = "statusStrip1";
             // 
             // status_Label
             // 
             status_Label.Name = "status_Label";
-            status_Label.Size = new Size(666, 21);
+            status_Label.Size = new Size(728, 18);
             status_Label.Spring = true;
             status_Label.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // progressStripStatusLabel
             // 
             progressStripStatusLabel.Name = "progressStripStatusLabel";
-            progressStripStatusLabel.Size = new Size(0, 21);
+            progressStripStatusLabel.Size = new Size(0, 18);
             // 
             // toolStripProgressBar
             // 
             toolStripProgressBar.Name = "toolStripProgressBar";
-            toolStripProgressBar.Size = new Size(229, 19);
+            toolStripProgressBar.Size = new Size(183, 17);
             // 
             // splitContainer1
             // 
             splitContainer1.Dock = DockStyle.Fill;
-            splitContainer1.Location = new Point(0, 30);
-            splitContainer1.Margin = new Padding(3, 4, 3, 4);
+            splitContainer1.Location = new Point(0, 24);
+            splitContainer1.Margin = new Padding(2, 3, 2, 3);
             splitContainer1.Name = "splitContainer1";
             // 
             // splitContainer1.Panel1
@@ -107,18 +106,17 @@
             // splitContainer1.Panel2
             // 
             splitContainer1.Panel2.Controls.Add(files_listView);
-            splitContainer1.Size = new Size(914, 543);
-            splitContainer1.SplitterDistance = 303;
-            splitContainer1.SplitterWidth = 5;
+            splitContainer1.Size = new Size(927, 433);
+            splitContainer1.SplitterDistance = 307;
             splitContainer1.TabIndex = 2;
             // 
             // folder_treeView
             // 
             folder_treeView.Dock = DockStyle.Fill;
             folder_treeView.Location = new Point(0, 0);
-            folder_treeView.Margin = new Padding(3, 4, 3, 4);
+            folder_treeView.Margin = new Padding(2, 3, 2, 3);
             folder_treeView.Name = "folder_treeView";
-            folder_treeView.Size = new Size(303, 543);
+            folder_treeView.Size = new Size(307, 433);
             folder_treeView.TabIndex = 0;
             folder_treeView.AfterSelect += folder_treeView_AfterSelect;
             // 
@@ -127,10 +125,10 @@
             files_listView.Dock = DockStyle.Fill;
             files_listView.HeaderStyle = ColumnHeaderStyle.None;
             files_listView.Location = new Point(0, 0);
-            files_listView.Margin = new Padding(3, 4, 3, 4);
+            files_listView.Margin = new Padding(2, 3, 2, 3);
             files_listView.MultiSelect = false;
             files_listView.Name = "files_listView";
-            files_listView.Size = new Size(606, 543);
+            files_listView.Size = new Size(616, 433);
             files_listView.TabIndex = 0;
             files_listView.UseCompatibleStateImageBehavior = false;
             files_listView.View = View.List;
@@ -141,15 +139,15 @@
             // 
             // M3MP_Viewer
             // 
-            AutoScaleDimensions = new SizeF(120F, 120F);
+            AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
-            ClientSize = new Size(914, 600);
+            ClientSize = new Size(927, 480);
             Controls.Add(splitContainer1);
             Controls.Add(statusStrip1);
             Controls.Add(menuStrip1);
             Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
-            Margin = new Padding(3, 4, 3, 4);
+            Margin = new Padding(2, 3, 2, 3);
             Name = "M3MP_Viewer";
             Text = "M3MP Viewer";
             FormClosing += M3MP_Viewer_FormClosing;

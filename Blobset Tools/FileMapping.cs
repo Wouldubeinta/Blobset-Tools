@@ -703,7 +703,7 @@ namespace Blobset_Tools
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                 return true;
             }
             finally
@@ -762,15 +762,13 @@ namespace Blobset_Tools
             string progress = string.Empty;
             int fileMappingSize = 0;
             string _filePath = string.Empty;
-            bool error = false;
 
             try
             {
                 if (Global.blobsetHeaderData == null)
                 {
-                    error = true;
                     MessageBox.Show("Something went wrong reading the blobset", "Blobset Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return error;
+                    return true;
                 }
 
                 BlobsetFile? blobset = Global.blobsetHeaderData;
@@ -1281,15 +1279,15 @@ namespace Blobset_Tools
             }
             catch (Exception ex)
             {
-                error = true;
-                MessageBox.Show("Error occurred, report it to Wouldy : \n\nFile: " + _filePath + "\n\n" + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : \n\nFile: {_filePath} \n\n {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                return true;
             }
             finally
             {
                 if (writer != null) { writer.Dispose(); writer = null; }
                 CreateModFolders();
             }
-            return error;
+            return false;
         }
         #endregion
 
@@ -1393,7 +1391,7 @@ namespace Blobset_Tools
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + ex, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
             finally
             {

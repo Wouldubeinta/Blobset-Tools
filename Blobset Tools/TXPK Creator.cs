@@ -129,8 +129,6 @@ namespace Blobset_Tools
             Reader? br = null;
             FileStream? writer = null;
             TXPK? txpk = new();
-            bool result = false;
-
 
             try
             {
@@ -272,17 +270,17 @@ namespace Blobset_Tools
 
                 IO.XmlSerialize(xmlFilePath, txpkXmlOut);
             }
-            catch (Exception error)
+            catch (Exception ex)
             {
-                result = true;
-                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                return true;
             }
             finally
             {
                 if (br != null) { br.Close(); br = null; }
                 if (writer != null) { writer.Dispose(); writer = null; }
             }
-            return result;
+            return false;
         }
     }
 }

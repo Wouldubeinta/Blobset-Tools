@@ -215,7 +215,7 @@
             copyright_label.Name = "copyright_label";
             copyright_label.Size = new Size(167, 15);
             copyright_label.TabIndex = 5;
-            copyright_label.Text = "Copyright: Wouldy Mods 2025";
+            copyright_label.Text = "Copyright: Wouldy Mods 2026";
             // 
             // About
             // 

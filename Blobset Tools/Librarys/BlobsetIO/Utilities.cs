@@ -126,9 +126,9 @@ namespace BlobsetIO
 
                 bw.Write(header, Endian.Little);
             }
-            catch (Exception error)
+            catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
             finally
             {
@@ -166,9 +166,9 @@ namespace BlobsetIO
                 br = new Reader(fin, Endian.Little);
                 header = br.ReadBytes(headerSize, Endian.Little);
             }
-            catch (Exception error)
+            catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
             finally
             {
@@ -202,9 +202,9 @@ namespace BlobsetIO
                     File.Delete(file + "data-1.blobset.pc");
                 }
             }
-            catch (Exception error)
+            catch (Exception ex)
             {
-                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
             finally
             {
@@ -227,7 +227,35 @@ namespace BlobsetIO
 
         public static string[] DirectoryInfo(string folder, string Char)
         {
-            return Directory.GetFiles(folder, Char, SearchOption.AllDirectories);
+            string[]? files = null;
+            List<string> tmp = new List<string>();
+
+            try
+            {
+                // Process files in the current directory
+                foreach (var file in Directory.EnumerateFiles(folder, Char))
+                {
+                    tmp.Add(file);
+                }
+
+                // Recurse into subdirectories
+                foreach (var dir in Directory.EnumerateDirectories(folder))
+                {
+                    foreach (var file in DirectoryInfo(dir, Char)) 
+                    {
+                        tmp.Add(file);
+                    }
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Skip folders we don't have permission to open
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error occurred, report it to Wouldy {folder}: {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            return files = tmp.ToArray();
         }
 
         public static string FormatSize(ulong bytes)
