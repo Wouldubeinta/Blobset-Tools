@@ -29,13 +29,13 @@ namespace WEMSharp
         public uint SampleRate { get; private set; }
         public uint AverageBytesPerSecond { get; private set; }
 
-        public uint SampleCount { get; private set; }
+        public double SampleCount { get; private set; }
 
         private readonly uint _cueCount;
         private readonly uint _loopCount;
         private readonly uint _loopStart;
         private readonly uint _loopEnd;
-        private readonly uint _sampleCount;
+        private readonly double _sampleCount;
         private readonly bool _noGranule;
         private readonly bool _modPackets;
         private readonly uint _setupPacketOffset;
@@ -294,7 +294,7 @@ namespace WEMSharp
                 {
                     if (_loopEnd == 0)
                     {
-                        _loopEnd = _sampleCount;
+                        _loopEnd = (uint)_sampleCount;
                     }
                     else
                     {

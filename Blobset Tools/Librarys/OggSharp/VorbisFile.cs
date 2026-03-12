@@ -1412,7 +1412,6 @@ namespace OggSharp
                         break;
                 }
             }
-            return -1;
         }
 
         public Info[] getInfo() { return vi; }

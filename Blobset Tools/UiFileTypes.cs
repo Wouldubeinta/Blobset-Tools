@@ -214,7 +214,7 @@ namespace Blobset_Tools
         #endregion
 
         #region "WEM"
-        public static void Wise_WEM(RichTextBox fileInfo_richTextBox, string filePath, PictureBox dds_pictureBox, int blobsetVersion, SoundPlayer player, byte[] oggData, byte[] wavData)
+        public static void Wise_WEM(RichTextBox fileInfo_richTextBox, string filePath, PictureBox dds_pictureBox, int blobsetVersion, SoundPlayer player, ref byte[] oggData, ref byte[] wavData)
         {
             // Retrieve blobset metadata
             var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
@@ -251,7 +251,9 @@ namespace Blobset_Tools
             oggData = wem_Ms.ToArray();
 
             // Generate WAV data
-            using MemoryStream wav_ms = IO.WriteVorbisOggWAVData(wem_Ms, wem.SampleRate, wem.Channels, wem.SampleCount);
+            TimeSpan duration = new TimeSpan();
+
+            using MemoryStream wav_ms = IO.WriteVorbisOggWAVData(wem_Ms, wem.SampleRate, wem.Channels, wem.SampleCount, ref duration);
             wavData = wav_ms.ToArray();
 
             // Play the WAV audio
@@ -264,7 +266,9 @@ namespace Blobset_Tools
             fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
             fileInfo_richTextBox.AppendText($"WEM Channel Count: {wem.Channels}" + Environment.NewLine);
             fileInfo_richTextBox.AppendText($"WEM Sample Rate: {wem.SampleRate} Hz" + Environment.NewLine);
+            fileInfo_richTextBox.AppendText($"WEM Bit Rate: 16 Bit" + Environment.NewLine);
             fileInfo_richTextBox.AppendText($"WEM Average Bytes Per Second: {Utilities.FormatSize(wem.AverageBytesPerSecond)}" + Environment.NewLine);
+            fileInfo_richTextBox.AppendText($"WEM Duration: {duration.ToString(@"m\:ss\.fff")}" + Environment.NewLine);
             fileInfo_richTextBox.AppendText($"WEM File Size: {Utilities.FormatSize((ulong)Utilities.FileInfo(filePath))}");
 
             // Dispose of WEM resources

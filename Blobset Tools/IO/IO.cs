@@ -2,8 +2,11 @@
 using Concentus;
 using Concentus.Oggfile;
 using PackageIO;
+using System.IO;
+using System.Threading.Channels;
 using System.Xml;
 using System.Xml.Serialization;
+using Windows.UI.StartScreen;
 
 namespace Blobset_Tools
 {
@@ -441,41 +444,45 @@ namespace Blobset_Tools
         /// <history>
         /// [Wouldubeinta]		28/07/2025	Created
         /// </history>
-        public static MemoryStream WriteVorbisOggWAVData(MemoryStream? ms, uint sampleRate, int numChannels, uint sampleCount, int chunkSize = 256)
+        public static MemoryStream WriteVorbisOggWAVData(MemoryStream? ms, uint sampleRate, int numChannels, double sampleCount, ref TimeSpan time, int chunkSize = 128)
         {
             MemoryStream? wavStream = null;
             OggSharp.VorbisFile? vorbFile = null;
-            int _chunkSize = chunkSize;
 
             try
             {
-                if (numChannels == 1)
-                    _chunkSize = 64;
-
                 wavStream = new MemoryStream();
                 ms.Position = 0;
                 vorbFile = new OggSharp.VorbisFile(ms);
 
-                double duration = (double)sampleCount / sampleRate;
-                int pcmSize = (int)(sampleRate * 2 * 2 * duration);
+                double duration = sampleCount / sampleRate;
+                int pcmSize = (int)(sampleRate * 16 * duration / 8);
                 WavHeader wavHeader = new((int)sampleRate, numChannels);
                 wavHeader.headerSize = pcmSize + 38;
                 wavHeader.pcmDataSize = pcmSize;
                 wavHeader.Serialize(wavStream);
 
-                int chunkCount = Utilities.ChunkAmount(pcmSize, _chunkSize);
-                long[] chunkSizes = Utilities.ChunkSizes(pcmSize, chunkCount, _chunkSize);
+                byte[] buffer = new byte[chunkSize];
+                int bytesRead;
+                int size = 0;
+                int[] bitstream = new int[1];
 
-                int readCount = 0;
-
-                for (int i = 0; i < chunkCount; i++)
+                while ((bytesRead = vorbFile.read(buffer, buffer.Length, 0, 2, 1, bitstream)) > 0) 
                 {
-                    byte[] buffer = new byte[chunkSizes[i]];
-
-                    readCount = vorbFile.read(buffer, buffer.Length, 0, 2, 1, [0]);
                     wavStream.Write(buffer, 0, buffer.Length);
                     wavStream.Flush();
+                    size += buffer.Length;
                 }
+
+                double realDuration = (double)size / (sampleRate * 2 * numChannels);
+                time = TimeSpan.FromSeconds(realDuration);
+
+                wavStream.Position = 0;
+
+                wavHeader.headerSize = size + 38;
+                wavHeader.pcmDataSize = size;
+                wavHeader.Serialize(wavStream);
+
                 wavStream.Position = 0;
             }
             catch (Exception ex)

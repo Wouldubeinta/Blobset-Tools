@@ -15,8 +15,8 @@ namespace Blobset_Tools
         private BackgroundWorker? FileMapping_bgw = null;
         private System.Media.SoundPlayer? player = null;
         private bool isFlipped = false;
-        private readonly byte[]? oggData = null;
-        private readonly byte[]? wavData = null;
+        private byte[]? oggData = null;
+        private byte[]? wavData = null;
         public MainForm()
         {
             InitializeComponent();
@@ -325,7 +325,7 @@ namespace Blobset_Tools
                         UiFileTypes.M3MP(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion);
                         break;
                     case ".wem":
-                        UiFileTypes.Wise_WEM(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion, player, oggData, wavData);
+                        UiFileTypes.Wise_WEM(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion, player, ref oggData, ref wavData);
                         break;
                     case ".bnk":
                         UiFileTypes.Wise_BNK(fileInfo_richTextBox, filePath, dds_pictureBox, blobsetVersion);
@@ -1046,7 +1046,7 @@ namespace Blobset_Tools
 
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
-                if (oggData != null)
+                if (wavData != null)
                 {
                     File.WriteAllBytes(saveFileDialog.FileName, wavData);
                     fileInfo_richTextBox.Clear();
