@@ -263,6 +263,8 @@ namespace Blobset_Tools
                 txpkXmlOut.MainUnCompressedSize = HeaderSize;
                 txpkXmlOut.VramCompressedSize = 0;
                 txpkXmlOut.VramUnCompressedSize = FileSize - HeaderSize;
+                txpkXmlOut.FolderHash = TXPK_Xml_In.FolderHash;
+                txpkXmlOut.FileNameHash = TXPK_Xml_In.FileNameHash;
 
                 string directory = Path.GetDirectoryName(saveFileDialog1.FileName);
                 string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(saveFileDialog1.FileName);

@@ -514,7 +514,7 @@ namespace Blobset_Tools
 
             try 
             {
-                steamLocation = UI.getSteamLocation();
+                steamLocation = UI.getSteamGamesLocation();
                 string gameLocation = Path.Combine(steamLocation, "steamapps", "common", game);
 
                 // Check if the Steam location is valid

@@ -9,7 +9,7 @@ namespace Blobset_Tools
     /// </summary>
     /// <remarks>
     ///   Blobset Tools. Written by Wouldubeinta
-    ///   Copyright (C) 2025 Wouldy Mods.
+    ///   Copyright (C) 2026 Wouldy Mods.
     ///   
     ///   This program is free software; you can redistribute it and/or
     ///   modify it under the terms of the GNU General Public License
@@ -796,6 +796,7 @@ namespace Blobset_Tools
                 for (int i = 0; i < fileLists["dds"].Length; i++)
                 {
                     FileMapping fm = Utilities.GetFileMappingIndex(fileLists["dds"][i].Replace(filePathRemove, string.Empty), fileMapping);
+                    fm = Utilities.GetBlobsetHeaderDataIndex(fm);
 
                     if (fm == null)
                     {
@@ -865,16 +866,19 @@ namespace Blobset_Tools
                         return true;
                     }
 
+                    /*
                     FileMapping fm = Utilities.GetFileMappingIndex(txpkXmlInfo.Index, fileMapping);
+                    fm = Utilities.GetBlobsetHeaderDataIndex(fm);
 
                     if (fm == null)
                     {
                         MessageBox.Show($"{fileLists["txpk"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
+                    */
 
-                    string folderName = fm.Entries[0].FolderHash;
-                    string fileName = fm.Entries[0].FileNameHash;
+                    string folderName = txpkXmlInfo.FolderHash;
+                    string fileName = txpkXmlInfo.FileNameHash;
                     string filePath = Path.Combine(gameLocation, folderName, fileName);
                     _filePath = filePath;
 
@@ -936,16 +940,19 @@ namespace Blobset_Tools
                         return true;
                     }
 
+                    /*
                     FileMapping fm = Utilities.GetFileMappingIndex(m3mpFileInfo.Index, fileMapping);
+                    fm = Utilities.GetBlobsetHeaderDataIndex(fm);
 
                     if (fm == null)
                     {
                         MessageBox.Show($"{fileLists["m3mp"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
+                    */
 
-                    string folderName = fm.Entries[0].FolderHash;
-                    string fileName = fm.Entries[0].FileNameHash;
+                    string folderName = m3mpFileInfo.FolderHash;
+                    string fileName = m3mpFileInfo.FileNameHash;
                     string filePath = Path.Combine(gameLocation, folderName, fileName);
                     _filePath = filePath;
 
@@ -981,16 +988,17 @@ namespace Blobset_Tools
 
                 for (int i = 0; i < fileLists["wem"].Length; i++)
                 {
-                    FileMapping fmIndex = Utilities.GetFileMappingIndex(fileLists["wem"][i].Replace(filePathRemove, string.Empty), fileMapping);
+                    FileMapping fm = Utilities.GetFileMappingIndex(fileLists["wem"][i].Replace(filePathRemove, string.Empty), fileMapping);
+                    fm = Utilities.GetBlobsetHeaderDataIndex(fm);
 
-                    if (fmIndex == null)
+                    if (fm == null)
                     {
                         MessageBox.Show($"{fileLists["wem"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
-                    string folderName = fmIndex.Entries[0].FolderHash;
-                    string fileName = fmIndex.Entries[0].FileNameHash;
+                    string folderName = fm.Entries[0].FolderHash;
+                    string fileName = fm.Entries[0].FileNameHash;
                     string filePath = Path.Combine(gameLocation, folderName, fileName);
                     _filePath = filePath;
 
@@ -1015,7 +1023,7 @@ namespace Blobset_Tools
                         IO.ReadWriteData(tmpChunkData, writer, (int)mainChunkSizes[j]);
                     }
 
-                    headerIndex.Add(fmIndex.Entries[0].Index);
+                    headerIndex.Add(fm.Entries[0].Index);
 
                     progress = fileLists["wem"][i].Replace(filePathRemove, string.Empty);
 
@@ -1028,16 +1036,17 @@ namespace Blobset_Tools
 
                 for (int i = 0; i < fileLists["bnk"].Length; i++)
                 {
-                    FileMapping fmIndex = Utilities.GetFileMappingIndex(fileLists["bnk"][i].Replace(filePathRemove, string.Empty), fileMapping);
+                    FileMapping fm = Utilities.GetFileMappingIndex(fileLists["bnk"][i].Replace(filePathRemove, string.Empty), fileMapping);
+                    fm = Utilities.GetBlobsetHeaderDataIndex(fm);
 
-                    if (fmIndex == null)
+                    if (fm == null)
                     {
                         MessageBox.Show($"{fileLists["bnk"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
 
-                    string folderName = fmIndex.Entries[0].FolderHash;
-                    string fileName = fmIndex.Entries[0].FileNameHash;
+                    string folderName = fm.Entries[0].FolderHash;
+                    string fileName = fm.Entries[0].FileNameHash;
                     string filePath = Path.Combine(gameLocation, folderName, fileName);
                     _filePath = filePath;
 
@@ -1062,7 +1071,7 @@ namespace Blobset_Tools
                         IO.ReadWriteData(tmpChunkData, writer, (int)mainChunkSizes[j]);
                     }
 
-                    headerIndex.Add(fmIndex.Entries[0].Index);
+                    headerIndex.Add(fm.Entries[0].Index);
 
                     progress = fileLists["bnk"][i].Replace(filePathRemove, string.Empty);
 

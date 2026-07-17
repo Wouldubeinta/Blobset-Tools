@@ -8,6 +8,8 @@ namespace Blobset_Tools
     {
         #region Fields
         private int index = 0;
+        private string folderHash = string.Empty;
+        private string fileNameHash = string.Empty;
         private bool isCompressed = false;
         private Entry[]? entries = null;
         #endregion
@@ -18,6 +20,20 @@ namespace Blobset_Tools
         {
             get { return index; }
             set { index = value; }
+        }
+
+        [XmlAttribute()]
+        public string FolderHash 
+        {
+            get { return folderHash; }
+            set { folderHash = value; }
+        }
+
+        [XmlAttribute()]
+        public string FileNameHash
+        {
+            get { return fileNameHash; }
+            set { fileNameHash = value; }
         }
 
         [XmlAttribute()]

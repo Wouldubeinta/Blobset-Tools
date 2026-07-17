@@ -17,7 +17,7 @@ namespace Blobset_Tools
     /// </summary>
     /// <remarks>
     ///   Blobset Tools. Written by Wouldubeinta
-    ///   Copyright (C) 2025 Wouldy Mods.
+    ///   Copyright (C) 2026 Wouldy Mods.
     ///   
     ///   This program is free software; you can redistribute it and/or
     ///   modify it under the terms of the GNU General Public License
@@ -125,7 +125,6 @@ namespace Blobset_Tools
         {
             MemoryStream? ms = null;
             IImage? image = null;
-            ArrayPoolAllocator? allocator = null;
             Bitmap? bitmap = null;
             ddsInfo.IFormat = ImageFormat.Rgba32;
 
@@ -137,7 +136,7 @@ namespace Blobset_Tools
                 {
                     ms = new(ddsData);
 
-                    allocator = new();
+                    ArrayPoolAllocator allocator = new();
                     var config = new PfimConfig(allocator: allocator);
                     image = Pfimage.FromStream(ms, config);
 
@@ -214,7 +213,6 @@ namespace Blobset_Tools
             {
                 if (ms != null) { ms.Dispose(); ms = null; }
                 if (image != null) { image.Dispose(); image = null; }
-                if (allocator != null) { allocator = null; }
             }
             return bitmap;
         }
@@ -308,10 +306,12 @@ namespace Blobset_Tools
             {
                 br = new(Path.Combine(Global.gameInfo.GameLocation.Replace("data-0.blobset.pc", string.Empty), list[Global.fileIndex].FolderHash, list[Global.fileIndex].FileHash));
 
-                int MainCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainCompressedSize;
-                int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
-                int VramCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramCompressedSize;
-                int VramUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].VramUnCompressedSize;
+                int blobsetIndex = Utilities.GetBlobsetFileIndex(list[Global.fileIndex].FolderHash, list[Global.fileIndex].FileHash);
+
+                int MainCompressedSize = (int)Global.blobsetHeaderData.Entries[blobsetIndex].MainCompressedSize;
+                int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[blobsetIndex].MainUnCompressedSize;
+                int VramCompressedSize = (int)Global.blobsetHeaderData.Entries[blobsetIndex].VramCompressedSize;
+                int VramUnCompressedSize = (int)Global.blobsetHeaderData.Entries[blobsetIndex].VramUnCompressedSize;
 
                 ddsData = new byte[VramUnCompressedSize];
 
@@ -469,6 +469,38 @@ namespace Blobset_Tools
         }
 
         public static string getSteamLocation()
+        {
+            RegistryKey? key = null;
+            string? value = string.Empty;
+
+            try
+            {
+                key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Wow6432Node\Valve\Steam", false);
+
+                if (key != null)
+                {
+                    object? steamPath = key.GetValue("InstallPath", null);
+
+                    if (steamPath != null)
+                        value = steamPath.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (key != null)
+                {
+                    key.Close();
+                    key = null;
+                }
+            }
+            return value;
+        }
+
+        public static string getSteamGamesLocation()
         {
             RegistryKey? key = null;
             string value = string.Empty;

@@ -10,7 +10,7 @@ namespace Blobset_Tools
     /// </summary>
     /// <remarks>
     ///   Blobset Tools. Written by Wouldubeinta
-    ///   Copyright (C) 2025 Wouldy Mods.
+    ///   Copyright (C) 2026 Wouldy Mods.
     ///   
     ///   This program is free software; you can redistribute it and/or
     ///   modify it under the terms of the GNU General Public License
@@ -279,7 +279,7 @@ namespace Blobset_Tools
                     decompressor = new();
                     buffer = decompressor.Unwrap(input).ToArray();
 
-                    if (buffer[20] == 99 && buffer[21] == 111 && buffer[22] == 110 && buffer[23] == 118)  // checking for "conv" string
+                    if (buffer.AsSpan(20, 4).SequenceEqual("conv"u8))  // checking for "conv" string
                         isMiniTXPK = true;
                 }
                 else
@@ -412,7 +412,8 @@ namespace Blobset_Tools
 
             try
             {
-                uint MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                //uint MainCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainCompressedSize;
+                uint MainCompressedSize = Global.blobsetHeaderData.Entries[Array.FindIndex(Global.blobsetHeaderData.Entries, item => item.FileHashName == Global.filelist[Global.fileIndex].FileHash)].MainCompressedSize;
                 uint MainUnCompressedSize = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
 
                 input = new(fileIn);

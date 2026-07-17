@@ -10,7 +10,7 @@ namespace BlobsetIO
     /// </summary>
     /// <remarks>
     ///   Blobset Tools. Written by Wouldubeinta
-    ///   Copyright (C) 2025 Wouldy Mods.
+    ///   Copyright (C) 2026 Wouldy Mods.
     ///   
     ///   This program is free software; you can redistribute it and/or
     ///   modify it under the terms of the GNU General Public License
@@ -314,6 +314,44 @@ namespace BlobsetIO
                 }
             }
             return fm;
+        }
+
+        public static FileMapping GetBlobsetHeaderDataIndex(FileMapping fileMapping)
+        {
+            FileMapping? fm = null;
+            int blobsetIndex = 0;
+
+            foreach (var blobsetHeaderDataEntries in Global.blobsetHeaderData.Entries)
+            {
+                if (blobsetHeaderDataEntries.FolderHashName == fileMapping.Entries[0].FolderHash && blobsetHeaderDataEntries.FileHashName == fileMapping.Entries[0].FileNameHash)
+                {
+                    fm = new FileMapping();
+                    FileMapping.Entry fme = new();
+                    fme.Index = blobsetIndex;
+                    fme.FilePath = fileMapping.Entries[0].FilePath;
+                    fme.FileNameHash = fileMapping.Entries[0].FileNameHash;
+                    fme.FolderHash = fileMapping.Entries[0].FolderHash;
+                    fm.Entries.Add(fme);
+                    return fm;
+                }
+                blobsetIndex++;
+            }
+            return fm;
+        }
+
+        public static int GetBlobsetFileIndex(string folderHash, string fileHash)
+        {
+            int blobsetIndex = 0;
+
+            foreach (var blobsetHeaderDataEntries in Global.blobsetHeaderData.Entries)
+            {
+                if (blobsetHeaderDataEntries.FolderHashName == folderHash && blobsetHeaderDataEntries.FileHashName == fileHash)
+                {
+                    break;
+                }
+                blobsetIndex++;
+            }
+            return blobsetIndex;
         }
 
         public static string GetGameVersion()

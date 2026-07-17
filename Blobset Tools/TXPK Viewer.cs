@@ -35,7 +35,8 @@ namespace Blobset_Tools
         {
             if (txpkData != null)
             {
-                var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
+                int blobsetIndex = Utilities.GetBlobsetFileIndex(list[Global.fileIndex].FolderHash, list[Global.fileIndex].FileHash);
+                var blobsetHeaderData = Global.blobsetHeaderData.Entries[blobsetIndex];
 
                 MainFinalOffset = blobsetHeaderData.MainFinalOffSet;
                 MainCompressedSize = blobsetHeaderData.MainCompressedSize;
@@ -467,7 +468,9 @@ namespace Blobset_Tools
                     txpkInfo.Entries = new ExtractFileInfo.Entry[txpk.FilesCount];
                 }
 
-                int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[list[Global.fileIndex].BlobsetIndex].MainUnCompressedSize;
+                int blobsetIndex = Utilities.GetBlobsetFileIndex(list[Global.fileIndex].FolderHash, list[Global.fileIndex].FileHash);
+
+                int MainUnCompressedSize = (int)Global.blobsetHeaderData.Entries[blobsetIndex].MainUnCompressedSize;
                 int index = 0;
 
                 foreach (var entry in txpk.Entries)
@@ -541,6 +544,8 @@ namespace Blobset_Tools
                 else
                 {
                     txpkInfo.Index = list[Global.fileIndex].BlobsetIndex;
+                    txpkInfo.FolderHash = list[Global.fileIndex].FolderHash;
+                    txpkInfo.FileNameHash = list[Global.fileIndex].FileHash;
                     IO.XmlSerialize(extractTXPK_fbd.SelectedPath + @"\TXPK_List.xml", txpkInfo);
                 }
 

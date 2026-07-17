@@ -9,7 +9,7 @@ namespace Blobset_Tools
     /// </summary>
     /// <remarks>
     ///   Blobset Tools. Written by Wouldubeinta
-    ///   Copyright (C) 2025 Wouldy Mods.
+    ///   Copyright (C) 2026 Wouldy Mods.
     ///   
     ///   This program is free software; you can redistribute it and/or
     ///   modify it under the terms of the GNU General Public License

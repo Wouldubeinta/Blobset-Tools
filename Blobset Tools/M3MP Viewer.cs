@@ -32,7 +32,8 @@ namespace Blobset_Tools
             {
                 if (m3mpData != null)
                 {
-                    var BlobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
+                    int blobsetIndex = Utilities.GetBlobsetFileIndex(list[Global.fileIndex].FolderHash, list[Global.fileIndex].FileHash);
+                    var BlobsetHeaderData = Global.blobsetHeaderData.Entries[blobsetIndex];
                     MainFinalOffset = BlobsetHeaderData.MainFinalOffSet;
                     MainUnCompressedSize = BlobsetHeaderData.MainUnCompressedSize;
                     blobsetVersion = Global.gameInfo.BlobsetVersion;
@@ -49,7 +50,9 @@ namespace Blobset_Tools
                     folder_treeView.ImageList = myImageList;
 
                     m3mpXmlIn = new ExtractFileInfo();
-                    m3mpXmlIn.Index = Convert.ToInt32(Path.GetFileNameWithoutExtension(filename));
+                    m3mpXmlIn.Index = Global.filelist[Global.fileIndex].BlobsetIndex;
+                    m3mpXmlIn.FolderHash = Global.filelist[Global.fileIndex].FolderHash;
+                    m3mpXmlIn.FileNameHash = Global.filelist[Global.fileIndex].FileHash;
 
                     string[] filePaths = new string[m3mpData.FilesCount];
 

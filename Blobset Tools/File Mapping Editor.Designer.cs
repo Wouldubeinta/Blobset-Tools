@@ -28,44 +28,99 @@
         /// </summary>
         private void InitializeComponent()
         {
-            FilePath_label = new Label();
-            FileIndex_label = new Label();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(File_Mapping_Editor));
+            statusStrip1 = new StatusStrip();
+            Save_toolStripSplitButton = new ToolStripSplitButton();
+            menuStrip1 = new MenuStrip();
+            searchToolStripMenuItem = new ToolStripMenuItem();
+            Search_toolStripTextBox = new ToolStripTextBox();
+            dataGridView1 = new DataGridView();
+            statusStrip1.SuspendLayout();
+            menuStrip1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
             SuspendLayout();
             // 
-            // FilePath_label
+            // statusStrip1
             // 
-            FilePath_label.AutoSize = true;
-            FilePath_label.Location = new Point(24, 53);
-            FilePath_label.Name = "FilePath_label";
-            FilePath_label.Size = new Size(55, 15);
-            FilePath_label.TabIndex = 0;
-            FilePath_label.Text = "File Path:";
+            statusStrip1.Items.AddRange(new ToolStripItem[] { Save_toolStripSplitButton });
+            statusStrip1.Location = new Point(0, 524);
+            statusStrip1.Name = "statusStrip1";
+            statusStrip1.Size = new Size(1173, 22);
+            statusStrip1.TabIndex = 0;
+            statusStrip1.Text = "statusStrip1";
             // 
-            // FileIndex_label
+            // Save_toolStripSplitButton
             // 
-            FileIndex_label.AutoSize = true;
-            FileIndex_label.Location = new Point(24, 27);
-            FileIndex_label.Name = "FileIndex_label";
-            FileIndex_label.Size = new Size(59, 15);
-            FileIndex_label.TabIndex = 1;
-            FileIndex_label.Text = "File Index:";
+            Save_toolStripSplitButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            Save_toolStripSplitButton.Image = (Image)resources.GetObject("Save_toolStripSplitButton.Image");
+            Save_toolStripSplitButton.ImageTransparentColor = Color.Magenta;
+            Save_toolStripSplitButton.Name = "Save_toolStripSplitButton";
+            Save_toolStripSplitButton.Size = new Size(100, 20);
+            Save_toolStripSplitButton.Text = "Save Changers";
+            Save_toolStripSplitButton.ButtonClick += Save_toolStripSplitButton_ButtonClick;
+            // 
+            // menuStrip1
+            // 
+            menuStrip1.Items.AddRange(new ToolStripItem[] { searchToolStripMenuItem, Search_toolStripTextBox });
+            menuStrip1.Location = new Point(0, 0);
+            menuStrip1.Name = "menuStrip1";
+            menuStrip1.Size = new Size(1173, 27);
+            menuStrip1.TabIndex = 1;
+            menuStrip1.Text = "menuStrip1";
+            // 
+            // searchToolStripMenuItem
+            // 
+            searchToolStripMenuItem.Name = "searchToolStripMenuItem";
+            searchToolStripMenuItem.Size = new Size(54, 23);
+            searchToolStripMenuItem.Text = "Search";
+            searchToolStripMenuItem.Click += searchToolStripMenuItem_Click;
+            // 
+            // Search_toolStripTextBox
+            // 
+            Search_toolStripTextBox.Name = "Search_toolStripTextBox";
+            Search_toolStripTextBox.Size = new Size(500, 23);
+            Search_toolStripTextBox.KeyDown += Search_toolStripTextBox_KeyDown;
+            // 
+            // dataGridView1
+            // 
+            dataGridView1.AllowUserToAddRows = false;
+            dataGridView1.AllowUserToDeleteRows = false;
+            dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dataGridView1.Dock = DockStyle.Fill;
+            dataGridView1.Location = new Point(0, 27);
+            dataGridView1.Name = "dataGridView1";
+            dataGridView1.Size = new Size(1173, 497);
+            dataGridView1.TabIndex = 2;
             // 
             // File_Mapping_Editor
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 450);
-            Controls.Add(FileIndex_label);
-            Controls.Add(FilePath_label);
+            ClientSize = new Size(1173, 546);
+            Controls.Add(dataGridView1);
+            Controls.Add(statusStrip1);
+            Controls.Add(menuStrip1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
+            MainMenuStrip = menuStrip1;
             Name = "File_Mapping_Editor";
-            Text = "File_Mapping_Editor";
+            Text = "File Mapping Editor";
+            Load += File_Mapping_Editor_Load;
+            statusStrip1.ResumeLayout(false);
+            statusStrip1.PerformLayout();
+            menuStrip1.ResumeLayout(false);
+            menuStrip1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)dataGridView1).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
 
         #endregion
 
-        private Label FilePath_label;
-        private Label FileIndex_label;
+        private StatusStrip statusStrip1;
+        private ToolStripSplitButton Save_toolStripSplitButton;
+        private MenuStrip menuStrip1;
+        private ToolStripMenuItem searchToolStripMenuItem;
+        private ToolStripTextBox Search_toolStripTextBox;
+        private DataGridView dataGridView1;
     }
 }

@@ -275,6 +275,8 @@ namespace Blobset_Tools
                 m3mpXmlOut.MainUnCompressedSize = (int)Utilities.FileInfo(m3mpHeaderTemp) + (int)Utilities.FileInfo(m3mpCompressedDataTmp);
                 m3mpXmlOut.VramCompressedSize = 0;
                 m3mpXmlOut.VramUnCompressedSize = 0;
+                m3mpXmlOut.FolderHash = M3MP_Xml_In.FolderHash;
+                m3mpXmlOut.FileNameHash = M3MP_Xml_In.FileNameHash;
 
                 string directory = Path.GetDirectoryName(saveFileDialog1.FileName);
                 string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(saveFileDialog1.FileName);

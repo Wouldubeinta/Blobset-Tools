@@ -10,7 +10,8 @@ namespace Blobset_Tools
         #region "DDS"
         public static void DDS(RichTextBox fileInfo_richTextBox, string filePath, PictureBox dds_pictureBox, int blobsetVersion, bool isAlpha, bool isFlipped)
         {
-            var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
+            int blobsetIndex = Utilities.GetBlobsetFileIndex(Global.filelist[Global.fileIndex].FolderHash, Global.filelist[Global.fileIndex].FileHash);
+            var blobsetHeaderData = Global.blobsetHeaderData.Entries[blobsetIndex];
 
             var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
             //string platform = platformDetails["Platform"];
@@ -82,7 +83,8 @@ namespace Blobset_Tools
         #region "TXPK"
         public static void TXPK(RichTextBox fileInfo_richTextBox, string filePath, PictureBox dds_pictureBox, int blobsetVersion)
         {
-            var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
+            int blobsetIndex = Utilities.GetBlobsetFileIndex(Global.filelist[Global.fileIndex].FolderHash, Global.filelist[Global.fileIndex].FileHash);
+            var blobsetHeaderData = Global.blobsetHeaderData.Entries[blobsetIndex];
             uint txpkSize = blobsetHeaderData.MainUnCompressedSize + blobsetHeaderData.VramUnCompressedSize;
 
             var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
@@ -148,7 +150,8 @@ namespace Blobset_Tools
         public static void M3MP(RichTextBox fileInfo_richTextBox, string filePath, PictureBox dds_pictureBox, int blobsetVersion)
         {
             // Retrieve blobset metadata
-            var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
+            int blobsetIndex = Utilities.GetBlobsetFileIndex(Global.filelist[Global.fileIndex].FolderHash, Global.filelist[Global.fileIndex].FileHash);
+            var blobsetHeaderData = Global.blobsetHeaderData.Entries[blobsetIndex];
 
             var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
             //string platform = platformDetails["Platform"];
@@ -216,63 +219,82 @@ namespace Blobset_Tools
         #region "WEM"
         public static void Wise_WEM(RichTextBox fileInfo_richTextBox, string filePath, PictureBox dds_pictureBox, int blobsetVersion, SoundPlayer player, ref byte[] oggData, ref byte[] wavData)
         {
-            // Retrieve blobset metadata
-            var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
+            Thread.Sleep(100);
 
-            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
-            //string platform = platformDetails["Platform"];
-            string platformExt = platformDetails["PlatformExt"];
+            MemoryStream? wem_Ms = null;
 
-            // Display blobset information
-            fileInfo_richTextBox.SelectionColor = Color.White;
-            fileInfo_richTextBox.AppendText("*** Wise Audio WEM Location ***" + Environment.NewLine);
-            fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-            fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath + Environment.NewLine + Environment.NewLine);
-            fileInfo_richTextBox.SelectionColor = Color.White;
-            fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
-            fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-            fileInfo_richTextBox.AppendText($"FileIndex: {Global.filelist[Global.fileIndex].BlobsetIndex}" + Environment.NewLine);
-            fileInfo_richTextBox.AppendText($"FileName: {filePath}" + Environment.NewLine);
+            try 
+            {
+                // Retrieve blobset metadata
+                int blobsetIndex = Utilities.GetBlobsetFileIndex(Global.filelist[Global.fileIndex].FolderHash, Global.filelist[Global.fileIndex].FileHash);
+                var blobsetHeaderData = Global.blobsetHeaderData.Entries[blobsetIndex];
 
-            fileInfo_richTextBox.AppendText($"MainCompressedSize: {blobsetHeaderData.MainCompressedSize}{Environment.NewLine}");
-            fileInfo_richTextBox.AppendText($"MainUnCompressedSize: {blobsetHeaderData.MainUnCompressedSize}{Environment.NewLine}");
-            fileInfo_richTextBox.AppendText($"VramCompressedSize: {blobsetHeaderData.VramCompressedSize}{Environment.NewLine}");
-            fileInfo_richTextBox.AppendText($"VramUnCompressedSize: {blobsetHeaderData.VramUnCompressedSize}{Environment.NewLine}{Environment.NewLine}");
+                var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+                //string platform = platformDetails["Platform"];
+                string platformExt = platformDetails["PlatformExt"];
 
-            // Stop and dispose of the current player if it exists
-            StopAndDisposePlayer(ref player);
+                // Display blobset information
+                fileInfo_richTextBox.SelectionColor = Color.White;
+                fileInfo_richTextBox.AppendText("*** WWise Audiokinetic WEM Location ***" + Environment.NewLine);
+                fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
+                fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath + Environment.NewLine + Environment.NewLine);
+                fileInfo_richTextBox.SelectionColor = Color.White;
+                fileInfo_richTextBox.AppendText("*** Blobset Info ***" + Environment.NewLine);
+                fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
+                fileInfo_richTextBox.AppendText($"FileIndex: {Global.filelist[Global.fileIndex].BlobsetIndex}" + Environment.NewLine);
+                fileInfo_richTextBox.AppendText($"FileName: {filePath}" + Environment.NewLine);
 
-            // Process the WEM file
-            WEMFile? wem = new(filePath, WEMForcePacketFormat.NoForcePacketFormat);
-            using MemoryStream wem_Ms = new();
+                fileInfo_richTextBox.AppendText($"MainCompressedSize: {blobsetHeaderData.MainCompressedSize}{Environment.NewLine}");
+                fileInfo_richTextBox.AppendText($"MainUnCompressedSize: {blobsetHeaderData.MainUnCompressedSize}{Environment.NewLine}");
+                fileInfo_richTextBox.AppendText($"VramCompressedSize: {blobsetHeaderData.VramCompressedSize}{Environment.NewLine}");
+                fileInfo_richTextBox.AppendText($"VramUnCompressedSize: {blobsetHeaderData.VramUnCompressedSize}{Environment.NewLine}{Environment.NewLine}");
 
-            // Generate OGG data
-            wem.GenerateOGG(wem_Ms, Global.currentPath + @"\packed_codebooks_aoTuV_603.bin", false, false);
-            oggData = wem_Ms.ToArray();
+                // Stop and dispose of the current player if it exists
+                StopAndDisposePlayer(ref player);
 
-            // Generate WAV data
-            TimeSpan duration = new TimeSpan();
+                // Dispose ogg and wav data.
+                DisposeOggAndWav(ref oggData, ref wavData);
 
-            using MemoryStream wav_ms = IO.WriteVorbisOggWAVData(wem_Ms, wem.SampleRate, wem.Channels, wem.SampleCount, ref duration);
-            wavData = wav_ms.ToArray();
+                // Process the WEM file
+                WEMFile? wem = new(filePath, WEMForcePacketFormat.NoForcePacketFormat);
+                wem_Ms = new();
 
-            // Play the WAV audio
-            player = new SoundPlayer(wav_ms);
-            player.Play();
+                // Generate OGG data
+                wem.GenerateOGG(wem_Ms, Global.currentPath + @"\packed_codebooks_aoTuV_603.bin", false, false);
+                oggData = wem_Ms.ToArray();
 
-            // Display WEM information
-            fileInfo_richTextBox.SelectionColor = Color.White;
-            fileInfo_richTextBox.AppendText("*** Wise Audio WEM Info ***" + Environment.NewLine);
-            fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
-            fileInfo_richTextBox.AppendText($"WEM Channel Count: {wem.Channels}" + Environment.NewLine);
-            fileInfo_richTextBox.AppendText($"WEM Sample Rate: {wem.SampleRate} Hz" + Environment.NewLine);
-            fileInfo_richTextBox.AppendText($"WEM Bit Rate: 16 Bit" + Environment.NewLine);
-            fileInfo_richTextBox.AppendText($"WEM Average Bytes Per Second: {Utilities.FormatSize(wem.AverageBytesPerSecond)}" + Environment.NewLine);
-            fileInfo_richTextBox.AppendText($"WEM Duration: {duration.ToString(@"m\:ss\.fff")}" + Environment.NewLine);
-            fileInfo_richTextBox.AppendText($"WEM File Size: {Utilities.FormatSize((ulong)Utilities.FileInfo(filePath))}");
+                // Generate WAV data
+                TimeSpan duration = new TimeSpan();
 
-            // Dispose of WEM resources
-            DisposeWEMResources(wem);
+                using MemoryStream wav_ms = IO.WriteVorbisOggWAVData(wem_Ms, wem.SampleRate, wem.Channels, wem.SampleCount, ref duration);
+                wavData = wav_ms.ToArray();
+
+                // Play the WAV audio
+                player = new SoundPlayer(wav_ms);
+                player.Play();
+
+                // Display WEM information
+                fileInfo_richTextBox.SelectionColor = Color.White;
+                fileInfo_richTextBox.AppendText("*** WWise Audiokinetic WEM Info ***" + Environment.NewLine);
+                fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
+                fileInfo_richTextBox.AppendText($"WEM Channel Count: {wem.Channels}" + Environment.NewLine);
+                fileInfo_richTextBox.AppendText($"WEM Sample Rate: {wem.SampleRate} Hz" + Environment.NewLine);
+                fileInfo_richTextBox.AppendText($"WEM Bit Rate: 16 Bit" + Environment.NewLine);
+                fileInfo_richTextBox.AppendText($"WEM Average Bytes Per Second: {Utilities.FormatSize(wem.AverageBytesPerSecond)}" + Environment.NewLine);
+                fileInfo_richTextBox.AppendText($"WEM Duration: {duration.ToString(@"m\:ss\.fff")}" + Environment.NewLine);
+                fileInfo_richTextBox.AppendText($"WEM File Size: {Utilities.FormatSize((ulong)Utilities.FileInfo(filePath))}");
+
+                // Dispose of WEM resources
+                DisposeWEMResources(wem);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (wem_Ms != null) { wem_Ms.Dispose(); }
+            }
         }
 
         private static void DisposeWEMResources(WEMFile? wem)
@@ -293,7 +315,7 @@ namespace Blobset_Tools
 
             // Display blobset information
             fileInfo_richTextBox.SelectionColor = Color.White;
-            fileInfo_richTextBox.AppendText("*** Wise Audio BNK Location ***" + Environment.NewLine);
+            fileInfo_richTextBox.AppendText("*** WWise Audiokinetic BNK Location ***" + Environment.NewLine);
             fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
             fileInfo_richTextBox.AppendText(Global.filelist[Global.fileIndex].FilePath + Environment.NewLine + Environment.NewLine);
             fileInfo_richTextBox.SelectionColor = Color.White;
@@ -309,7 +331,7 @@ namespace Blobset_Tools
 
             // Display BNK information
             fileInfo_richTextBox.SelectionColor = Color.White;
-            fileInfo_richTextBox.AppendText("*** Wise Audio BNK Info ***" + Environment.NewLine);
+            fileInfo_richTextBox.AppendText("*** WWise Audiokinetic BNK Info ***" + Environment.NewLine);
             fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
             fileInfo_richTextBox.AppendText($"BNK File Size: {Utilities.FormatSize(blobsetHeaderData.MainUnCompressedSize)}");
         }
@@ -438,6 +460,12 @@ namespace Blobset_Tools
                 player.Stream.Dispose();
                 player.Dispose();
             }
+        }
+
+        private static void DisposeOggAndWav(ref byte[]? oggData, ref byte[]? wavData)
+        {
+            if (oggData != null) oggData = null;
+            if (wavData != null) wavData = null;
         }
     }
 }

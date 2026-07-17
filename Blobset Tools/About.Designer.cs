@@ -221,7 +221,7 @@
             // 
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
-            ClientSize = new Size(571, 478);
+            ClientSize = new Size(570, 477);
             Controls.Add(copyright_label);
             Controls.Add(version_label);
             Controls.Add(title_label);
@@ -231,9 +231,9 @@
             Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(2, 3, 2, 3);
             MaximizeBox = false;
-            MaximumSize = new Size(587, 517);
+            MaximumSize = new Size(586, 516);
             MinimizeBox = false;
-            MinimumSize = new Size(587, 517);
+            MinimumSize = new Size(586, 516);
             Name = "About";
             Text = "About";
             Load += About_Load;

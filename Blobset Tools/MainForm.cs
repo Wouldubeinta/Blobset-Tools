@@ -92,6 +92,11 @@ namespace Blobset_Tools
                         fileInfo_richTextBox.AppendText("Mapping files for " + Global.gameInfo.GameName + ", please wait..........");
                         FileMappingMain();
                         break;
+                    case DialogResult.No:
+                    case DialogResult.Cancel:
+                        folder_treeView.Nodes.Clear();
+                        UI.FilesList(folder_treeView);
+                        break;
                 }
             }
 
@@ -374,7 +379,8 @@ namespace Blobset_Tools
                     return;
                 }
 
-                var blobsetHeaderData = Global.blobsetHeaderData.Entries[Global.filelist[Global.fileIndex].BlobsetIndex];
+                int blobsetIndex = Utilities.GetBlobsetFileIndex(Global.filelist[Global.fileIndex].FolderHash, Global.filelist[Global.fileIndex].FileHash);
+                var blobsetHeaderData = Global.blobsetHeaderData.Entries[blobsetIndex];
 
                 switch (ext)
                 {
@@ -933,7 +939,31 @@ namespace Blobset_Tools
 
         private void fileMappingEditorToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            DialogResult result = MessageBox.Show("This is for advanced users, so be careful, it could break the File Mapping Data, click Yes to continue", "File Mapping Editor", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
+            switch (result)
+            {
+                case DialogResult.Yes:
+                    File_Mapping_Editor form = new();
+                    bool IsOpen = false;
+
+                    foreach (Form f in Application.OpenForms)
+                    {
+                        if (f.Text == "File Mapping Editor")
+                        {
+                            IsOpen = true;
+                            f.Focus();
+                            break;
+                        }
+                    }
+
+                    if (!IsOpen)
+                        form.Show();
+                    break;
+                case DialogResult.No:
+                case DialogResult.Cancel:
+                    break;
+            }
         }
 
         private void ddsFileToolStripMenuItem_Click(object sender, EventArgs e)

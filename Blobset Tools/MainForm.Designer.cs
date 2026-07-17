@@ -114,29 +114,29 @@ namespace Blobset_Tools
             // 
             statusStrip1.ImageScalingSize = new Size(20, 20);
             statusStrip1.Items.AddRange(new ToolStripItem[] { status_Label, progressStripStatusLabel, toolStripProgressBar });
-            statusStrip1.Location = new Point(0, 939);
+            statusStrip1.Location = new Point(0, 750);
             statusStrip1.Name = "statusStrip1";
-            statusStrip1.Padding = new Padding(1, 0, 16, 0);
-            statusStrip1.Size = new Size(1453, 28);
+            statusStrip1.Padding = new Padding(1, 0, 13, 0);
+            statusStrip1.Size = new Size(1162, 24);
             statusStrip1.TabIndex = 1;
             statusStrip1.Text = "statusStrip1";
             // 
             // status_Label
             // 
             status_Label.Name = "status_Label";
-            status_Label.Size = new Size(1101, 22);
+            status_Label.Size = new Size(880, 19);
             status_Label.Spring = true;
             status_Label.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // progressStripStatusLabel
             // 
             progressStripStatusLabel.Name = "progressStripStatusLabel";
-            progressStripStatusLabel.Size = new Size(0, 22);
+            progressStripStatusLabel.Size = new Size(0, 19);
             // 
             // toolStripProgressBar
             // 
             toolStripProgressBar.Name = "toolStripProgressBar";
-            toolStripProgressBar.Size = new Size(333, 20);
+            toolStripProgressBar.Size = new Size(266, 18);
             // 
             // menuStrip1
             // 
@@ -144,8 +144,7 @@ namespace Blobset_Tools
             menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, blobsetToolStripMenuItem, gameName_toolStripTextBox, toolsToolStripMenuItem, optionsToolStripMenuItem, aboutToolStripMenuItem, searchToolStripTextBox, searchToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Padding = new Padding(7, 3, 0, 3);
-            menuStrip1.Size = new Size(1453, 33);
+            menuStrip1.Size = new Size(1162, 27);
             menuStrip1.TabIndex = 2;
             menuStrip1.Text = "menuStrip1";
             // 
@@ -153,14 +152,14 @@ namespace Blobset_Tools
             // 
             fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { openToolStripMenuItem, gameSelectionToolStripMenuItem, exitToolStripMenuItem });
             fileToolStripMenuItem.Name = "fileToolStripMenuItem";
-            fileToolStripMenuItem.Size = new Size(46, 27);
+            fileToolStripMenuItem.Size = new Size(37, 23);
             fileToolStripMenuItem.Text = "File";
             // 
             // openToolStripMenuItem
             // 
             openToolStripMenuItem.Image = Properties.Resources.open_32;
             openToolStripMenuItem.Name = "openToolStripMenuItem";
-            openToolStripMenuItem.Size = new Size(196, 26);
+            openToolStripMenuItem.Size = new Size(156, 22);
             openToolStripMenuItem.Text = "Open";
             openToolStripMenuItem.Click += openToolStripMenuItem_Click;
             // 
@@ -168,7 +167,7 @@ namespace Blobset_Tools
             // 
             gameSelectionToolStripMenuItem.Image = Properties.Resources.menu_32;
             gameSelectionToolStripMenuItem.Name = "gameSelectionToolStripMenuItem";
-            gameSelectionToolStripMenuItem.Size = new Size(196, 26);
+            gameSelectionToolStripMenuItem.Size = new Size(156, 22);
             gameSelectionToolStripMenuItem.Text = "Game Selection";
             gameSelectionToolStripMenuItem.ToolTipText = "Go back to the game selection menu.";
             gameSelectionToolStripMenuItem.Click += gameSelectionToolStripMenuItem_Click;
@@ -177,7 +176,7 @@ namespace Blobset_Tools
             // 
             exitToolStripMenuItem.Image = Properties.Resources.close_32;
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            exitToolStripMenuItem.Size = new Size(196, 26);
+            exitToolStripMenuItem.Size = new Size(156, 22);
             exitToolStripMenuItem.Text = "Exit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
@@ -185,14 +184,14 @@ namespace Blobset_Tools
             // 
             blobsetToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { extractBlobset_ToolStripMenuItem, modifyBlobset_ToolStripMenuItem, createToolStripMenuItem });
             blobsetToolStripMenuItem.Name = "blobsetToolStripMenuItem";
-            blobsetToolStripMenuItem.Size = new Size(73, 27);
+            blobsetToolStripMenuItem.Size = new Size(58, 23);
             blobsetToolStripMenuItem.Text = "Blobset";
             // 
             // extractBlobset_ToolStripMenuItem
             // 
             extractBlobset_ToolStripMenuItem.Image = Properties.Resources.extract_32;
             extractBlobset_ToolStripMenuItem.Name = "extractBlobset_ToolStripMenuItem";
-            extractBlobset_ToolStripMenuItem.Size = new Size(139, 26);
+            extractBlobset_ToolStripMenuItem.Size = new Size(112, 22);
             extractBlobset_ToolStripMenuItem.Text = "Extract";
             extractBlobset_ToolStripMenuItem.ToolTipText = "Extract all files in Blobset.";
             extractBlobset_ToolStripMenuItem.Click += extractBlobset_ToolStripMenuItem_Click;
@@ -201,7 +200,7 @@ namespace Blobset_Tools
             // 
             modifyBlobset_ToolStripMenuItem.Image = Properties.Resources.modify_32;
             modifyBlobset_ToolStripMenuItem.Name = "modifyBlobset_ToolStripMenuItem";
-            modifyBlobset_ToolStripMenuItem.Size = new Size(139, 26);
+            modifyBlobset_ToolStripMenuItem.Size = new Size(112, 22);
             modifyBlobset_ToolStripMenuItem.Text = "Modify";
             modifyBlobset_ToolStripMenuItem.ToolTipText = "Modify the original blobset file with mods.";
             modifyBlobset_ToolStripMenuItem.Click += modifyBlobset_ToolStripMenuItem_Click;
@@ -210,7 +209,7 @@ namespace Blobset_Tools
             // 
             createToolStripMenuItem.Image = Properties.Resources.create_32;
             createToolStripMenuItem.Name = "createToolStripMenuItem";
-            createToolStripMenuItem.Size = new Size(139, 26);
+            createToolStripMenuItem.Size = new Size(112, 22);
             createToolStripMenuItem.Text = "Create";
             createToolStripMenuItem.ToolTipText = "Create new update blobset file with mods.";
             createToolStripMenuItem.Click += createBlobset_ToolStripMenuItem_Click;
@@ -224,7 +223,7 @@ namespace Blobset_Tools
             gameName_toolStripTextBox.Name = "gameName_toolStripTextBox";
             gameName_toolStripTextBox.ReadOnly = true;
             gameName_toolStripTextBox.ShortcutsEnabled = false;
-            gameName_toolStripTextBox.Size = new Size(446, 27);
+            gameName_toolStripTextBox.Size = new Size(358, 23);
             gameName_toolStripTextBox.Text = "* Rugby League 26 *";
             gameName_toolStripTextBox.TextBoxTextAlign = HorizontalAlignment.Center;
             // 
@@ -232,14 +231,14 @@ namespace Blobset_Tools
             // 
             toolsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { tXPKCreatorToolStripMenuItem, m3MPCreatorToolStripMenuItem, BSBCreatorToolStripMenuItem, fileMappingEditorToolStripMenuItem });
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
-            toolsToolStripMenuItem.Size = new Size(58, 27);
+            toolsToolStripMenuItem.Size = new Size(47, 23);
             toolsToolStripMenuItem.Text = "Tools";
             // 
             // tXPKCreatorToolStripMenuItem
             // 
             tXPKCreatorToolStripMenuItem.Image = (Image)resources.GetObject("tXPKCreatorToolStripMenuItem.Image");
             tXPKCreatorToolStripMenuItem.Name = "tXPKCreatorToolStripMenuItem";
-            tXPKCreatorToolStripMenuItem.Size = new Size(223, 26);
+            tXPKCreatorToolStripMenuItem.Size = new Size(177, 22);
             tXPKCreatorToolStripMenuItem.Text = "TXPK Creator";
             tXPKCreatorToolStripMenuItem.ToolTipText = "To create DDS TXPK files.";
             tXPKCreatorToolStripMenuItem.Click += txpkCreatorToolStripMenuItem_Click;
@@ -248,7 +247,7 @@ namespace Blobset_Tools
             // 
             m3MPCreatorToolStripMenuItem.Image = (Image)resources.GetObject("m3MPCreatorToolStripMenuItem.Image");
             m3MPCreatorToolStripMenuItem.Name = "m3MPCreatorToolStripMenuItem";
-            m3MPCreatorToolStripMenuItem.Size = new Size(223, 26);
+            m3MPCreatorToolStripMenuItem.Size = new Size(177, 22);
             m3MPCreatorToolStripMenuItem.Text = "M3MP Creator";
             m3MPCreatorToolStripMenuItem.ToolTipText = "To Create M3MP files.";
             m3MPCreatorToolStripMenuItem.Click += m3mpCreatorToolStripMenuItem_Click;
@@ -257,14 +256,14 @@ namespace Blobset_Tools
             // 
             BSBCreatorToolStripMenuItem.Image = Properties.Resources.bsb_32;
             BSBCreatorToolStripMenuItem.Name = "BSBCreatorToolStripMenuItem";
-            BSBCreatorToolStripMenuItem.Size = new Size(223, 26);
+            BSBCreatorToolStripMenuItem.Size = new Size(177, 22);
             BSBCreatorToolStripMenuItem.Text = "BSB Creator";
             // 
             // fileMappingEditorToolStripMenuItem
             // 
             fileMappingEditorToolStripMenuItem.Image = Properties.Resources.file_mapping_32;
             fileMappingEditorToolStripMenuItem.Name = "fileMappingEditorToolStripMenuItem";
-            fileMappingEditorToolStripMenuItem.Size = new Size(223, 26);
+            fileMappingEditorToolStripMenuItem.Size = new Size(177, 22);
             fileMappingEditorToolStripMenuItem.Text = "File Mapping Editor";
             fileMappingEditorToolStripMenuItem.Click += fileMappingEditorToolStripMenuItem_Click;
             // 
@@ -272,14 +271,14 @@ namespace Blobset_Tools
             // 
             optionsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { updateFileMappingDataToolStripMenuItem, loadGameToolStripMenuItem, validateSteamGameFilesToolStripMenuItem, skipUnknownFilesToolStripMenuItem, restoreBackupFilesToolStripMenuItem, resetBlobsetToolStripMenuItem });
             optionsToolStripMenuItem.Name = "optionsToolStripMenuItem";
-            optionsToolStripMenuItem.Size = new Size(75, 27);
+            optionsToolStripMenuItem.Size = new Size(61, 23);
             optionsToolStripMenuItem.Text = "Options";
             // 
             // updateFileMappingDataToolStripMenuItem
             // 
             updateFileMappingDataToolStripMenuItem.Image = Properties.Resources.mapping_32;
             updateFileMappingDataToolStripMenuItem.Name = "updateFileMappingDataToolStripMenuItem";
-            updateFileMappingDataToolStripMenuItem.Size = new Size(268, 26);
+            updateFileMappingDataToolStripMenuItem.Size = new Size(211, 22);
             updateFileMappingDataToolStripMenuItem.Text = "Update File Mapping Data";
             updateFileMappingDataToolStripMenuItem.ToolTipText = "This update's the file mapping files in the data folder.";
             updateFileMappingDataToolStripMenuItem.Click += updateFileMappingDataToolStripMenuItem_Click;
@@ -289,7 +288,7 @@ namespace Blobset_Tools
             loadGameToolStripMenuItem.CheckOnClick = true;
             loadGameToolStripMenuItem.Image = Properties.Resources.loading_32;
             loadGameToolStripMenuItem.Name = "loadGameToolStripMenuItem";
-            loadGameToolStripMenuItem.Size = new Size(268, 26);
+            loadGameToolStripMenuItem.Size = new Size(211, 22);
             loadGameToolStripMenuItem.Text = "Load Game";
             loadGameToolStripMenuItem.ToolTipText = "If ticked, this will load the game after modifing the blobset.";
             loadGameToolStripMenuItem.Click += loadGameToolStripMenuItem_Click;
@@ -298,7 +297,7 @@ namespace Blobset_Tools
             // 
             validateSteamGameFilesToolStripMenuItem.Image = (Image)resources.GetObject("validateSteamGameFilesToolStripMenuItem.Image");
             validateSteamGameFilesToolStripMenuItem.Name = "validateSteamGameFilesToolStripMenuItem";
-            validateSteamGameFilesToolStripMenuItem.Size = new Size(268, 26);
+            validateSteamGameFilesToolStripMenuItem.Size = new Size(211, 22);
             validateSteamGameFilesToolStripMenuItem.Text = "Validate Steam Game Files";
             validateSteamGameFilesToolStripMenuItem.ToolTipText = "This will repair game files, If something stuffs up.";
             validateSteamGameFilesToolStripMenuItem.Click += validateSteamGameFilesToolStripMenuItem_Click;
@@ -308,7 +307,7 @@ namespace Blobset_Tools
             skipUnknownFilesToolStripMenuItem.CheckOnClick = true;
             skipUnknownFilesToolStripMenuItem.Image = Properties.Resources.skip_32;
             skipUnknownFilesToolStripMenuItem.Name = "skipUnknownFilesToolStripMenuItem";
-            skipUnknownFilesToolStripMenuItem.Size = new Size(268, 26);
+            skipUnknownFilesToolStripMenuItem.Size = new Size(211, 22);
             skipUnknownFilesToolStripMenuItem.Text = "Skip Unknown Files";
             skipUnknownFilesToolStripMenuItem.ToolTipText = "When ticked, this will skip extracting unknown file types, like meshes and animation files ect...";
             skipUnknownFilesToolStripMenuItem.Click += skipUnknownFilesToolStripMenuItem_Click;
@@ -317,7 +316,7 @@ namespace Blobset_Tools
             // 
             restoreBackupFilesToolStripMenuItem.Image = Properties.Resources.restore_backup_32;
             restoreBackupFilesToolStripMenuItem.Name = "restoreBackupFilesToolStripMenuItem";
-            restoreBackupFilesToolStripMenuItem.Size = new Size(268, 26);
+            restoreBackupFilesToolStripMenuItem.Size = new Size(211, 22);
             restoreBackupFilesToolStripMenuItem.Text = "Restore Backup Files";
             restoreBackupFilesToolStripMenuItem.ToolTipText = "This will restore the backed up files that you replaced with mods.";
             restoreBackupFilesToolStripMenuItem.Click += restoreBackupFilesToolStripMenuItem_Click;
@@ -326,7 +325,7 @@ namespace Blobset_Tools
             // 
             resetBlobsetToolStripMenuItem.Image = Properties.Resources.restore_backup_32;
             resetBlobsetToolStripMenuItem.Name = "resetBlobsetToolStripMenuItem";
-            resetBlobsetToolStripMenuItem.Size = new Size(268, 26);
+            resetBlobsetToolStripMenuItem.Size = new Size(211, 22);
             resetBlobsetToolStripMenuItem.Text = "Reset Blobset";
             resetBlobsetToolStripMenuItem.ToolTipText = "Reset blobset files to their original state.";
             resetBlobsetToolStripMenuItem.Click += resetBlobsetToolStripMenuItem_Click;
@@ -334,7 +333,7 @@ namespace Blobset_Tools
             // aboutToolStripMenuItem
             // 
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            aboutToolStripMenuItem.Size = new Size(64, 27);
+            aboutToolStripMenuItem.Size = new Size(52, 23);
             aboutToolStripMenuItem.Text = "About";
             aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
             // 
@@ -342,14 +341,15 @@ namespace Blobset_Tools
             // 
             searchToolStripTextBox.Alignment = ToolStripItemAlignment.Right;
             searchToolStripTextBox.Name = "searchToolStripTextBox";
-            searchToolStripTextBox.Size = new Size(285, 27);
+            searchToolStripTextBox.Size = new Size(229, 23);
+            searchToolStripTextBox.ToolTipText = "Search for file inside the selected folder.";
             searchToolStripTextBox.KeyDown += searchToolStripTextBox_KeyDown;
             // 
             // searchToolStripMenuItem
             // 
             searchToolStripMenuItem.Alignment = ToolStripItemAlignment.Right;
             searchToolStripMenuItem.Name = "searchToolStripMenuItem";
-            searchToolStripMenuItem.Size = new Size(67, 27);
+            searchToolStripMenuItem.Size = new Size(54, 23);
             searchToolStripMenuItem.Text = "Search";
             searchToolStripMenuItem.ToolTipText = "Searches the selected folder.";
             searchToolStripMenuItem.Click += searchToolStripMenuItem_Click;
@@ -357,8 +357,8 @@ namespace Blobset_Tools
             // splitContainer1
             // 
             splitContainer1.Dock = DockStyle.Fill;
-            splitContainer1.Location = new Point(0, 33);
-            splitContainer1.Margin = new Padding(3, 4, 3, 4);
+            splitContainer1.Location = new Point(0, 27);
+            splitContainer1.Margin = new Padding(2, 3, 2, 3);
             splitContainer1.Name = "splitContainer1";
             // 
             // splitContainer1.Panel1
@@ -368,16 +368,15 @@ namespace Blobset_Tools
             // splitContainer1.Panel2
             // 
             splitContainer1.Panel2.Controls.Add(splitContainer3);
-            splitContainer1.Size = new Size(1453, 906);
-            splitContainer1.SplitterDistance = 850;
-            splitContainer1.SplitterWidth = 5;
+            splitContainer1.Size = new Size(1162, 723);
+            splitContainer1.SplitterDistance = 679;
             splitContainer1.TabIndex = 3;
             // 
             // splitContainer2
             // 
             splitContainer2.Dock = DockStyle.Fill;
             splitContainer2.Location = new Point(0, 0);
-            splitContainer2.Margin = new Padding(3, 4, 3, 4);
+            splitContainer2.Margin = new Padding(2, 3, 2, 3);
             splitContainer2.Name = "splitContainer2";
             // 
             // splitContainer2.Panel1
@@ -387,9 +386,8 @@ namespace Blobset_Tools
             // splitContainer2.Panel2
             // 
             splitContainer2.Panel2.Controls.Add(files_listView);
-            splitContainer2.Size = new Size(850, 906);
-            splitContainer2.SplitterDistance = 266;
-            splitContainer2.SplitterWidth = 5;
+            splitContainer2.Size = new Size(679, 723);
+            splitContainer2.SplitterDistance = 212;
             splitContainer2.TabIndex = 0;
             // 
             // folder_treeView
@@ -399,9 +397,9 @@ namespace Blobset_Tools
             folder_treeView.Font = new Font("Segoe UI", 10F);
             folder_treeView.ItemHeight = 22;
             folder_treeView.Location = new Point(0, 0);
-            folder_treeView.Margin = new Padding(3, 4, 3, 4);
+            folder_treeView.Margin = new Padding(2, 3, 2, 3);
             folder_treeView.Name = "folder_treeView";
-            folder_treeView.Size = new Size(266, 906);
+            folder_treeView.Size = new Size(212, 723);
             folder_treeView.TabIndex = 0;
             folder_treeView.AfterSelect += folder_treeView_AfterSelect;
             // 
@@ -414,11 +412,11 @@ namespace Blobset_Tools
             files_listView.HeaderStyle = ColumnHeaderStyle.None;
             files_listView.LabelWrap = false;
             files_listView.Location = new Point(0, 0);
-            files_listView.Margin = new Padding(3, 4, 3, 4);
+            files_listView.Margin = new Padding(2, 3, 2, 3);
             files_listView.MultiSelect = false;
             files_listView.Name = "files_listView";
             files_listView.ShowGroups = false;
-            files_listView.Size = new Size(579, 906);
+            files_listView.Size = new Size(463, 723);
             files_listView.TabIndex = 0;
             files_listView.UseCompatibleStateImageBehavior = false;
             files_listView.View = View.List;
@@ -430,7 +428,7 @@ namespace Blobset_Tools
             // 
             splitContainer3.Dock = DockStyle.Fill;
             splitContainer3.Location = new Point(0, 0);
-            splitContainer3.Margin = new Padding(3, 4, 3, 4);
+            splitContainer3.Margin = new Padding(2, 3, 2, 3);
             splitContainer3.Name = "splitContainer3";
             splitContainer3.Orientation = Orientation.Horizontal;
             // 
@@ -441,9 +439,8 @@ namespace Blobset_Tools
             // splitContainer3.Panel2
             // 
             splitContainer3.Panel2.Controls.Add(dds_pictureBox);
-            splitContainer3.Size = new Size(598, 906);
-            splitContainer3.SplitterDistance = 523;
-            splitContainer3.SplitterWidth = 5;
+            splitContainer3.Size = new Size(479, 723);
+            splitContainer3.SplitterDistance = 417;
             splitContainer3.TabIndex = 0;
             // 
             // fileInfo_richTextBox
@@ -453,10 +450,10 @@ namespace Blobset_Tools
             fileInfo_richTextBox.Font = new Font("Segoe UI", 11F);
             fileInfo_richTextBox.ForeColor = Color.DodgerBlue;
             fileInfo_richTextBox.Location = new Point(0, 0);
-            fileInfo_richTextBox.Margin = new Padding(3, 4, 3, 4);
+            fileInfo_richTextBox.Margin = new Padding(2, 3, 2, 3);
             fileInfo_richTextBox.Name = "fileInfo_richTextBox";
             fileInfo_richTextBox.ReadOnly = true;
-            fileInfo_richTextBox.Size = new Size(598, 523);
+            fileInfo_richTextBox.Size = new Size(479, 417);
             fileInfo_richTextBox.TabIndex = 0;
             fileInfo_richTextBox.Text = "";
             fileInfo_richTextBox.MouseClick += fileInfo_richTextBox_MouseClick;
@@ -466,10 +463,10 @@ namespace Blobset_Tools
             // 
             dds_pictureBox.Dock = DockStyle.Fill;
             dds_pictureBox.Location = new Point(0, 0);
-            dds_pictureBox.Margin = new Padding(3, 4, 3, 4);
-            dds_pictureBox.MaximumSize = new Size(914, 1067);
+            dds_pictureBox.Margin = new Padding(2, 3, 2, 3);
+            dds_pictureBox.MaximumSize = new Size(731, 854);
             dds_pictureBox.Name = "dds_pictureBox";
-            dds_pictureBox.Size = new Size(598, 378);
+            dds_pictureBox.Size = new Size(479, 302);
             dds_pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             dds_pictureBox.TabIndex = 0;
             dds_pictureBox.TabStop = false;
@@ -480,21 +477,21 @@ namespace Blobset_Tools
             extractImage_contextMenuStrip.ImageScalingSize = new Size(20, 20);
             extractImage_contextMenuStrip.Items.AddRange(new ToolStripItem[] { extractToolStripMenuItem });
             extractImage_contextMenuStrip.Name = "extract_contextMenuStrip";
-            extractImage_contextMenuStrip.Size = new Size(128, 30);
+            extractImage_contextMenuStrip.Size = new Size(114, 30);
             // 
             // extractToolStripMenuItem
             // 
             extractToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { ddsFileToolStripMenuItem, pngFileToolStripMenuItem });
             extractToolStripMenuItem.Image = Properties.Resources.extract_32;
             extractToolStripMenuItem.Name = "extractToolStripMenuItem";
-            extractToolStripMenuItem.Size = new Size(127, 26);
+            extractToolStripMenuItem.Size = new Size(113, 26);
             extractToolStripMenuItem.Text = "Extract";
             // 
             // ddsFileToolStripMenuItem
             // 
             ddsFileToolStripMenuItem.Image = Properties.Resources.dds_32;
             ddsFileToolStripMenuItem.Name = "ddsFileToolStripMenuItem";
-            ddsFileToolStripMenuItem.Size = new Size(149, 26);
+            ddsFileToolStripMenuItem.Size = new Size(119, 22);
             ddsFileToolStripMenuItem.Text = "DDS File";
             ddsFileToolStripMenuItem.Click += ddsFileToolStripMenuItem_Click;
             // 
@@ -502,7 +499,7 @@ namespace Blobset_Tools
             // 
             pngFileToolStripMenuItem.Image = Properties.Resources.png_32;
             pngFileToolStripMenuItem.Name = "pngFileToolStripMenuItem";
-            pngFileToolStripMenuItem.Size = new Size(149, 26);
+            pngFileToolStripMenuItem.Size = new Size(119, 22);
             pngFileToolStripMenuItem.Text = "PNG File";
             pngFileToolStripMenuItem.Click += pngFileToolStripMenuItem_Click;
             // 
@@ -511,21 +508,21 @@ namespace Blobset_Tools
             extractSoundFile_contextMenuStrip.ImageScalingSize = new Size(20, 20);
             extractSoundFile_contextMenuStrip.Items.AddRange(new ToolStripItem[] { extractSoundToolStripMenuItem });
             extractSoundFile_contextMenuStrip.Name = "extractFile_contextMenuStrip";
-            extractSoundFile_contextMenuStrip.Size = new Size(128, 30);
+            extractSoundFile_contextMenuStrip.Size = new Size(114, 30);
             // 
             // extractSoundToolStripMenuItem
             // 
             extractSoundToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { wemFileToolStripMenuItem, oggFileToolStripMenuItem, wavFileToolStripMenuItem });
             extractSoundToolStripMenuItem.Image = Properties.Resources.extract_32;
             extractSoundToolStripMenuItem.Name = "extractSoundToolStripMenuItem";
-            extractSoundToolStripMenuItem.Size = new Size(127, 26);
+            extractSoundToolStripMenuItem.Size = new Size(113, 26);
             extractSoundToolStripMenuItem.Text = "Extract";
             // 
             // wemFileToolStripMenuItem
             // 
             wemFileToolStripMenuItem.Image = Properties.Resources.wem_32;
             wemFileToolStripMenuItem.Name = "wemFileToolStripMenuItem";
-            wemFileToolStripMenuItem.Size = new Size(153, 26);
+            wemFileToolStripMenuItem.Size = new Size(123, 22);
             wemFileToolStripMenuItem.Text = "Wem File";
             wemFileToolStripMenuItem.Click += wemFileToolStripMenuItem_Click;
             // 
@@ -533,7 +530,7 @@ namespace Blobset_Tools
             // 
             oggFileToolStripMenuItem.Image = Properties.Resources.ogg_32;
             oggFileToolStripMenuItem.Name = "oggFileToolStripMenuItem";
-            oggFileToolStripMenuItem.Size = new Size(153, 26);
+            oggFileToolStripMenuItem.Size = new Size(123, 22);
             oggFileToolStripMenuItem.Text = "Ogg File";
             oggFileToolStripMenuItem.Click += oggFileToolStripMenuItem_Click;
             // 
@@ -541,7 +538,7 @@ namespace Blobset_Tools
             // 
             wavFileToolStripMenuItem.Image = Properties.Resources.wav_32;
             wavFileToolStripMenuItem.Name = "wavFileToolStripMenuItem";
-            wavFileToolStripMenuItem.Size = new Size(153, 26);
+            wavFileToolStripMenuItem.Size = new Size(123, 22);
             wavFileToolStripMenuItem.Text = "Wav File";
             wavFileToolStripMenuItem.Click += wavFileToolStripMenuItem_Click;
             // 
@@ -550,13 +547,13 @@ namespace Blobset_Tools
             SaveLog_contextMenuStrip.ImageScalingSize = new Size(20, 20);
             SaveLog_contextMenuStrip.Items.AddRange(new ToolStripItem[] { saveLogTotxtToolStripMenuItem });
             SaveLog_contextMenuStrip.Name = "SaveLog_contextMenuStrip";
-            SaveLog_contextMenuStrip.Size = new Size(187, 30);
+            SaveLog_contextMenuStrip.Size = new Size(161, 30);
             // 
             // saveLogTotxtToolStripMenuItem
             // 
             saveLogTotxtToolStripMenuItem.Image = Properties.Resources.save_32;
             saveLogTotxtToolStripMenuItem.Name = "saveLogTotxtToolStripMenuItem";
-            saveLogTotxtToolStripMenuItem.Size = new Size(186, 26);
+            saveLogTotxtToolStripMenuItem.Size = new Size(160, 26);
             saveLogTotxtToolStripMenuItem.Text = "Save Log To .txt";
             saveLogTotxtToolStripMenuItem.Click += saveLogTotxtToolStripMenuItem_Click;
             // 
@@ -565,13 +562,13 @@ namespace Blobset_Tools
             flipImage_contextMenuStrip.ImageScalingSize = new Size(20, 20);
             flipImage_contextMenuStrip.Items.AddRange(new ToolStripItem[] { flipImageToolStripMenuItem, alphaToolStripMenuItem });
             flipImage_contextMenuStrip.Name = "flipImage_contextMenuStrip";
-            flipImage_contextMenuStrip.Size = new Size(153, 56);
+            flipImage_contextMenuStrip.Size = new Size(134, 56);
             // 
             // flipImageToolStripMenuItem
             // 
             flipImageToolStripMenuItem.Image = Properties.Resources.flip_image_32;
             flipImageToolStripMenuItem.Name = "flipImageToolStripMenuItem";
-            flipImageToolStripMenuItem.Size = new Size(152, 26);
+            flipImageToolStripMenuItem.Size = new Size(133, 26);
             flipImageToolStripMenuItem.Text = "Flip Image";
             flipImageToolStripMenuItem.Click += flipImageToolStripMenuItem_Click;
             // 
@@ -582,7 +579,7 @@ namespace Blobset_Tools
             alphaToolStripMenuItem.CheckState = CheckState.Checked;
             alphaToolStripMenuItem.Image = Properties.Resources.alpha_32;
             alphaToolStripMenuItem.Name = "alphaToolStripMenuItem";
-            alphaToolStripMenuItem.Size = new Size(152, 26);
+            alphaToolStripMenuItem.Size = new Size(133, 26);
             alphaToolStripMenuItem.Text = "Alpha";
             alphaToolStripMenuItem.Click += alphaToolStripMenuItem_Click;
             // 
@@ -591,21 +588,21 @@ namespace Blobset_Tools
             extractDatFilecontextMenuStrip.ImageScalingSize = new Size(20, 20);
             extractDatFilecontextMenuStrip.Items.AddRange(new ToolStripItem[] { extractDatToolStripMenuItem });
             extractDatFilecontextMenuStrip.Name = "extractFile_contextMenuStrip";
-            extractDatFilecontextMenuStrip.Size = new Size(128, 30);
+            extractDatFilecontextMenuStrip.Size = new Size(114, 30);
             // 
             // extractDatToolStripMenuItem
             // 
             extractDatToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { datFileToolStripMenuItem });
             extractDatToolStripMenuItem.Image = Properties.Resources.extract_32;
             extractDatToolStripMenuItem.Name = "extractDatToolStripMenuItem";
-            extractDatToolStripMenuItem.Size = new Size(127, 26);
+            extractDatToolStripMenuItem.Size = new Size(113, 26);
             extractDatToolStripMenuItem.Text = "Extract";
             // 
             // datFileToolStripMenuItem
             // 
             datFileToolStripMenuItem.Image = Properties.Resources.dat_32;
             datFileToolStripMenuItem.Name = "datFileToolStripMenuItem";
-            datFileToolStripMenuItem.Size = new Size(143, 26);
+            datFileToolStripMenuItem.Size = new Size(113, 22);
             datFileToolStripMenuItem.Text = "Dat File";
             datFileToolStripMenuItem.Click += datFileToolStripMenuItem_Click;
             // 
@@ -619,16 +616,16 @@ namespace Blobset_Tools
             // 
             // MainForm
             // 
-            AutoScaleDimensions = new SizeF(120F, 120F);
+            AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
-            ClientSize = new Size(1453, 967);
+            ClientSize = new Size(1162, 774);
             Controls.Add(splitContainer1);
             Controls.Add(statusStrip1);
             Controls.Add(menuStrip1);
             DoubleBuffered = true;
             Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
-            Margin = new Padding(3, 4, 3, 4);
+            Margin = new Padding(2, 3, 2, 3);
             Name = "MainForm";
             Text = "Blobset Tools";
             FormClosing += MainForm_FormClosing;
