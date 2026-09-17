@@ -791,12 +791,21 @@ namespace Blobset_Tools
                 string filePathRemove = modsFolder + "\\";
                 string backupFilePath = Path.Combine(basePath, "backup");
 
-                string gameLocation = Path.GetDirectoryName(blobsetFile);
+                string? gameLocation = Path.GetDirectoryName(blobsetFile);
 
+                if (string.IsNullOrEmpty(gameLocation))
+                {
+                    MessageBox.Show("Game Location was Null or Empty", "File Mapping Data Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return true;
+                }
+
+                // DDS Files
                 for (int i = 0; i < fileLists["dds"].Length; i++)
                 {
                     FileMapping fm = Utilities.GetFileMappingIndex(fileLists["dds"][i].Replace(filePathRemove, string.Empty), fileMapping);
-                    fm = Utilities.GetBlobsetHeaderDataIndex(fm);
+
+                    if (fm != null)
+                        fm = Utilities.GetBlobsetHeaderDataIndex(fm);
 
                     if (fm == null)
                     {
@@ -850,6 +859,7 @@ namespace Blobset_Tools
                     if (writer != null) { writer.Dispose(); writer = null; }
                 }
 
+                // TXPK Files
                 for (int i = 0; i < fileLists["txpk"].Length; i++)
                 {
                     if (!File.Exists(fileLists["txpk"][i].Replace(".txpk", ".xml")))
@@ -865,17 +875,6 @@ namespace Blobset_Tools
                         MessageBox.Show($"{fileLists["txpk"][i].Replace(".txpk", ".xml")} - XmlDeserialize failed.", "Modify XML Info Was Null", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
-
-                    /*
-                    FileMapping fm = Utilities.GetFileMappingIndex(txpkXmlInfo.Index, fileMapping);
-                    fm = Utilities.GetBlobsetHeaderDataIndex(fm);
-
-                    if (fm == null)
-                    {
-                        MessageBox.Show($"{fileLists["txpk"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return true;
-                    }
-                    */
 
                     string folderName = txpkXmlInfo.FolderHash;
                     string fileName = txpkXmlInfo.FileNameHash;
@@ -928,6 +927,7 @@ namespace Blobset_Tools
                     if (writer != null) { writer.Dispose(); writer = null; }
                 }
 
+                // M3MP Files
                 for (int i = 0; i < fileLists["m3mp"].Length; i++)
                 {
                     Reader? br = new(fileLists["m3mp"][i]);
@@ -939,17 +939,6 @@ namespace Blobset_Tools
                         MessageBox.Show($"{fileLists["m3mp"][i].Replace(".m3mp", ".xml")} - XmlDeserialize failed.", "Modify XML Info Was Null", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return true;
                     }
-
-                    /*
-                    FileMapping fm = Utilities.GetFileMappingIndex(m3mpFileInfo.Index, fileMapping);
-                    fm = Utilities.GetBlobsetHeaderDataIndex(fm);
-
-                    if (fm == null)
-                    {
-                        MessageBox.Show($"{fileLists["m3mp"][i]} - fileIndex can't be found, make sure it's in the correct location.", "File Index Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return true;
-                    }
-                    */
 
                     string folderName = m3mpFileInfo.FolderHash;
                     string fileName = m3mpFileInfo.FileNameHash;
@@ -986,10 +975,13 @@ namespace Blobset_Tools
                     if (writer != null) { writer.Dispose(); writer = null; }
                 }
 
+                // WEM Files
                 for (int i = 0; i < fileLists["wem"].Length; i++)
                 {
                     FileMapping fm = Utilities.GetFileMappingIndex(fileLists["wem"][i].Replace(filePathRemove, string.Empty), fileMapping);
-                    fm = Utilities.GetBlobsetHeaderDataIndex(fm);
+
+                    if (fm != null)
+                        fm = Utilities.GetBlobsetHeaderDataIndex(fm);
 
                     if (fm == null)
                     {
@@ -1037,7 +1029,9 @@ namespace Blobset_Tools
                 for (int i = 0; i < fileLists["bnk"].Length; i++)
                 {
                     FileMapping fm = Utilities.GetFileMappingIndex(fileLists["bnk"][i].Replace(filePathRemove, string.Empty), fileMapping);
-                    fm = Utilities.GetBlobsetHeaderDataIndex(fm);
+
+                    if (fm != null)
+                        fm = Utilities.GetBlobsetHeaderDataIndex(fm);
 
                     if (fm == null)
                     {
@@ -1109,7 +1103,7 @@ namespace Blobset_Tools
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error occurred, report it to Wouldy : \n\nFile: {_filePath} \n\n {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy : \n\n {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                 return true;
             }
             finally

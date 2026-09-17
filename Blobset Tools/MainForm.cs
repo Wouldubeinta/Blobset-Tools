@@ -819,7 +819,7 @@ namespace Blobset_Tools
                 if (loadGameCheck)
                 {
                     Process? ps = null;
-                    string steamLocation = UI.getSteamLocation();
+                    string steamLocation = UI.GetSteamLocation();
 
                     if (!string.IsNullOrEmpty(steamLocation))
                     {

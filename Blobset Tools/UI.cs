@@ -468,7 +468,7 @@ namespace Blobset_Tools
             return rootNode;
         }
 
-        public static string getSteamLocation()
+        public static string GetSteamLocation()
         {
             RegistryKey? key = null;
             string? value = string.Empty;
@@ -500,68 +500,63 @@ namespace Blobset_Tools
             return value;
         }
 
-        public static string getSteamGamesLocation()
+        public static string GetSteamGamesLocation()
         {
-            RegistryKey? key = null;
-            string value = string.Empty;
-
             try
             {
-                key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Wow6432Node\Valve\Steam", false);
-
-                if (key != null)
+                string steamPath = GetSteamLocation();
+                if (string.IsNullOrEmpty(steamPath))
                 {
-                    object? steamPath = key.GetValue("InstallPath", null);
+                    return string.Empty;
+                }
 
-                    if (steamPath != null)
+                // Define primary and fallback paths for libraryfolders.vdf
+                string libraryFoldersPath = Path.Combine(steamPath, "steamapps", "libraryfolders.vdf");
+                if (!File.Exists(libraryFoldersPath))
+                {
+                    libraryFoldersPath = Path.Combine(steamPath, "config", "libraryfolders.vdf");
+                }
+
+                if (!File.Exists(libraryFoldersPath))
+                {
+                    return string.Empty;
+                }
+
+                // Parse VDF directly into a VObject using Gameloop.Vdf without JSON conversion
+                string vdfContent = File.ReadAllText(libraryFoldersPath);
+                VProperty root = VdfConvert.Deserialize(vdfContent);
+                VObject? libraryFolders = root.Value as VObject;
+
+                if (libraryFolders == null)
+                {
+                    return string.Empty;
+                }
+
+                string targetGameId = Global.gameInfo.SteamGameId.ToString();
+
+                // Iterate through each library folder index (0, 1, 2, etc.)
+                foreach (var folderProperty in libraryFolders.Properties())
+                {
+                    if (folderProperty.Value is VObject folderData)
                     {
-                        string libararyFoldersPath = Path.Combine(steamPath.ToString(), "steamapps", "libraryfolders.vdf");
+                        // Access the "apps" object inside the folder
+                        var apps = folderData["apps"] as VObject;
 
-                        if (!File.Exists(libararyFoldersPath))
-                            libararyFoldersPath = Path.Combine(steamPath.ToString(), "config", "libraryfolders.vdf");
-
-                        if (File.Exists(libararyFoldersPath))
+                        // Check if the specific Steam Game ID exists as a key in this apps list
+                        if (apps != null && apps.ContainsKey(targetGameId))
                         {
-                            VProperty libraryfolders_vdf = VdfConvert.Deserialize(File.ReadAllText(libararyFoldersPath));
-                            string slf = libraryfolders_vdf.ToJson().ToString();
-                            SteamLibraryFolders? libraryFolders = System.Text.Json.JsonSerializer.Deserialize<SteamLibraryFolders>("{" + slf + "}");
-
-                            bool hasGameId = false;
-
-                            foreach (var libraryFolder in libraryFolders.LibraryFolders)
-                            {
-                                foreach (var app in libraryFolder.Value.Apps)
-                                {
-                                    if (app.Key.ToString() == Global.gameInfo.SteamGameId.ToString())
-                                    {
-                                        hasGameId = true;
-                                        break;
-                                    }
-                                }
-
-                                if (hasGameId)
-                                {
-                                    value = libraryFolder.Value.Path;
-                                    break;
-                                }
-                            }
+                            // Return the corresponding "path" value
+                            return folderData["path"]?.ToString() ?? string.Empty;
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error occurred, report it to Wouldy : {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show($"Error occurred, report it to Wouldy: {ex.Message}", "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
             }
-            finally
-            {
-                if (key != null)
-                {
-                    key.Close();
-                    key = null;
-                }
-            }
-            return value;
+
+            return string.Empty;
         }
 
         public static void ValidateSteamGame()
@@ -574,7 +569,7 @@ namespace Blobset_Tools
                 return;
             }
 
-            string steamLocation = getSteamLocation();
+            string steamLocation = GetSteamLocation();
 
             if (steamLocation != string.Empty)
             {

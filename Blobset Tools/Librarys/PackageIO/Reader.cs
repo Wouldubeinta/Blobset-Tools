@@ -5,12 +5,15 @@
     using System.IO;
     using System.Text;
 
-    public class Reader
+    public class Reader : IDisposable
     {
         public Endian CurrentEndian;
         public long LastPosition;
         private readonly Stream? OpenStream;
         private readonly BinaryReader? br;
+
+        // Track whether Dispose has already been called
+        private bool _disposed = false;
 
         public Reader(FileStream Package, Endian EndianType = Endian.Little, long Position = 0)
         {
@@ -67,20 +70,46 @@
             CurrentEndian = EndianType;
         }
 
+        // Public Implementation of IDisposable
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        // Protected implementation for extensibility in derived classes
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Clean up managed resources
+                    Flush();
+                    br?.Dispose();          // BinaryReader.Dispose() automatically closes the stream
+                    OpenStream?.Dispose();  // Safeguard to ensure the stream is also disposed
+                }
+
+                _disposed = true;
+            }
+        }
+
+        // Keep Close() for compatibility, routing it directly to Dispose
         public void Close()
         {
-            Flush();
-            br.Close();
-            OpenStream.Close();
+            Dispose();
         }
 
         public void Flush()
         {
-            OpenStream.Flush();
+            // Throw if someone tries to use the object after disposal
+            if (_disposed) throw new ObjectDisposedException(nameof(Reader));
+            OpenStream?.Flush();
         }
 
         public byte PeekByte()
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(Reader));
             byte num = ReadByte();
             Position = LastPosition;
             return num;
@@ -93,6 +122,7 @@
 
         public byte[] PeekBytes(int Length, Endian EndianType)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(Reader));
             byte[] buffer = ReadBytes(Length, CurrentEndian);
             Position = LastPosition;
             return buffer;
@@ -100,6 +130,7 @@
 
         public char PeekChar()
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(Reader));
             char ch = ReadChar();
             Position = LastPosition;
             return ch;
@@ -107,6 +138,7 @@
 
         public char[] PeekChars(int Length)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(Reader));
             char[] chArray = ReadChars(Length);
             Position = LastPosition;
             return chArray;
@@ -119,6 +151,7 @@
 
         public string PeekHex(int Length, Endian EndianType)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(Reader));
             string str = ReadHexString(Length, EndianType);
             Position = LastPosition;
             return str;
@@ -126,6 +159,7 @@
 
         public string PeekString(int Length)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(Reader));
             string str = ReadString(Length);
             Position = LastPosition;
             return str;
@@ -138,6 +172,7 @@
 
         public string PeekUnicode(int Length, Endian EndianType)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(Reader));
             string str = ReadUnicodeString(Length, EndianType);
             Position = LastPosition;
             return str;
@@ -190,6 +225,7 @@
 
         public byte[] ReadBytes(int Length, Endian EndianType)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(Reader));
             LastPosition = OpenStream.Position;
             byte[] buffer = br.ReadBytes(Length);
             if (EndianType == Endian.Big)

@@ -245,7 +245,10 @@ IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL ANY C
 If the disclaimer of warranty and limitation of liability provided above cannot be given local legal effect according to their terms, reviewing courts shall apply local law that most closely approximates an absolute waiver of all civil liability in connection with the Program, unless a warranty or assumption of liability accompanies a copy of the Program in return for a fee.</value>
   </data>
   <data name="changelog_richTextBox.Text" xml:space="preserve">
-    <value>-1.1.9.45-
+    <value>-1.1.10.48-
+* There was a small bug in the File Mapping code on large m3mp files, which affected Tiebreak completing it's file mapping, the problem has been fixed.
+
+-1.1.9.45-
 * Resolved an issue where the Steam game folder and the Steam installation directory were set to the same location. This configuration caused conflicts with the 'Load Game' function when games were stored within the SteamLibrary folder.
 * You don't need to update the file mapping for straight-up game updates anymore—only if new files are actually added to the blobset. This should fix those random game crashes, after an update! Just remember, you still need to restore your backup files before an update, or run the "Modify Blobset" tool again right after.
 * Minor improvements.

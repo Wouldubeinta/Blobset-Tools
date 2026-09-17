@@ -1,5 +1,6 @@
 ﻿using Blobset_Tools;
 using PackageIO;
+using static Blobset_Tools.Enums;
 
 namespace BlobsetIO
 {
@@ -50,6 +51,8 @@ namespace BlobsetIO
             public string FolderHashName = string.Empty;
             public string FileHashName = string.Empty;
 
+            public uint FileIndex = 0;
+
             public uint MainFinalOffSet = 0;
             public uint MainCompressedSize = 0;
             public uint MainUnCompressedSize = 0;
@@ -60,7 +63,7 @@ namespace BlobsetIO
         }
 
         #region Properties
-        public byte[] SHA1Hash
+        public byte[]? SHA1Hash
         {
             get { return sHA1Hash; }
             set { sHA1Hash = value; }
@@ -183,6 +186,44 @@ namespace BlobsetIO
         }
         #endregion
 
+        #region "WBST_Deserialize"
+        /// <summary>
+        /// Deserialize Wouldys Blobset Tools Table stream
+        /// </summary>
+        /// <param name="input">Input stream</param>
+        public void WBST_Deserialize(Reader input) 
+        {
+            Magic = input.ReadUInt32();
+
+            if (Magic != 1414742615) // WBST
+            {
+                MessageBox.Show("This isn't a Wouldys Blobset Tools Table File", "Wrong Magic", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            FilesCount = input.ReadUInt32();
+
+            Entries = new Entry[FilesCount];
+
+            for (int i = 0; i < FilesCount; i++) 
+            {
+                Entries[i] = new Entry();
+
+                Entries[i].FileIndex = input.ReadUInt32();
+                ulong fileFolderHashName = input.ReadUInt64();
+                byte[] intBytes = BitConverter.GetBytes(fileFolderHashName);
+                string folderName = string.Format("{0:x2}", intBytes[7]);
+                string fileName = string.Format("{0:x2}{1:x2}{2:x2}{3:x2}{4:x2}{5:x2}{6:x2}", intBytes[6], intBytes[5], intBytes[4], intBytes[3], intBytes[2], intBytes[1], intBytes[0]);
+                Entries[i].FolderHashName = folderName;
+                Entries[i].FileHashName = fileName;
+                Entries[i].MainCompressedSize = input.ReadUInt32();
+                Entries[i].MainUnCompressedSize = input.ReadUInt32();
+                Entries[i].VramCompressedSize = input.ReadUInt32();
+                Entries[i].VramUnCompressedSize = input.ReadUInt32();
+            }
+        }
+        #endregion
+
         #region "Serialize"
         /// <summary>
         /// Serialize Blobset stream v4
@@ -190,17 +231,14 @@ namespace BlobsetIO
         /// <param name="output">Blobset output stream</param>
         public void Serialize(Writer output)
         {
-            output.WriteUInt32(1112493122); // BLOB
+            output.WriteUInt32(1414742615); // WBST
             output.WriteUInt32(FilesCount);
 
             for (int i = 0; i < FilesCount; i++)
             {
+                output.WriteUInt32(Entries[i].FileIndex);
                 output.WriteHexString(Entries[i].FolderHashName);
                 output.WriteHexString(Entries[i].FileHashName);
-            }
-
-            for (int i = 0; i < FilesCount; i++)
-            {
                 output.WriteUInt32(Entries[i].MainCompressedSize);
                 output.WriteUInt32(Entries[i].MainUnCompressedSize);
                 output.WriteUInt32(Entries[i].VramCompressedSize);

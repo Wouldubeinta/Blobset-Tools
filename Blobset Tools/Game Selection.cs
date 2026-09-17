@@ -509,12 +509,12 @@ namespace Blobset_Tools
             if (!File.Exists(iniPath)) 
                 throw new Exception("GameInfo.ini not found");
 
-            string steamLocation = @"C:\Program Files (x86)\Steam";
+            string steamLocation = string.Empty;
             IniFile iniFile = new(iniPath);
 
             try 
             {
-                steamLocation = UI.getSteamGamesLocation();
+                steamLocation = UI.GetSteamGamesLocation();
                 string gameLocation = Path.Combine(steamLocation, "steamapps", "common", game);
 
                 // Check if the Steam location is valid

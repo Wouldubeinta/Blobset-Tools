@@ -775,12 +775,12 @@ namespace Blobset_Tools
 
                 /*
                 // For testing purposes
-                string folderName1 = blobset.Entries[62292].FolderHashName;
-                string fileName1 = blobset.Entries[62292].FileHashName;
-                uint mainCompressedSize1 = blobset.Entries[62292].MainCompressedSize;
-                uint mainUnCompressedSize1 = blobset.Entries[62292].MainUnCompressedSize;
-                uint vramCompressedSize1 = blobset.Entries[62292].VramCompressedSize;
-                uint vramUnCompressedSize1 = blobset.Entries[62292].VramUnCompressedSize;
+                string folderName1 = blobset.Entries[38848].FolderHashName;
+                string fileName1 = blobset.Entries[38848].FileHashName;
+                uint mainCompressedSize1 = blobset.Entries[38848].MainCompressedSize;
+                uint mainUnCompressedSize1 = blobset.Entries[38848].MainUnCompressedSize;
+                uint vramCompressedSize1 = blobset.Entries[38848].VramCompressedSize;
+                uint vramUnCompressedSize1 = blobset.Entries[38848].VramUnCompressedSize;
                 List<string> files = new List<string>();
                 files.Add("Folder: " + folderName1);
                 files.Add("File: " + fileName1);
@@ -823,6 +823,7 @@ namespace Blobset_Tools
                     string folderName = blobset.Entries[i].FolderHashName;
                     string fileName = blobset.Entries[i].FileHashName;
                     string filePath = $@"{Functions.GetDirectory(blobsetfile)}\{folderName}\{fileName}";
+
                     _filePath = filePath;
 
                     if (File.Exists(filePath))
@@ -1079,10 +1080,11 @@ namespace Blobset_Tools
                                         case (int)Enums.FileType.M3MP:
                                             string m3mpName = Path.Combine("m3mp", "compressed", $"{i}.m3mp");
 
-                                            List<byte[]> m3mpHeaderChunk = new(3);
+                                            List<byte[]> m3mpHeaderChunk = new(4);
                                             int m3mpHeaderSize = 0;
+                                            int m3mpChunkSize = mainUnCompressedSize > 9000000 ? 4 : 3;
 
-                                            for (int j = 0; j < 3; j++)
+                                            for (int j = 0; j < m3mpChunkSize; j++)
                                             {
                                                 int m3mpCompressedSize = blobsetContent_br.ReadInt32();
                                                 int m3mpTmp = m3mpCompressedSize -= 4;
