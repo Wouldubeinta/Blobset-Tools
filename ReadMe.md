@@ -1,4 +1,4 @@
-![Title Image](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/title.jpg?raw=true)
+![Title Image](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/image.jpg?raw=true)
 
 # Blobset Tools
 
@@ -140,7 +140,7 @@ Use **Options > Open Data Folder** to open it. Uninstalling Blobset Tools leaves
 Pick the system platform (PC, PS3 or Xbox 360), select your game and click **Load Blobset Tools**. The first time,
 Blobset Tools asks you to find the game's blobset file (e.g. `data-0.blobset.pc`); it's remembered after that.
 
-![Image 1](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/1.jpg?raw=true)
+![Image 1](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/1.jpg?raw=true)
 
 ### First-Time Setup
 
@@ -156,7 +156,7 @@ does this by itself when there's no mapping yet or the game was updated.)
 - Select the game and platform on the game selection screen; Blobset Tools asks for the blobset file to load.
 - To return to the main game selection screen, select **File > Game Selection**.
 
-![Image 2](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/2.jpg?raw=true)
+![Image 2](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/2.jpg?raw=true)
 
 ---
 
@@ -176,17 +176,17 @@ Files panel scrolls it left / right.
   - `.str`, `.lua`, `.txt` as text
   - anything else in the Hex Viewer
 
-![Image 3](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/3.jpg?raw=true)
+![Image 3](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/3.jpg?raw=true)
 
 - **Right-click** a file to **Save As...** (DDS or PNG for textures, WEM or WAV for audio).
 
-![Image 4](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/4.jpg?raw=true)
+![Image 4](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/4.jpg?raw=true)
 
 ### Image Preview
 
 - Right-click the image preview to **Flip Image** or toggle the **Alpha** channel.
 
-![Image 5](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/5.jpg?raw=true)
+![Image 5](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/5.jpg?raw=true)
 
 ### Extracting Files
 
@@ -208,7 +208,7 @@ To extract all files, click **Extract**. The files are saved to:
 > **$$\color{red}Important:$$** Make sure the main blobset file is loaded before creating a new one; don't have the
 > update (DLC) blobset loaded.
 
-![Image 6](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/6.jpg?raw=true)
+![Image 6](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/6.jpg?raw=true)
 
 ---
 
@@ -224,7 +224,7 @@ To extract all files, click **Extract**. The files are saved to:
 3. **Extract the TXPK**:
    - Click **Extract All** (or **Extract Selected**) and choose the `txpk` folder above.
 
-![Image 7](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/7.jpg?raw=true)
+![Image 7](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/7.jpg?raw=true)
 
 4. **Modify DDS Files**:
    - Edit the `.dds` files in the `txpk` folder.
@@ -234,9 +234,9 @@ To extract all files, click **Extract**. The files are saved to:
      **`Documents\Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (pc-ps3-xbox360)>\mods\dds_txpk\`**
    - You can name the TXPK file as you wish, but the matching `.xml` file must have the same name.
 
-![Image 8](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/8.jpg?raw=true)
+![Image 8](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/8.jpg?raw=true)
 
-![Image 9](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/9.jpg?raw=true)
+![Image 9](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/9.jpg?raw=true)
 
 ### Creating an M3MP File
 
@@ -251,7 +251,7 @@ To extract all files, click **Extract**. The files are saved to:
 3. **Extract the M3MP File**:
    - Click **Extract All** (or **Extract Selected**) and choose the `m3mp` folder above.
 
-![Image 10](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/10.jpg?raw=true)
+![Image 10](https://github.com/Wouldubeinta/Blobset-Tools/qt6_master/readme/10.jpg?raw=true)
 
 4. **Modify the Extracted Files** in the `m3mp` folder.
 
@@ -261,7 +261,7 @@ To extract all files, click **Extract**. The files are saved to:
      (if it was extracted from the uncompressed folder).
    - You can name the `.m3mp` file as you wish, but the matching `.xml` file must have the same name.
 
-![Image 11](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/11.jpg?raw=true)
+![Image 11](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/11.jpg?raw=true)
 
 ### BSB Creator
 
@@ -308,8 +308,7 @@ Blobset-Tools.exe --game "Rugby League Live 3" --restore
 
 ## Options
 
-![Image 12](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/12.jpg?raw=true)
-![Image 13](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/13.jpg?raw=true)
+![Image 12](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/12.jpg?raw=true)
 
 - **Update File Mapping Data**: Maps all files in the blobset so Blobset Tools knows each file. It runs by itself the
   first time and after a game update.
