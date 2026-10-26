@@ -251,7 +251,7 @@ To extract all files, click **Extract**. The files are saved to:
 3. **Extract the M3MP File**:
    - Click **Extract All** (or **Extract Selected**) and choose the `m3mp` folder above.
 
-![Image 10](https://github.com/Wouldubeinta/Blobset-Tools/qt6_master/readme/10.jpg?raw=true)
+![Image 10](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/10.jpg?raw=true)
 
 4. **Modify the Extracted Files** in the `m3mp` folder.
 
