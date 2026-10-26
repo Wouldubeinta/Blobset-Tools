@@ -288,6 +288,162 @@ namespace BlobsetIO
         }
         #endregion
 
+        #region "Serialize"
+        /// <summary>
+        /// Serialize Mini TXPK stream
+        /// </summary>
+        /// <param name="fileIn">DDS file</param>
+        /// <param name="filePath">Mini TXPK DDS file path</param>
+        /// <param name="fileOut">File out path</param>
+        public void ByteArraySerialize(string fileIn, string filePath, FileStream writer)
+        {
+            Reader? reader = null;
+
+            try
+            {
+                reader = new Reader(fileIn);
+
+                reader.Position = 12;
+                DDSWidth = reader.ReadUInt32();
+                DDSHeight = reader.ReadUInt32();
+                DDSWidth2 = (ushort)DDSWidth;
+                DDSHeight2 = (ushort)DDSHeight;
+                byte imageType = 1;
+
+                if (Path.GetFileNameWithoutExtension(fileIn).Contains("mat.pc"))
+                    imageType = 2;
+
+                DDSImageType = imageType;
+                DDSImageType2 = (ushort)DDSImageType;
+                DDSFilePathOffset = 20;
+                DDSFilePath = @"convant2-temp-intermediate/" + filePath.Replace(@"\", "/");
+                ConsoleDDSHeaderOffset = Global.isBigendian ? (uint)(DDSFilePathOffset + DDSFilePath.Length + BufferSize + 1) : (uint)Utilities.FileInfo(fileIn);
+                byte[] ddsFilePathByteArray = Encoding.ASCII.GetBytes(DDSFilePath);
+
+                byte[] _DDSWidth = Global.isBigendian ? Functions.SwapSex(BitConverter.GetBytes(DDSWidth)) : BitConverter.GetBytes(DDSWidth);
+                writer.Write(_DDSWidth, 0, 4);
+                byte[] _DDSHeight = Global.isBigendian ? Functions.SwapSex(BitConverter.GetBytes(DDSHeight)) : BitConverter.GetBytes(DDSHeight);
+                writer.Write(_DDSHeight, 0, 4);
+                byte[] _DDSImageType = Global.isBigendian ? Functions.SwapSex(BitConverter.GetBytes(DDSImageType)) : BitConverter.GetBytes(DDSImageType);
+                writer.Write(_DDSImageType, 0, 4);
+                byte[] _DDSFilePathOffset = Global.isBigendian ? Functions.SwapSex(BitConverter.GetBytes(DDSFilePathOffset)) : BitConverter.GetBytes(DDSFilePathOffset);
+                writer.Write(_DDSFilePathOffset, 0, 4);
+                byte[] _ConsoleDDSHeaderOffset = Global.isBigendian ? Functions.SwapSex(BitConverter.GetBytes(ConsoleDDSHeaderOffset)) : BitConverter.GetBytes(consoleDDSHeaderOffset);
+                writer.Write(_ConsoleDDSHeaderOffset, 0, 4);
+                writer.Write(ddsFilePathByteArray, 0, ddsFilePathByteArray.Length);
+                writer.WriteByte(0);
+
+                if (Global.platforms == Enums.Platforms.PS3)
+                {
+                    // Console DDS Header Info
+                    byte[] buffer = new byte[BufferSize];
+                    writer.Write(buffer, 0, (int)BufferSize);
+                    writer.WriteByte(DDSType);
+                    writer.WriteByte(DDSMipMaps);
+                    writer.Write(Functions.SwapSex(BitConverter.GetBytes(Unknown1)), 0, 4);
+                    writer.Write(Functions.SwapSex(BitConverter.GetBytes(Unknown2)), 0, 2);
+                    writer.Write(Functions.SwapSex(BitConverter.GetBytes(DDSWidth2)), 0, 2);
+                    writer.Write(Functions.SwapSex(BitConverter.GetBytes(DDSHeight2)), 0, 2);
+                    writer.Write(Functions.SwapSex(BitConverter.GetBytes(DDSImageType2)), 0, 2);
+                    writer.Write(Functions.SwapSex(BitConverter.GetBytes(Unknown3)), 0, 2);
+                    writer.Write(Functions.SwapSex(BitConverter.GetBytes(Unknown4)), 0, 2);
+                    writer.Write(Functions.SwapSex(BitConverter.GetBytes(Unknown5)), 0, 2);
+                    writer.Write(Functions.SwapSex(BitConverter.GetBytes(Reserved)), 0, 4);
+                }
+
+                writer.Flush();
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            finally
+            {
+                if (reader != null) { reader.Close(); reader = null; }
+            }
+        }
+        #endregion
+
+        #region "ByteArraySerialize"
+        /// <summary>
+        /// Serialize Mini TXPK stream and return it as a byte array
+        /// </summary>
+        /// <param name="fileIn">DDS file</param>
+        /// <param name="filePath">Mini TXPK DDS file path</param>
+        /// <returns>A byte array containing the serialized data, or null if an error occurs.</returns>
+        public byte[]? ByteArraySerialize(string fileIn, string filePath)
+        {
+            Reader? reader = null;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                try
+                {
+                    reader = new Reader(fileIn);
+
+                    reader.Position = 12;
+                    DDSWidth = reader.ReadUInt32();
+                    DDSHeight = reader.ReadUInt32();
+                    DDSWidth2 = (ushort)DDSWidth;
+                    DDSHeight2 = (ushort)DDSHeight;
+                    byte imageType = 1;
+
+                    if (Path.GetFileNameWithoutExtension(fileIn).Contains("mat.pc"))
+                        imageType = 2;
+
+                    DDSImageType = imageType;
+                    DDSImageType2 = (ushort)DDSImageType;
+                    DDSFilePathOffset = 20;
+                    DDSFilePath = @"convant2-temp-intermediate/" + filePath.Replace(@"\", "/");
+                    ConsoleDDSHeaderOffset = Global.isBigendian ? (uint)(DDSFilePathOffset + DDSFilePath.Length + BufferSize + 1) : (uint)Utilities.FileInfo(fileIn);
+                    byte[] ddsFilePathByteArray = Encoding.ASCII.GetBytes(DDSFilePath);
+
+                    byte[] _DDSWidth = Global.isBigendian ? Functions.SwapSex(BitConverter.GetBytes(DDSWidth)) : BitConverter.GetBytes(DDSWidth);
+                    ms.Write(_DDSWidth, 0, 4);
+                    byte[] _DDSHeight = Global.isBigendian ? Functions.SwapSex(BitConverter.GetBytes(DDSHeight)) : BitConverter.GetBytes(DDSHeight);
+                    ms.Write(_DDSHeight, 0, 4);
+                    byte[] _DDSImageType = Global.isBigendian ? Functions.SwapSex(BitConverter.GetBytes(DDSImageType)) : BitConverter.GetBytes(DDSImageType);
+                    ms.Write(_DDSImageType, 0, 4);
+                    byte[] _DDSFilePathOffset = Global.isBigendian ? Functions.SwapSex(BitConverter.GetBytes(DDSFilePathOffset)) : BitConverter.GetBytes(DDSFilePathOffset);
+                    ms.Write(_DDSFilePathOffset, 0, 4);
+                    byte[] _ConsoleDDSHeaderOffset = Global.isBigendian ? Functions.SwapSex(BitConverter.GetBytes(ConsoleDDSHeaderOffset)) : BitConverter.GetBytes(consoleDDSHeaderOffset);
+                    ms.Write(_ConsoleDDSHeaderOffset, 0, 4);
+                    ms.Write(ddsFilePathByteArray, 0, ddsFilePathByteArray.Length);
+                    ms.WriteByte(0);
+
+                    if (Global.platforms == Enums.Platforms.PS3)
+                    {
+                        // Console DDS Header Info
+                        byte[] buffer = new byte[BufferSize];
+                        ms.Write(buffer, 0, (int)BufferSize);
+                        ms.WriteByte(DDSType);
+                        ms.WriteByte(DDSMipMaps);
+                        ms.Write(Functions.SwapSex(BitConverter.GetBytes(Unknown1)), 0, 4);
+                        ms.Write(Functions.SwapSex(BitConverter.GetBytes(Unknown2)), 0, 2);
+                        ms.Write(Functions.SwapSex(BitConverter.GetBytes(DDSWidth2)), 0, 2);
+                        ms.Write(Functions.SwapSex(BitConverter.GetBytes(DDSHeight2)), 0, 2);
+                        ms.Write(Functions.SwapSex(BitConverter.GetBytes(DDSImageType2)), 0, 2);
+                        ms.Write(Functions.SwapSex(BitConverter.GetBytes(Unknown3)), 0, 2);
+                        ms.Write(Functions.SwapSex(BitConverter.GetBytes(Unknown4)), 0, 2);
+                        ms.Write(Functions.SwapSex(BitConverter.GetBytes(Unknown5)), 0, 2);
+                        ms.Write(Functions.SwapSex(BitConverter.GetBytes(Reserved)), 0, 4);
+                    }
+
+                    return ms.ToArray();
+                }
+                catch (Exception error)
+                {
+                    MessageBox.Show("Error occurred, report it to Wouldy : " + error, "Hmm, something stuffed up :(", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    return null;
+                }
+                finally
+                {
+                    if (reader != null) { reader.Close(); reader = null; }
+                }
+            }
+        }
+        #endregion
+
+
         public byte[] WriteAndRead(string fileIn, string filePath)
         {
             Reader? readerDDS = null;

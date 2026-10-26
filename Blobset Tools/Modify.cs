@@ -823,18 +823,20 @@ namespace Blobset_Tools
                     writer = new(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
                     Mini_TXPK mini_TXPK = new();
-                    mini_TXPK.Serialize(fileLists["dds"][i], fileLists["dds"][i].Replace(filePathRemove, string.Empty), writer);
+                    byte[]? miniTxpkHeader = mini_TXPK.ByteArraySerialize(fileLists["dds"][i], fileLists["dds"][i].Replace(filePathRemove, string.Empty));
 
-                    int mainUnCompSize = (int)Utilities.FileInfo(filePath);
+                    int mainUnCompSize = miniTxpkHeader.Length;
                     int vramUncompSize = (int)Utilities.FileInfo(fileLists["dds"][i]);
-
-                    mainCompressedSize.Add(mainUnCompSize);
-                    mainUncompressedSize.Add(mainUnCompSize);
 
                     int chunkCount = Utilities.ChunkAmount(vramUncompSize);
                     long[] chunkSizes = Utilities.ChunkSizes(vramUncompSize, chunkCount);
 
                     Reader? br = new(fileLists["dds"][i]);
+
+                    ZSTD_IO.CompressAndWrite(miniTxpkHeader, writer, mainUnCompSize);
+
+                    int mainCompSize = (int)Utilities.FileInfo(filePath);
+                    mainCompressedSize.Add(mainCompSize);
 
                     for (int j = 0; j < chunkCount; j++)
                     {
@@ -846,7 +848,8 @@ namespace Blobset_Tools
                             IO.ReadWriteModifyData(ddsChunkData, writer, (int)chunkSizes[j]);
                     }
 
-                    vramCompressedSize.Add((int)Utilities.FileInfo(filePath) - mainUnCompSize);
+                    mainUncompressedSize.Add(mainUnCompSize);
+                    vramCompressedSize.Add((int)Utilities.FileInfo(filePath) - mainCompSize);
                     vramUncompressedSize.Add(vramUncompSize);
 
                     headerIndex.Add(Convert.ToInt32(fm.Entries[0].Index));

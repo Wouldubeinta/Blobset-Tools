@@ -744,11 +744,78 @@ namespace Blobset_Tools
             if (Create_bgw != null) { Create_bgw.Dispose(); Create_bgw = null; }
         }
 
-        private void modifyBlobset_ToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void modifyBlobset_ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             fileInfo_richTextBox.Clear();
-            fileInfo_richTextBox.AppendText("Modifing Blobset with mods, please wait..........");
-            ModifyMain();
+
+            var platformDetails = Utilities.GetPlatformInfo(Global.platforms);
+            string platformExt = platformDetails["PlatformExt"];
+            string baseName = Path.Combine(Global.currentPath, "games", Global.gameInfo.GameName, platformExt);
+
+            string gameRootDirectory = Global.gameInfo.GameLocation.Replace("data-0.blobset.pc", string.Empty);
+            //string blobsetFilename = Path.GetFileName(Global.gameInfo.GameLocation);
+
+            // Locate the appmanifest_[AppID].acf file inside the parent 'steamapps' workspace folder
+            string steamAppsPath = Path.GetFullPath(Path.Combine(gameRootDirectory, "..", ".."));
+            string manifestPath = Path.Combine(steamAppsPath, $"appmanifest_{Global.gameInfo.SteamGameId}.acf");
+
+            string backupDir = Path.Combine(baseName, "backup");
+            //string modsFolder = Path.Combine(baseName, "mods");
+
+            // Check if Valve has flagged an internal update required state
+            if (SteamUpdateManager.IsUpdatePending(manifestPath))
+            {
+                fileInfo_richTextBox.SelectionColor = Color.OrangeRed;
+                fileInfo_richTextBox.AppendText("Game update detected on Steam servers!" + Environment.NewLine);
+                fileInfo_richTextBox.AppendText("Safely restoring vanilla assets *before* Steam patches to prevent mod deletion..." + Environment.NewLine);
+                status_Label.Text = "Restoring clean backups before updating...";
+
+                try
+                {
+                    // 1. Swap clean assets back over the game directory while the game process is dead.
+                    // Since this runs synchronously BEFORE the process call, it has all the time it needs.
+                    SteamUpdateManager.SafeDirectoryCopy(backupDir, gameRootDirectory);
+                    fileInfo_richTextBox.AppendText("Backups restored successfully. Pushing update command to Steam..." + Environment.NewLine);
+
+                    // 2. Queue background download on Steam Client securely without initiating game execution
+                    if (!SteamUpdateManager.ForceSteamAppUpdate(Global.gameInfo.SteamGameId))
+                    {
+                        fileInfo_richTextBox.SelectionColor = Color.Red;
+                        fileInfo_richTextBox.AppendText("Error: Could not reach Steam client execution location." + Environment.NewLine);
+                        return;
+                    }
+
+                    fileInfo_richTextBox.SelectionColor = Color.Yellow;
+                    fileInfo_richTextBox.AppendText("Monitoring background download progress. Please do not close Blobset Tools..." + Environment.NewLine);
+
+                    var progress = new Progress<string>(status => {
+                        status_Label.Text = status;
+                    });
+
+                    // 3. Keep tracking the asset change states without freezing your UI thread context loop
+                    await SteamUpdateManager.WaitForSteamUpdateAsync(manifestPath, progress);
+
+                    // 4. Update your backup pool with the newly updated native core files
+                    fileInfo_richTextBox.SelectionColor = Color.LightGreen;
+                    fileInfo_richTextBox.AppendText("Steam update complete! Updating internal backup database snapshot..." + Environment.NewLine);
+                    SteamUpdateManager.SafeDirectoryCopy(gameRootDirectory, backupDir);
+
+                    fileInfo_richTextBox.AppendText("Re-applying custom modifications..." + Environment.NewLine);
+                    // Runs your regular asset generation logic to drop modded files back into place
+                    ModifyMain();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Lifecycle execution fault: {ex.Message}", "Backup/Update Automation Failure", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            else
+            {
+                // Zero update required; proceed directly to modification compilation natively
+                fileInfo_richTextBox.SelectionColor = Color.DodgerBlue;
+                fileInfo_richTextBox.AppendText("Modifying Blobset with mods, please wait.........." + Environment.NewLine);
+                ModifyMain();
+            }
         }
 
         private void ModifyMain()
