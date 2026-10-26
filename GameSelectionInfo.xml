@@ -1,0 +1,219 @@
+<?xml version="1.0" ?>
+<GameSelectionInfo>
+    <Game>
+        <Name>AFL Live (PC)(PS3)(360)</Name>
+        <FolderName>AFL Live</FolderName>
+        <ModFolder>AFL Live</ModFolder>
+		<PC>true</PC>
+		<PS3>true</PS3>
+		<Xbox360>true</Xbox360>
+		<Image>afll.png</Image>
+    </Game>
+    <Game>
+        <Name>Rugby League Live 2 (PS3)(360)</Name>
+        <FolderName>Rugby League Live 2</FolderName>
+        <ModFolder>Rugby League Live 2</ModFolder>
+		<PC>false</PC>
+		<PS3>true</PS3>
+		<Xbox360>true</Xbox360>
+		<Image>rll2.png</Image>
+    </Game>
+    <Game>
+        <Name>Rugby League Live 2 - World Cup Edition (PS3)(360)</Name>
+        <FolderName>Rugby League Live 2 - World Cup Edition</FolderName>
+        <ModFolder>Rugby League Live 2 - World Cup Edition</ModFolder>
+		<PC>false</PC>
+		<PS3>true</PS3>
+		<Xbox360>true</Xbox360>
+		<Image>rll2wc.png</Image>
+    </Game>
+    <Game>
+        <Name>Don Bradman Cricket 14 (PC)(PS3)(360)</Name>
+        <FolderName>Don Bradman Cricket 14</FolderName>
+        <ModFolder>Don Bradman Cricket 14</ModFolder>
+		<PC>true</PC>
+		<PS3>true</PS3>
+		<Xbox360>true</Xbox360>
+		<Image>dbc14.png</Image>
+    </Game>
+    <Game>
+        <Name>Rugby League Live 3 (PC)(PS3)(360)</Name>
+        <FolderName>Rugby League Live 3</FolderName>
+        <ModFolder>Rugby League Live 3</ModFolder>
+		<PC>true</PC>
+		<PS3>true</PS3>
+		<Xbox360>true</Xbox360>
+		<Image>rll3.png</Image>
+    </Game>
+    <Game>
+        <Name>TableTop Cricket (PC)(PS3)(360)</Name>
+        <FolderName>TableTop Cricket</FolderName>
+        <ModFolder>TableTop Cricket</ModFolder>
+		<PC>true</PC>
+		<PS3>true</PS3>
+		<Xbox360>true</Xbox360>
+		<Image>tc.png</Image>
+    </Game>
+    <Game>
+        <Name>Casey Powell Lacrosse 16 (PC)</Name>
+        <FolderName>Casey Powell Lacrosse 16</FolderName>
+        <ModFolder>Casey Powell Lacrosse 16</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>cpl16.png</Image>
+    </Game>
+    <Game>
+        <Name>Don Bradman Cricket 17 (PC)</Name>
+        <FolderName>Don Bradman Cricket 17</FolderName>
+        <ModFolder>Don Bradman Cricket 17</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>dbc17.png</Image>
+    </Game>
+    <Game>
+        <Name>Masquerade - The Baubles of Doom (PC)(PS3)(360)</Name>
+        <FolderName>Masquerade - The Baubles of Doom</FolderName>
+        <ModFolder>Masquerade - The Baubles of Doom</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>mtbod.png</Image>
+    </Game>
+    <Game>
+        <Name>Ashes Cricket (PC)</Name>
+        <FolderName>Ashes Cricket</FolderName>
+        <ModFolder>Ashes Cricket</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>ac.png</Image>
+    </Game>
+    <Game>
+        <Name>Rugby League Live 4 (PC)</Name>
+        <FolderName>Rugby League Live 4</FolderName>
+        <ModFolder>Rugby League Live 4</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>rll4.png</Image>
+    </Game>
+    <Game>
+        <Name>AO International Tennis (PC)</Name>
+        <FolderName>AO International Tennis</FolderName>
+        <ModFolder>AO International Tennis</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>aoit.png</Image>
+    </Game>
+    <Game>
+        <Name>Casey Powell Lacrosse 18 (PC)</Name>
+        <FolderName>Casey Powell Lacrosse 18</FolderName>
+        <ModFolder>Casey Powell Lacrosse 18</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>cpl18.png</Image>
+    </Game>
+    <Game>
+        <Name>Cricket 19 (PC)</Name>
+        <FolderName>Cricket 19</FolderName>
+        <ModFolder>Cricket 19</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>c19.png</Image>
+    </Game>
+    <Game>
+        <Name>AO Tennis 2 (PC)</Name>
+        <FolderName>AO Tennis 2</FolderName>
+        <ModFolder>AO Tennis 2</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>aot2.png</Image>
+    </Game>
+    <Game>
+        <Name>Tennis World Tour 2 (PC)</Name>
+        <FolderName>Tennis World Tour 2</FolderName>
+        <ModFolder>Tennis World Tour 2</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>twt2.png</Image>
+    </Game>
+    <Game>
+        <Name>Cricket 22 (PC)</Name>
+        <FolderName>Cricket 22</FolderName>
+        <ModFolder>Cricket 22</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>c22.png</Image>
+    </Game>
+    <Game>
+        <Name>AFL 23 (PC)</Name>
+        <FolderName>AFL 23</FolderName>
+        <ModFolder>AFL 23</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>afl23.png</Image>
+    </Game>
+    <Game>
+        <Name>Cricket 24 (PC)</Name>
+        <FolderName>Cricket 24</FolderName>
+        <ModFolder>Cricket 24</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>c24.png</Image>
+    </Game>
+    <Game>
+        <Name>Tiebreak (PC)</Name>
+        <FolderName>Tiebreak</FolderName>
+        <ModFolder>Tiebreak</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>tb.png</Image>
+    </Game>
+    <Game>
+        <Name>Rugby 25 (PC)</Name>
+        <FolderName>Rugby 25</FolderName>
+        <ModFolder>Rugby 25</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>r25.png</Image>
+    </Game>
+    <Game>
+        <Name>AFL 26 (PC)</Name>
+        <FolderName>AFL 26</FolderName>
+        <ModFolder>AFL 26</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>afl26.png</Image>
+    </Game>
+    <Game>
+        <Name>Rugby League 26 (PC)</Name>
+        <FolderName>Rugby League</FolderName>
+        <ModFolder>Rugby League 26</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>rl26.png</Image>
+    </Game>
+    <Game>
+        <Name>Cricket 26 (PC)</Name>
+        <FolderName>Cricket 26</FolderName>
+        <ModFolder>Cricket 26</ModFolder>
+		<PC>true</PC>
+		<PS3>false</PS3>
+		<Xbox360>false</Xbox360>
+		<Image>c26.png</Image>
+    </Game>
+</GameSelectionInfo>

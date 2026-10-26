@@ -1,0 +1,11 @@
+prefix=/mingw64
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: DirectXTex
+Description: DirectX Texture Library
+URL: https://go.microsoft.com/fwlink/?LinkId=248926
+Version: 2.0.9
+Requires: OpenEXR, DirectXMath, DirectX-Headers
+Cflags: -I${includedir}
+Libs: -lDirectXTex

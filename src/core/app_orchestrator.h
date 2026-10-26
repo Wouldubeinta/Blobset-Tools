@@ -1,0 +1,283 @@
+#ifndef APP_ORCHESTRATOR_H
+#define APP_ORCHESTRATOR_H
+
+#include "tree_model.h"
+#include "xml_models.h"
+
+#include <QHash>
+#include <QMutex>
+#include <QObject>
+#include <QQmlEngine>
+#include <QSet>
+#include <QSettings>
+#include <QString>
+#include <QVariant>
+#include <QVariantMap>
+#include <QVariantList>
+
+#include <atomic>
+#include <functional>
+#include <utility>
+
+class ModLibrary;
+
+class AppOrchestrator : public QObject {
+    Q_OBJECT
+    QML_ELEMENT
+
+    Q_PROPERTY(TreeModel* treeModel READ treeModel CONSTANT)
+    Q_PROPERTY(QStringList currentFolderFiles READ currentFolderFiles NOTIFY currentFolderFilesChanged)
+    Q_PROPERTY(int maxFileItemWidth READ maxFileItemWidth NOTIFY currentFolderFilesChanged)
+
+    // Game location prompt (MainForm.qml opens a FileDialog while this is true).
+    Q_PROPERTY(bool gameLocationRequired READ gameLocationRequired NOTIFY gameLocationRequiredChanged)
+    Q_PROPERTY(QString expectedBlobsetName READ expectedBlobsetName NOTIFY gameLocationRequiredChanged)
+    Q_PROPERTY(QString currentGameName READ currentGameName NOTIFY gameLocationRequiredChanged)
+
+    // True while Extract / Modify / Create / Update File Mapping runs (MainForm.qml disables those buttons).
+    Q_PROPERTY(bool workerRunning READ workerRunning NOTIFY workerRunningChanged)
+    // The selected game has no usable file mapping (none yet, empty or unreadable): MainForm.qml offers to run
+    // Update File Mapping Data.
+    Q_PROPERTY(bool fileMappingMissing READ fileMappingMissing NOTIFY fileMappingMissingChanged)
+    // From the selected game's GameInfo.ini: CoreDefs::BlobsetVersion value (0 = V1) and Steam app id (0 = none).
+    Q_PROPERTY(int blobsetVersion READ blobsetVersion NOTIFY gameInfoChanged)
+    Q_PROPERTY(uint steamGameId READ steamGameId NOTIFY gameInfoChanged)
+    // V4: Modify builds the mods into <game>\BlobsetMods for the Blobset Mod Loader (dinput8.dll) instead of changing
+    // the game's files. Saved in Settings.ini (ModLoader).
+    Q_PROPERTY(bool modLoaderMode READ modLoaderMode WRITE setModLoaderMode NOTIFY modLoaderModeChanged)
+    // Steam games: start the game through Steam after Modify / Create succeeded. Saved in Settings.ini (LoadGame).
+    Q_PROPERTY(bool loadGameMode READ loadGameMode WRITE setLoadGameMode NOTIFY loadGameModeChanged)
+    // file:/// URL of the selected game's picture (GameSelectionInfo.xml <Image>, from assets/games), empty if none.
+    Q_PROPERTY(QString currentGameImage READ currentGameImage NOTIFY gameInfoChanged)
+
+public:
+    explicit AppOrchestrator(QObject* parent = nullptr);
+    ~AppOrchestrator() override;
+
+    // Singleton Instance Getter
+    static AppOrchestrator* instance();
+
+    // Thread-safe configuration getters (image provider, asset readers, ...)
+    QString gameLocation() const;
+    int blobsetVersion() const;
+    int platform() const;
+    int gameId() const;
+    uint steamGameId() const;
+    bool modLoaderMode() const { return m_modLoaderMode; }
+    void setModLoaderMode(bool enabled);
+    bool loadGameMode() const { return m_loadGameMode; }
+    void setLoadGameMode(bool enabled);
+    QString currentGameImage();
+    bool workerRunning() const { return m_workerRunning; }
+
+    TreeModel* treeModel() const { return m_treeModel; }
+    QStringList currentFolderFiles() const { return m_currentFolderFiles; }
+    int maxFileItemWidth() const { return m_maxFileItemWidth; }
+
+    bool gameLocationRequired() const { return m_gameLocationRequired; }
+    bool fileMappingMissing() const { return m_fileMappingMissing; }
+    QString expectedBlobsetName() const { return archiveName(); }
+    QString currentGameName() const;
+
+    Q_INVOKABLE void selectFolderIndex(const QModelIndex& index);
+    Q_INVOKABLE QString getHashFromPath(const QString& filePath) const;
+    // The loaded game's .mapping file (File Mapping Editor), empty when there is none yet.
+    Q_INVOKABLE QString mappingFilePath() const { return findMappingFile(); }
+    // games/<game>/<platform>/mods: what Modify / Create read. Empty when no game is loaded.
+    Q_INVOKABLE QString modsFolderPath() const;
+
+    // MainForm.qml right click > Save As: writes one asset of the loaded blobset to outPath (path or file:// URL),
+    // on a background thread. format:
+    //   "raw" - decompressed; the main section to outPath, a vram section (if any) to "<outPath>.vram"
+    //   "dds" - a standard PC .dds (console data converted)
+    //   "png" - the decoded texture (flipped / alpha as given)   "wem" - the stream as stored
+    //   "wav" - the WEM decoded to 16 bit PCM
+    // Answers with assetSaved().
+    Q_INVOKABLE void saveAssetAs(const QString& hexHash, const QString& workspacePath, const QString& outPath,
+                                 const QString& format, bool flipped = false, bool alphaEnabled = true);
+    // Assets / folders whose name, path or hash contains `query` (case insensitive), best matches first:
+    // [{ folder: "a/b", file: "c.dds" (empty for a folder), path: "a/b/c.dds" }, ...]
+    Q_INVOKABLE QVariantList searchAssets(const QString& query, int maxResults = 2000) const;
+
+    // Switches to the viewer that matches the extension and hands it the asset.
+    // displayName (e.g. the workspace path) is shown by viewers that have no name of their own (Hex Inspector).
+    // Extensions without a dedicated viewer open in the Hex Inspector.
+    Q_INVOKABLE void openWorkspaceFileByHash(const QString& hexHash, const QString& fileExtension,
+                                             const QString& displayName = QString());
+
+    // Builds the metadata of the selected workspace file (location, blobset entry, and per type details such as
+    // the texture list of a TXPK or the format of a DDS) on a worker thread and hands it to assetInfoReady() as
+    // HTML for the Console Log. Only the most recent request is answered.
+    Q_INVOKABLE void requestAssetInfo(const QString& hexHash, const QString& workspacePath);
+
+    // Read-only summary of games/<modFolder>/<platform>/GameInfo.ini for the game selection screen
+    // (does not change the loaded game).
+    Q_INVOKABLE QVariantMap gameInfoPreview(const QString& modGameFolderName, int platformId) const;
+    Q_INVOKABLE void selectGameAndLoad(int gameId, int platformId, const QString& modGameFolderName, const QString& gameFolderName);
+    Q_INVOKABLE void loadGameProfile();
+    Q_INVOKABLE void gameSelectionInfo();
+    Q_INVOKABLE void readGameIni(const QString& iniPath);
+    Q_INVOKABLE void updateFileMapping();
+    // Names numbered / unknown mapping entries by hashing candidate names (see NameResolverWorker).
+    Q_INVOKABLE void resolveFileNames();
+    // Puts the game's original files back from games/<game>/<platform>/backup (see RestoreWorker).
+    Q_INVOKABLE void restoreBackupFiles();
+    // Steam games only (SteamGameId in GameInfo.ini): start the game / let Steam verify the game's files.
+    Q_INVOKABLE void launchGame();
+    Q_INVOKABLE void validateSteamFiles();
+    Q_INVOKABLE void extractBlobset();
+    // Modify: puts the workspace mods folder and every enabled Mod Manager mod (in load order) into the game.
+    // V3 / V4 games modified in place restore the original files first, so mods that were removed or disabled
+    // since the last run disappear too; with nothing to apply the game's files are restored.
+    Q_INVOKABLE void modifyBlobset();
+    Q_INVOKABLE void createBlobset();
+
+    // ---- Mod Manager / command line -------------------------------------------------------------------------
+    // games/<game>/<platform> and the game's own folder (where the exe lives), empty when unknown.
+    QString platformDirPath() const;
+    QString gameRootPath() const;
+    // <game>\BlobsetToolsMods: the folder Vortex deploys into (an extra, highest priority mod source).
+    QString externalModsPath() const;
+    // The Mod Manager's library for the loaded game (load order, enabled mods).
+    ModLibrary modLibrary() const;
+    // Lower case, '/' separated paths of the loaded game's mapping (finding a mod's root folder on install).
+    QSet<QString> mappedPaths() const;
+
+    // Command line: selects a game without loading the workspace or showing any view. False (and a console
+    // message) when the game has no file mapping / GameInfo.ini yet.
+    bool selectGameHeadless(int gameId, int platformId, const QString& modGameFolderName, const QString& gameFolderName);
+
+    // Messages from startup (data folder set up / moved), handed to the first Console Log that asks (MainForm.qml).
+    void setStartupMessages(const QStringList& messages) { m_startupMessages = messages; }
+    Q_INVOKABLE QStringList takeStartupMessages() { return std::exchange(m_startupMessages, {}); }
+    // The writable data folder (Documents\Blobset Tools) for "Open Data Folder".
+    Q_INVOKABLE QString dataFolderPath() const;
+    void setHeadless(bool headless) { m_headless = headless; }
+
+    // Accepts the blobset file (or the folder that holds it) as a path or file:// URL, saves it to GameInfo.ini
+    // and reloads the workspace. Returns false (and logs why) when it isn't the expected blobset.
+    Q_INVOKABLE bool setGameLocation(const QString& path);
+
+    Q_INVOKABLE void saveBrowserState(const QString& folderPath, const QString& fileName) {
+        m_savedFolderPath = folderPath;
+        m_savedFileName = fileName;
+    }
+    Q_INVOKABLE void clearBrowserState() { m_savedFolderPath.clear(); m_savedFileName.clear(); }
+    Q_INVOKABLE QString savedFolderPath() const { return m_savedFolderPath; }
+    Q_INVOKABLE QString savedFileName() const { return m_savedFileName; }
+
+    QVector<GameEntry> loadedGames;
+
+signals:
+    void viewChanged(const QString& viewName);
+    void uiConsoleUpdate(const QString& message);
+    void assetInfoReady(const QString& html);   // Answer to requestAssetInfo(): replaces the Console Log.
+    void uiStatusUpdate(const QString& message);
+    void assetSaved(bool success, const QString& message);   // Answer to saveAssetAs().
+    void uiProgressUpdate(int percentage);
+    void profileLoaded(int gameId, int platformId, const QString& modGameFolderName, const QString& gameFolderName);
+    void gameSelectionInfoLoaded(const QVariantList& gameSelectedInfo);
+    void currentFolderFilesChanged();
+    void missingMetadataError(const QString& title, const QString& message);
+    void gameLocationRequiredChanged();
+    void fileMappingMissingChanged();
+    // Steam game (PC) only. pending: Steam has an update waiting to install (Restore Backup Files first);
+    // otherwise the game was updated since its file mapping was made (Update File Mapping Data).
+    void steamUpdateDetected(bool pending, const QString& gameName, const QString& details);
+    void workerRunningChanged();
+    void modLoaderModeChanged();
+    void loadGameModeChanged();
+    void gameInfoChanged();
+    void gameLocationRequested();   // Raised every time the UI should show the game location dialog.
+    // A task (or a chain of tasks, e.g. Restore + Modify) is over: success says whether every step worked.
+    void taskCompleted(bool success, const QString& message);
+    void openBnkViewerByHash(QString pathHash);
+    void openDdsViewerByHash(QString pathHash, QString displayName);
+    void openFmodViewerByHash(QString pathHash);
+    void openTxpkViewerByHash(QString pathHash);
+    void openM3mpViewerByHash(QString pathHash);
+    void openMeshViewerByHash(QString pathHash, QString displayName);
+    void openHexViewerByHash(QString pathHash, QString displayName);
+    void openStringEditorByHash(QString pathHash, QString displayName);
+    void openBsbViewerByHash(QString pathHash, QString displayName);
+
+private slots:
+    void handleProgress(int percentage);
+    void handleConsoleUpdate(const QString& message);
+    void handleStatusUpdate(const QString& message);
+    void handleFinished(const QString& finalStatus);
+
+private:
+    static AppOrchestrator* s_instance;
+    mutable QMutex m_mutex; // Protects configuration variables across threads
+
+    int m_gameId;
+    QString m_gameName;
+    bool m_launchAfterTask = false;   // Set by a successful Modify / Create, handled in handleFinished().
+    uint m_steamGameId;
+    int m_blobsetVersion;
+    QString m_gameLocation;
+
+    int m_platformId;
+    QString m_modGameFolderName;
+    QString m_gameFolderName;
+    QString m_relativeBlobsetPath;  // "data-0.blobset.pc" or "data/data-0.blobset.pc", fixed per selected game.
+
+    bool m_isBigEndian;
+    bool m_gameLocationRequired = false;
+    bool m_fileMappingMissing = false;
+    bool m_updateMappingAfterLocation = false;
+    bool m_recordSteamBuildAfterTask = false;   // The running task is Update File Mapping Data.
+    QSet<QString> m_steamNoticesShown;          // Each Steam update popup once per session.   // Update File Mapping waits for the game location dialog.
+    quint64 m_loadGeneration = 0;   // Results of an older workspace load are dropped.
+    bool m_workerRunning = false;   // Only one Extract / Modify / Create / mapping worker at a time.
+    bool m_reloadAfterTask = true;  // The running task changes the blobset / mapping: reload the workspace after it.
+    bool m_taskSucceeded = false;   // The running worker said taskSucceeded().
+    std::function<void()> m_nextTask;   // Runs when the current task succeeded (Restore -> Modify).
+    bool m_headless = false;        // Command line: no workspace reloads, no game launch.
+    QStringList m_startupMessages;
+    void startModify(const QStringList& sources);
+    void restoreBackupFilesUnchecked();   // restoreBackupFiles() without the worker / location checks.
+    // Settings.ini values, read once (QML reads the properties often).
+    bool m_modLoaderMode = false;
+    bool m_loadGameMode = false;
+    QString settingsPath() const;
+    bool startWorkerAllowed();      // False (and a console message) while a worker is running.
+    void setWorkerRunning(bool running);
+    std::atomic<quint64> m_assetInfoTicket{0};   // requestAssetInfo(): older requests are skipped / dropped.
+
+    // Paths
+    static QString appPath();
+    QString platformFolder() const;
+    QString archiveName() const;
+    QString gameInfoIniPath() const;
+    QString findMappingFile() const;
+
+    // Game location
+    bool resolveGameLocation();               // INI value, then Steam (only when SteamGameId > 0).
+    bool ensureGameLocation();                // For Extract / Modify / Create / Update mapping.
+    void storeGameLocation(const QString& blobsetFile);
+    void setGameLocationRequired(bool required);
+    void setFileMappingMissing(bool missing);
+    // Steam's appmanifest against the build the mapping was made from (GameInfo.ini SteamBuildId).
+    void checkSteamUpdate();
+    // Remembers the installed Steam build as the one the mapping matches (after Update File Mapping Data).
+    void recordSteamBuild();
+
+    void startWorkspaceLoad(const QString& mappingPath);
+
+    // reloadWorkspace: false for tasks that leave the blobset and the mapping alone (Extract).
+    template <typename Worker>
+    void runWorker(Worker* worker, void (Worker::*start)(), bool reloadWorkspace = true);
+
+    TreeModel* m_treeModel;
+    QStringList m_currentFolderFiles;
+    int m_maxFileItemWidth = 180;
+    // Memory map tracking container correlating a normalized file path to its pathHash
+    QHash<QString, quint64> m_pathHashLookup;
+
+    QString m_savedFolderPath;
+    QString m_savedFileName;
+};
+
+#endif // APP_ORCHESTRATOR_H
