@@ -1,4 +1,4 @@
-![Title Image](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/title.jpg?raw=true)
+![Title Image](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/image.jpg?raw=true)
 
 # Blobset Tools
 
