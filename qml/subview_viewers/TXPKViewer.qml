@@ -122,7 +122,7 @@ Item {
                 HeaderButton {
                     tip: "Return to the main workspace"
                     text: "◀ Back"
-                    onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
+                    onClicked: txpkViewRoot.leave()
                 }
 
                 Rectangle { width: 1; Layout.preferredHeight: 28; color: BtDarkStyle.borderDark }
@@ -165,6 +165,21 @@ Item {
                     iconSource: txpkViewRoot.iconDir + "extract_32.png"
                     enabled: !txpkManager.busy && txpkManager.entryCount > 0
                     onClicked: extractMenu.openFor(extractAllButton, true)
+                }
+
+                Rectangle { width: 1; Layout.preferredHeight: 28; color: BtDarkStyle.borderDark }
+
+                // Replacements (drag files onto the list, or right click > Replace) are kept until Save Changes
+                // rebuilds the TXPK into the mods folder.
+                HeaderButton {
+                    tip: txpkManager.modsTarget !== ""
+                         ? "Rebuild the TXPK with your replacements into " + txpkManager.modsTarget + " (then Modify puts it into the game)"
+                         : "Open the TXPK from the game's files (double click it in the workspace) to save changes"
+                    text: txpkManager.unsavedChanges ? "Save Changes (" + txpkManager.replacedCount + ") •" : "Save Changes"
+                    iconSource: txpkViewRoot.iconDir + "save_32.png"
+                    enabled: !txpkManager.busy && txpkManager.unsavedChanges && txpkManager.modsTarget !== ""
+                    checked: txpkManager.unsavedChanges
+                    onClicked: txpkManager.saveChanges()
                 }
 
                 Item { Layout.fillWidth: true }
@@ -429,9 +444,24 @@ Item {
                         Layout.fillHeight: true
                         color: BtDarkStyle.bgDark
                         border.width: 1
-                        border.color: fileListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.borderDark
+                        border.color: listDrop.containsDrag || fileListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.borderDark
                         radius: 4
                         clip: true
+
+                        // Dropped on the list (not on a file): each file replaces the one with the same name.
+                        DropArea {
+                            id: listDrop
+                            anchors.fill: parent
+                            onDropped: (drop) => {
+                                if (!drop.hasUrls)
+                                    return
+                                const urls = []
+                                for (let i = 0; i < drop.urls.length; ++i)
+                                    urls.push(drop.urls[i].toString())
+                                txpkManager.replaceByName(urls)
+                                drop.acceptProposedAction()
+                            }
+                        }
 
                         ListView {
                             id: fileListView
@@ -473,6 +503,9 @@ Item {
                                         readonly property int targetFileIndex: columnBlock.startIdx + index
                                         readonly property string currentFileName: txpkManager.currentFolderFiles[targetFileIndex]
                                         readonly property bool isSelected: txpkManager.currentFileIndex === targetFileIndex
+                                        // Re-checked whenever the replacements change.
+                                        readonly property bool replaced: txpkManager.replacedCount >= 0 && txpkManager.unsavedChanges !== undefined
+                                                                         && txpkManager.isReplacedAt(targetFileIndex)
 
                                         width: filesPanel.gridColumnWidth
                                         height: filesPanel.itemRowHeight
@@ -483,8 +516,42 @@ Item {
                                         background: Rectangle {
                                             color: fileDelegate.isSelected
                                                    ? (fileListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.accentDim)
-                                                   : (fileDelegate.hovered ? BtDarkStyle.bgHover : "transparent")
+                                                   : (fileDelegate.hovered || itemDrop.containsDrag ? BtDarkStyle.bgHover : "transparent")
+                                            border.width: itemDrop.containsDrag ? 1 : 0
+                                            border.color: BtDarkStyle.accentColor
                                             radius: 2
+                                        }
+
+                                        // A file dropped on this one replaces it (whatever its name).
+                                        DropArea {
+                                            id: itemDrop
+                                            anchors.fill: parent
+                                            onDropped: (drop) => {
+                                                if (!drop.hasUrls)
+                                                    return
+                                                if (drop.urls.length === 1) {
+                                                    txpkManager.replaceFileAt(fileDelegate.targetFileIndex, drop.urls[0].toString())
+                                                } else {
+                                                    const urls = []
+                                                    for (let i = 0; i < drop.urls.length; ++i)
+                                                        urls.push(drop.urls[i].toString())
+                                                    txpkManager.replaceByName(urls)
+                                                }
+                                                drop.acceptProposedAction()
+                                            }
+                                        }
+
+                                        // Right click: Replace / Revert.
+                                        TapHandler {
+                                            acceptedButtons: Qt.RightButton
+                                            onTapped: {
+                                                fileListView.forceActiveFocus()
+                                                txpkManager.selectFile(fileDelegate.targetFileIndex)
+                                                replaceMenu.fileIndex = fileDelegate.targetFileIndex
+                                                replaceMenu.fileName = fileDelegate.currentFileName
+                                                replaceMenu.replaced = fileDelegate.replaced
+                                                replaceMenu.popup()
+                                            }
                                         }
 
                                         contentItem: RowLayout {
@@ -508,6 +575,22 @@ Item {
                                                 font.pixelSize: 11
                                                 Layout.fillWidth: true
                                                 verticalAlignment: Text.AlignVCenter
+                                            }
+                                            Rectangle {
+                                                visible: fileDelegate.replaced
+                                                Layout.alignment: Qt.AlignVCenter
+                                                implicitWidth: replacedBadge.implicitWidth + 8
+                                                implicitHeight: 14
+                                                radius: 3
+                                                color: fileDelegate.isSelected ? "#121214" : BtDarkStyle.accentDim
+                                                Text {
+                                                    id: replacedBadge
+                                                    anchors.centerIn: parent
+                                                    text: "MOD"
+                                                    color: fileDelegate.isSelected ? BtDarkStyle.accentColor : "#121214"
+                                                    font.pixelSize: 8
+                                                    font.bold: true
+                                                }
                                             }
                                         }
 
@@ -866,6 +949,7 @@ Item {
             format = fmt
             title = (all ? "Extract All Textures" : "Extract Selected Texture")
                     + " as " + fmt.toUpperCase() + " to Directory"
+            currentFolder = appOrchestrator.workFolderUrl("txpk")   // Documents\Blobset Tools\games\<game>\<platform>\txpk
             open()
         }
 
@@ -874,6 +958,87 @@ Item {
                 txpkManager.extractAll(selectedFolder.toString(), format)
             else
                 txpkManager.extractSelected(selectedFolder.toString(), format)
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------------
+    // Replace / Save Changes
+    // ------------------------------------------------------------------------------------------------
+    function leave() {
+        if (txpkManager.unsavedChanges)
+            unsavedChangesDialog.open()
+        else
+            appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
+    }
+
+    Connections {
+        target: txpkManager
+        // Saved from the "unsaved changes" question on the way out: carry on back to the workspace.
+        function onChangesSaved(target) {
+            if (unsavedChangesDialog.leaveAfterSave) {
+                unsavedChangesDialog.leaveAfterSave = false
+                appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
+            }
+        }
+        function onProcessComplete(success, message) {
+            if (!success)
+                unsavedChangesDialog.leaveAfterSave = false
+        }
+    }
+
+    Menu {
+        id: replaceMenu
+        property int fileIndex: -1
+        property string fileName: ""
+        property bool replaced: false
+        MenuItem {
+            text: "Replace " + replaceMenu.fileName + "..."
+            icon.source: txpkViewRoot.iconDir + "modify_32.png"
+            icon.color: "transparent"
+            onTriggered: replaceDialog.start(replaceMenu.fileIndex, replaceMenu.fileName)
+        }
+        MenuItem {
+            text: "Undo Replace"
+            visible: replaceMenu.replaced
+            height: visible ? implicitHeight : 0
+            icon.source: txpkViewRoot.iconDir + "reset_32.png"
+            icon.color: "transparent"
+            onTriggered: txpkManager.revertAt(replaceMenu.fileIndex)
+        }
+    }
+
+    FileDialog {
+        id: replaceDialog
+        property int fileIndex: -1
+        fileMode: FileDialog.OpenFile
+
+        function start(index, name) {
+            fileIndex = index
+            const dot = name.lastIndexOf(".")
+            const ext = "dds"
+            title = "Replace " + name
+            nameFilters = ext !== "" ? [ext.toUpperCase() + " file (*." + ext + ")"] : ["All files (*)"]
+            open()
+        }
+
+        onAccepted: txpkManager.replaceFileAt(fileIndex, selectedFile.toString())
+    }
+
+    MessageDialog {
+        id: unsavedChangesDialog
+        property bool leaveAfterSave: false
+        title: "Unsaved Changes"
+        text: "You replaced " + txpkManager.replacedCount + " file(s) in this TXPK but haven't saved it."
+        informativeText: "Save Changes rebuilds the TXPK into the mods folder. Save before going back?"
+        buttons: MessageDialog.Save | MessageDialog.Discard | MessageDialog.Cancel
+        onButtonClicked: function (button, role) {
+            if (button === MessageDialog.Save) {
+                leaveAfterSave = true
+                txpkManager.saveChanges()
+            } else if (button === MessageDialog.Discard) {
+                txpkManager.discardChanges()
+                appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
+            }
         }
     }
 

@@ -82,6 +82,10 @@ void ModManager::reload() {
             {u"enabled"_s, mod.enabled},
             {u"builtIn"_s, mod.builtIn},
             {u"fileCount"_s, mod.fileCount},
+            // file:/// URL; the date makes a changed picture load again (QML caches images by URL).
+            {u"image"_s, mod.image.isEmpty() ? QString()
+                                             : QUrl::fromLocalFile(mod.image).toString() + u"?v="_s
+                                                   + QString::number(QFileInfo(mod.image).lastModified().toMSecsSinceEpoch())},
             {u"installed"_s, mod.installed.isValid() ? QLocale::system().toString(mod.installed, QLocale::ShortFormat) : QString()},
             {u"wins"_s, wins.value(mod.id)},
             {u"loses"_s, loses.value(mod.id)},
@@ -179,6 +183,32 @@ void ModManager::saveInfo(const QString& id, const QString& name, const QString&
     QString error;
     if (library.setInfo(id, name, author, version, description, &error))
         report(true, u"Saved the details of %1."_s.arg(name.trimmed().isEmpty() ? id : name.trimmed()));
+    else
+        report(false, error);
+    reload();
+}
+
+void ModManager::setImage(const QString& id, const QString& pathOrUrl) {
+    if (!m_orchestrator)
+        return;
+    ModLibrary library = m_orchestrator->modLibrary();
+    library.load();
+    QString error;
+    if (library.setImage(id, toLocal(pathOrUrl), &error))
+        report(true, u"Set the picture of %1."_s.arg(id));
+    else
+        report(false, error);
+    reload();
+}
+
+void ModManager::clearImage(const QString& id) {
+    if (!m_orchestrator)
+        return;
+    ModLibrary library = m_orchestrator->modLibrary();
+    library.load();
+    QString error;
+    if (library.clearImage(id, &error))
+        report(true, u"Removed the picture of %1."_s.arg(id));
     else
         report(false, error);
     reload();

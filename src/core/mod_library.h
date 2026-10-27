@@ -15,7 +15,10 @@
 ///   games/<game>/<platform>/mod_library/
 ///       modlist.json            load order (lowest priority first) and which mods are enabled
 ///       <mod id>/               one folder per mod: its files at the paths the mapping uses
-///           blobsetmod.json     name, author, version, description, url (optional; mod authors can ship it)
+///           blobsetmod.json     name, author, version, description, url, image (optional; mod authors can ship it)
+///           preview.png         the mod's picture ("image" in blobsetmod.json, else preview / image / screenshot /
+///                               cover / thumbnail .png / .jpg, else the only picture in the folder); never built
+///                               into the game
 ///
 /// Two built in entries take part in the load order as well:
 ///   "@workspace"  games/<game>/<platform>/mods - the folder Modify always used (lowest priority by default)
@@ -40,6 +43,7 @@ public:
         bool enabled = true;
         bool builtIn = false;  // Workspace / external: can't be removed or edited.
         int fileCount = 0;     // Files Modify would use (supported types).
+        QString image;         // Preview picture (absolute path, .png / .jpg), empty when there's none.
         QDateTime installed;
     };
 
@@ -80,6 +84,12 @@ public:
     std::optional<Mod> install(const QString& source, const QSet<QString>& mappedPaths, QString* error,
                                const std::function<void(const QString&)>& log = {});
     bool uninstall(const QString& id, QString* error = nullptr);
+    /// Copies a .png / .jpg into the mod's folder as its picture (preview.<ext>), replacing the old one.
+    bool setImage(const QString& id, const QString& imageFile, QString* error = nullptr);
+    /// Removes the mod's picture.
+    bool clearImage(const QString& id, QString* error = nullptr);
+    /// The picture of a mod folder ("image" in its blobsetmod.json, else a preview.png or the like), or empty.
+    static QString findImage(const QString& folder);
 
     /// The supported files of a folder, relative ('/' separated).
     QStringList modFiles(const QString& folder) const;

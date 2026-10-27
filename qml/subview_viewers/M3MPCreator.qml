@@ -686,7 +686,8 @@ Item {
         id: listDialog
         title: "Choose the " + creatorRoot.listName
         nameFilters: ["Creator list (" + creatorRoot.listName + " *.xml)", "All files (*)"]
-        currentFolder: creatorRoot.xmlPath !== "" ? creatorRoot.toUrl(creatorRoot.folderOf(creatorRoot.xmlPath)) : ""
+        currentFolder: creatorRoot.xmlPath !== "" ? creatorRoot.toUrl(creatorRoot.folderOf(creatorRoot.xmlPath))
+                                                  : appOrchestrator.workFolderUrl("m3mp")
         onAccepted: {
             creatorRoot.xmlPath = creatorRoot.toLocal(selectedFile)
             creatorRoot.sourceDir = ""
@@ -702,7 +703,7 @@ Item {
     FolderDialog {
         id: folderDialog
         title: "Choose the folder with the extracted files"
-        currentFolder: creatorRoot.listOk ? creatorRoot.toUrl(creatorRoot.info.sourceDir) : ""
+        currentFolder: creatorRoot.listOk ? creatorRoot.toUrl(creatorRoot.info.sourceDir) : appOrchestrator.workFolderUrl("m3mp")
         onAccepted: {
             creatorRoot.sourceDir = creatorRoot.toLocal(selectedFolder)
             creatorRoot.refresh()

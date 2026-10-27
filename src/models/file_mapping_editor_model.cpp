@@ -179,6 +179,7 @@ void FileMappingEditorModel::saveMapping() {
     }
 
     setModified(false);
+    emit saved();
     emit actionCompleted(u"File Mapping table changes have been successfully saved."_s);
 }
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(Blobset-Tools VERSION 2.1.10.55 LANGUAGES CXX)
+project(Blobset-Tools VERSION 2.1.10.60 LANGUAGES CXX)
 
 if(WIN32)
     enable_language(RC) #
@@ -28,6 +28,7 @@ find_package(Qt6 6.11.2 COMPONENTS
     Xml
     Multimedia
     Quick3D
+    Network
     REQUIRED)
 
 find_package(OpenMP REQUIRED)
@@ -77,6 +78,8 @@ qt_add_executable(Blobset-Tools
     src/core/command_line.cpp
     src/core/app_paths.h
     src/core/app_paths.cpp
+    src/core/update_checker.h
+    src/core/update_checker.cpp
 	
     # Application Orchestrator
     src/core/app_orchestrator.h
@@ -223,12 +226,6 @@ qt_add_qml_module(Blobset-Tools
         qml/subview_viewers/TXPKCreator.qml
         qml/subview_viewers/TXPKViewer.qml
         qml/subview_viewers/About.qml
-        RESOURCES readme/1.jpg readme/10.jpg readme/11.jpg readme/12.jpg readme/2.jpg readme/3.jpg readme/4.jpg readme/5.jpg readme/6.jpg readme/7.jpg readme/8.jpg readme/9.jpg
-        RESOURCES GameSelectionInfo.xml ReadMe.md
-        RESOURCES docs/MOD_MANAGER.md
-RESOURCES vortex/game-afl23/gameart.png vortex/game-afl26/gameart.png vortex/game-afllive/gameart.png vortex/game-aointernationaltennis/gameart.png vortex/game-aotennis2/gameart.png vortex/game-ashescricket/gameart.png vortex/game-caseypowelllacrosse16/gameart.png vortex/game-caseypowelllacrosse18/gameart.png vortex/game-cricket19/gameart.png vortex/game-cricket22/gameart.png vortex/game-cricket24/gameart.png vortex/game-cricket26/gameart.png vortex/game-donbradmancricket14/gameart.png vortex/game-donbradmancricket17/gameart.png vortex/game-masqueradethebaublesofdoom/gameart.png vortex/game-rugby25/gameart.png vortex/game-rugbyleague26/gameart.png vortex/game-rugbyleaguelive3/gameart.png vortex/game-rugbyleaguelive4/gameart.png vortex/game-tabletopcricket/gameart.png vortex/game-tennisworldtour2/gameart.png vortex/game-tiebreak/gameart.png
-QML_FILES vortex/game-afl23/blobset_game.json vortex/game-afl23/index.js vortex/game-afl23/info.json vortex/game-afl26/blobset_game.json vortex/game-afl26/index.js vortex/game-afl26/info.json vortex/game-afllive/blobset_game.json vortex/game-afllive/index.js vortex/game-afllive/info.json vortex/game-aointernationaltennis/blobset_game.json vortex/game-aointernationaltennis/index.js vortex/game-aointernationaltennis/info.json vortex/game-aotennis2/blobset_game.json vortex/game-aotennis2/index.js vortex/game-aotennis2/info.json vortex/game-ashescricket/blobset_game.json vortex/game-ashescricket/index.js vortex/game-ashescricket/info.json vortex/game-caseypowelllacrosse16/blobset_game.json vortex/game-caseypowelllacrosse16/index.js vortex/game-caseypowelllacrosse16/info.json vortex/game-caseypowelllacrosse18/blobset_game.json vortex/game-caseypowelllacrosse18/index.js vortex/game-caseypowelllacrosse18/info.json vortex/game-cricket19/blobset_game.json vortex/game-cricket19/index.js vortex/game-cricket19/info.json vortex/game-cricket22/blobset_game.json vortex/game-cricket22/index.js vortex/game-cricket22/info.json vortex/game-cricket24/blobset_game.json vortex/game-cricket24/index.js vortex/game-cricket24/info.json vortex/game-cricket26/blobset_game.json vortex/game-cricket26/index.js vortex/game-cricket26/info.json vortex/game-donbradmancricket14/blobset_game.json vortex/game-donbradmancricket14/index.js vortex/game-donbradmancricket14/info.json vortex/game-donbradmancricket17/blobset_game.json vortex/game-donbradmancricket17/index.js vortex/game-donbradmancricket17/info.json vortex/game-masqueradethebaublesofdoom/blobset_game.json vortex/game-masqueradethebaublesofdoom/index.js vortex/game-masqueradethebaublesofdoom/info.json vortex/game-rugby25/blobset_game.json vortex/game-rugby25/index.js vortex/game-rugby25/info.json vortex/game-rugbyleague26/blobset_game.json vortex/game-rugbyleague26/index.js vortex/game-rugbyleague26/info.json vortex/game-rugbyleaguelive3/blobset_game.json vortex/game-rugbyleaguelive3/index.js vortex/game-rugbyleaguelive3/info.json vortex/game-rugbyleaguelive4/blobset_game.json vortex/game-rugbyleaguelive4/index.js vortex/game-rugbyleaguelive4/info.json vortex/game-tabletopcricket/blobset_game.json vortex/game-tabletopcricket/index.js vortex/game-tabletopcricket/info.json vortex/game-tennisworldtour2/blobset_game.json vortex/game-tennisworldtour2/index.js vortex/game-tennisworldtour2/info.json vortex/game-tiebreak/blobset_game.json vortex/game-tiebreak/index.js vortex/game-tiebreak/info.json
-RESOURCES readme/image.jpg
 )
 
 # Target third-party library header includes
@@ -254,6 +251,8 @@ target_link_directories(Blobset-Tools PRIVATE
 
 target_compile_definitions(Blobset-Tools PRIVATE
     HAVE_DIRECTXMATH
+    # The version shown in the app and compared by the updater: change it in project() above only.
+    BT_VERSION="${PROJECT_VERSION}"
 )
 
 target_link_libraries(Blobset-Tools PRIVATE
@@ -268,6 +267,7 @@ target_link_libraries(Blobset-Tools PRIVATE
     Qt6::Xml
     Qt6::Multimedia
     Qt6::Quick3D
+    Qt6::Network
     OpenMP::OpenMP_CXX
     liblzma
     libzstd
@@ -297,6 +297,7 @@ add_custom_command(TARGET Blobset-Tools POST_BUILD
 # src/core/app_paths.h): the game list, the game pictures and defaults (the data folder's starting files).
 add_custom_command(TARGET Blobset-Tools POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/GameSelectionInfo.xml" "$<TARGET_FILE_DIR:Blobset-Tools>"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/changelog.txt" "$<TARGET_FILE_DIR:Blobset-Tools>"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/assets/games" "$<TARGET_FILE_DIR:Blobset-Tools>/assets/games"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/defaults" "$<TARGET_FILE_DIR:Blobset-Tools>/defaults"
     COMMENT "Copying GameSelectionInfo.xml, assets/games and defaults next to Blobset-Tools.exe"

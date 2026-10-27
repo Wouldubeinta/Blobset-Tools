@@ -15,6 +15,7 @@
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QDataStream>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -125,6 +126,29 @@ QString hexDump(const QByteArray& data, qsizetype limit) {
 // ==========================================
 M3mpToolManager::M3mpToolManager(QObject* parent) : QObject(parent) {
     m_treeModel = new TreeModel(this);
+
+    // Save Changes ends with createM3mp(): tidy up its extraction folder and tell everyone the mods folder changed.
+    connect(this, &M3mpToolManager::processComplete, this, [this](bool ok, const QString&) {
+        if (!m_savingChanges)
+            return;
+        m_savingChanges = false;
+        if (!m_editTemp.isEmpty())
+            QDir(m_editTemp).removeRecursively();
+        m_editTemp.clear();
+        if (!ok)
+            return;
+        m_unsavedChanges = false;
+        emit changesChanged();
+        const QString target = modsTarget();
+        if (AppOrchestrator* orchestrator = AppOrchestrator::instance()) {
+            orchestrator->notifyModFilesChanged();
+            emit orchestrator->uiConsoleUpdate(u"Saved the edited M3MP to %1. Click Modify to put it into the game."_s
+                                                   .arg(QDir::toNativeSeparators(target)));
+        }
+        setStatus(true, u"Saved to %1 - click Modify in the workspace to put it into the game."_s
+                            .arg(QDir::toNativeSeparators(target)));
+        emit changesSaved(target);
+    });
 }
 
 M3mpToolManager::~M3mpToolManager() {
@@ -167,6 +191,12 @@ void M3mpToolManager::setProgress(int percent) {
 }
 
 void M3mpToolManager::clearEntries() {
+    const bool hadChanges = !m_replacements.isEmpty();
+    m_replacements.clear();
+    m_unsavedChanges = false;
+    m_workspacePath.clear();
+    if (hadChanges)
+        emit changesChanged();
     m_entries.clear();
     m_payload.clear();
     m_sourceName.clear();
@@ -303,16 +333,203 @@ void M3mpToolManager::loadM3mpFromBlobset(const QString& hexHash) {
 
     const int platform = orchestrator->platform();
     const int version = orchestrator->blobsetVersion();
+
+    // An edited copy in the mods folder (Save Changes / Replace File) is what Modify uses: show and edit that one.
+    const QString workspacePath = orchestrator->pathFromHash(hexHash);
+    const QString modsCopy = workspacePath.isEmpty() ? QString() : orchestrator->modFilePath(workspacePath);
     QByteArray data;
-    try {
-        data = BlobsetAssetReader::read(entry, orchestrator->gameLocation(), version, platform);
-    } catch (const std::exception& ex) {
-        reportError(QString::fromUtf8(ex.what()));
+    bool fromMods = false;
+    if (!modsCopy.isEmpty() && QFileInfo(modsCopy).isFile()) {
+        QFile file(modsCopy);
+        if (file.open(QIODevice::ReadOnly)) {
+            data = file.readAll();
+            fromMods = true;
+        }
+    }
+    if (!fromMods) {
+        try {
+            data = BlobsetAssetReader::read(entry, orchestrator->gameLocation(), version, platform);
+        } catch (const std::exception& ex) {
+            reportError(QString::fromUtf8(ex.what()));
+            return;
+        }
+    }
+
+    if (loadFromBytes(data, platform != static_cast<int>(CoreDefs::Platforms::Windows), version, u"0x"_s + hexHash.toUpper())) {
+        m_source = CreatorSupport::fromBlobset(entry, version, platform, u"m3mp"_s);
+        m_workspacePath = workspacePath;
+        emit changesChanged();
+        if (fromMods)
+            setStatus(true, u"Showing your edited copy from the mods folder: %1"_s.arg(QDir::toNativeSeparators(modsCopy)));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Edit: replace files, Save Changes
+// ---------------------------------------------------------------------------
+
+QString M3mpToolManager::modsTarget() const {
+    const AppOrchestrator* orchestrator = AppOrchestrator::instance();
+    return orchestrator && !m_workspacePath.isEmpty() ? QDir::toNativeSeparators(orchestrator->modFilePath(m_workspacePath))
+                                                      : QString();
+}
+
+QByteArray M3mpToolManager::previewBytes(int index) const {
+    if (m_replacements.contains(index)) {
+        QFile file(m_replacements.value(index));
+        if (file.open(QIODevice::ReadOnly))
+            return file.readAll();
+    }
+    return entryBytes(index);
+}
+
+bool M3mpToolManager::replaceEntry(int entry, const QString& file) {
+    if (m_busy || entry < 0 || entry >= m_entries.size())
+        return false;
+    const QString name = QFileInfo(m_entries[entry].path).fileName();
+    const QString wanted = QFileInfo(name).suffix().toLower();
+    if (!QFileInfo(file).isFile()) {
+        setStatus(false, u"%1 isn't a file."_s.arg(QDir::toNativeSeparators(file)));
+        return false;
+    }
+    if (QFileInfo(file).suffix().toLower() != wanted) {
+        setStatus(false, u"%1 needs a .%2 file (%3 isn't one)."_s.arg(name, wanted, QFileInfo(file).fileName()));
+        return false;
+    }
+    m_replacements.insert(entry, QFileInfo(file).absoluteFilePath());
+    m_unsavedChanges = true;
+    emit changesChanged();
+    if (entry == m_currentEntry) {
+        loadPreview(entry);
+        emit currentFileChanged();
+    }
+    setStatus(true, u"Replaced %1 with %2 - Save Changes to write the M3MP into the mods folder."_s
+                        .arg(name, QFileInfo(file).fileName()));
+    return true;
+}
+
+bool M3mpToolManager::replaceFileAt(int fileIndex, const QString& pathOrUrl) {
+    return replaceEntry(entryForFile(fileIndex), toLocalPath(pathOrUrl));
+}
+
+int M3mpToolManager::replaceByName(const QStringList& pathsOrUrls) {
+    int replaced = 0;
+    QStringList unmatched;
+    for (const QString& item : pathsOrUrls) {
+        const QString file = toLocalPath(item);
+        const QString name = QFileInfo(file).fileName();
+        int entry = -1;
+        for (int i = 0; i < m_currentFolderFiles.size() && entry < 0; ++i)
+            if (m_currentFolderFiles[i].compare(name, Qt::CaseInsensitive) == 0)
+                entry = entryForFile(i);
+        if (entry < 0) {
+            int matches = 0;
+            for (int i = 0; i < m_entries.size(); ++i) {
+                if (QFileInfo(m_entries[i].path).fileName().compare(name, Qt::CaseInsensitive) == 0) {
+                    entry = i;
+                    ++matches;
+                }
+            }
+            if (matches != 1)
+                entry = -1;
+        }
+        if (entry < 0)
+            unmatched << name;
+        else if (replaceEntry(entry, file))
+            ++replaced;
+    }
+    if (!unmatched.isEmpty())
+        setStatus(false, u"No (single) file called %1 - drop a file onto the file it should replace."_s
+                             .arg(unmatched.join(u", "_s)));
+    else if (replaced > 1)
+        setStatus(true, u"Replaced %1 files - Save Changes to write the M3MP into the mods folder."_s.arg(replaced));
+    return replaced;
+}
+
+bool M3mpToolManager::isReplacedAt(int fileIndex) const {
+    return m_replacements.contains(entryForFile(fileIndex));
+}
+
+void M3mpToolManager::revertAt(int fileIndex) {
+    const int entry = entryForFile(fileIndex);
+    if (m_busy || !m_replacements.remove(entry))
+        return;
+    m_unsavedChanges = true;
+    emit changesChanged();
+    if (entry == m_currentEntry) {
+        loadPreview(entry);
+        emit currentFileChanged();
+    }
+    setStatus(true, u"%1 is back to the M3MP's own file."_s.arg(QFileInfo(m_entries[entry].path).fileName()));
+}
+
+void M3mpToolManager::discardChanges() {
+    if (m_busy || m_replacements.isEmpty())
+        return;
+    m_replacements.clear();
+    m_unsavedChanges = false;
+    emit changesChanged();
+    if (m_currentEntry >= 0) {
+        loadPreview(m_currentEntry);
+        emit currentFileChanged();
+    }
+}
+
+void M3mpToolManager::saveChanges() {
+    if (m_busy || m_entries.isEmpty())
+        return;
+    const QString target = modsTarget();
+    if (target.isEmpty()) {
+        finish(false, u"Save Changes needs an M3MP opened from the game's files (double click it in the workspace)."_s);
+        return;
+    }
+    if (m_replacements.isEmpty()) {
+        finish(false, u"Nothing to save: replace a file first (drag one onto it, or right click > Replace)."_s);
         return;
     }
 
-    if (loadFromBytes(data, platform != static_cast<int>(CoreDefs::Platforms::Windows), version, u"0x"_s + hexHash.toUpper()))
-        m_source = CreatorSupport::fromBlobset(entry, version, platform, u"m3mp"_s);
+    const QString temp = QDir(QDir::tempPath()).filePath(
+        u"BlobsetTools-M3MP-%1"_s.arg(QDateTime::currentMSecsSinceEpoch()));
+    const QHash<int, QString> replacements = m_replacements;
+    m_cancel = false;
+    setProgress(0);
+    setBusy(true);
+    setStatus(true, u"Saving changes: extracting the M3MP..."_s);
+
+    m_extractFuture = QtConcurrent::run([this, temp, target, replacements]() {
+        QString error;
+        const int count = static_cast<int>(m_entries.size());
+        for (int i = 0; i < count && error.isEmpty(); ++i) {
+            if (m_cancel)
+                error = u"Cancelled."_s;
+            else if (!replacements.contains(i))
+                error = writeEntryTo(i, temp);
+            if (i % 16 == 0)
+                QMetaObject::invokeMethod(this, [this, i, count]() { setProgress(i * 40 / std::max(1, count)); },
+                                          Qt::QueuedConnection);
+        }
+        if (error.isEmpty())
+            error = writeCreatorList(temp);
+        for (auto it = replacements.cbegin(); it != replacements.cend() && error.isEmpty(); ++it) {
+            const QString destination = QDir::cleanPath(QDir(temp).filePath(m_entries[it.key()].path));
+            QDir().mkpath(QFileInfo(destination).absolutePath());
+            QFile::remove(destination);
+            if (!QFile::copy(it.value(), destination))
+                error = u"Could not copy %1."_s.arg(QDir::toNativeSeparators(it.value()));
+        }
+
+        QMetaObject::invokeMethod(this, [this, temp, target, error]() {
+            setBusy(false);
+            if (!error.isEmpty()) {
+                QDir(temp).removeRecursively();
+                finish(false, u"Save Changes: "_s + error);
+                return;
+            }
+            m_editTemp = temp;
+            m_savingChanges = true;
+            createM3mp(QDir(temp).filePath(CreatorSupport::m3mpListName()), temp, target);
+        }, Qt::QueuedConnection);
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -352,7 +569,7 @@ void M3mpToolManager::loadPreview(int index) {
         return;
     }
 
-    const QByteArray data = entryBytes(index);
+    const QByteArray data = previewBytes(index);
 
     // Images: DDS (any DirectXTex format), PNG, JPEG, BMP.
     QImage image;

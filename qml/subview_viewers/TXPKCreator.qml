@@ -674,7 +674,8 @@ Item {
         id: listDialog
         title: "Choose the " + creatorRoot.listName
         nameFilters: ["Creator list (" + creatorRoot.listName + " *.xml)", "All files (*)"]
-        currentFolder: creatorRoot.xmlPath !== "" ? creatorRoot.toUrl(creatorRoot.folderOf(creatorRoot.xmlPath)) : ""
+        currentFolder: creatorRoot.xmlPath !== "" ? creatorRoot.toUrl(creatorRoot.folderOf(creatorRoot.xmlPath))
+                                                  : appOrchestrator.workFolderUrl("txpk")
         onAccepted: {
             creatorRoot.xmlPath = creatorRoot.toLocal(selectedFile)
             creatorRoot.sourceDir = ""
@@ -690,7 +691,7 @@ Item {
     FolderDialog {
         id: folderDialog
         title: "Choose the folder with the .dds files"
-        currentFolder: creatorRoot.listOk ? creatorRoot.toUrl(creatorRoot.info.sourceDir) : ""
+        currentFolder: creatorRoot.listOk ? creatorRoot.toUrl(creatorRoot.info.sourceDir) : appOrchestrator.workFolderUrl("txpk")
         onAccepted: {
             creatorRoot.sourceDir = creatorRoot.toLocal(selectedFolder)
             creatorRoot.refresh()

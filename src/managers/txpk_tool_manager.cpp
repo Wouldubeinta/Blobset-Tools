@@ -15,6 +15,7 @@
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QDataStream>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -73,6 +74,29 @@ QByteArray toConsoleDds(const QByteArray& pixels, const Gcm::CellGcmTexture& gcm
 
 TxpkToolManager::TxpkToolManager(QObject* parent) : QObject(parent) {
     m_treeModel = new TreeModel(this);
+
+    // Save Changes ends with createTxpk(): tidy up its extraction folder and tell everyone the mods folder changed.
+    connect(this, &TxpkToolManager::processComplete, this, [this](bool ok, const QString&) {
+        if (!m_savingChanges)
+            return;
+        m_savingChanges = false;
+        if (!m_editTemp.isEmpty())
+            QDir(m_editTemp).removeRecursively();
+        m_editTemp.clear();
+        if (!ok)
+            return;
+        m_unsavedChanges = false;
+        emit changesChanged();
+        const QString target = modsTarget();
+        if (AppOrchestrator* orchestrator = AppOrchestrator::instance()) {
+            orchestrator->notifyModFilesChanged();
+            emit orchestrator->uiConsoleUpdate(u"Saved the edited TXPK to %1. Click Modify to put it into the game."_s
+                                                   .arg(QDir::toNativeSeparators(target)));
+        }
+        setStatus(true, u"Saved to %1 - click Modify in the workspace to put it into the game."_s
+                            .arg(QDir::toNativeSeparators(target)));
+        emit changesSaved(target);
+    });
 }
 
 TxpkToolManager::~TxpkToolManager() {
@@ -89,6 +113,12 @@ void TxpkToolManager::setBusy(bool busy) {
 }
 
 void TxpkToolManager::clearEntries() {
+    const bool hadChanges = !m_replacements.isEmpty();
+    m_replacements.clear();
+    m_unsavedChanges = false;
+    m_workspacePath.clear();
+    if (hadChanges)
+        emit changesChanged();
     m_entries.clear();
     m_fileList.clear();
     m_data.clear();
@@ -285,18 +315,191 @@ void TxpkToolManager::loadTxpkFromBlobset(const QString& hexHash) {
     const int platform = orchestrator->platform();
     const bool isBigEndian = platform != static_cast<int>(CoreDefs::Platforms::Windows);
 
+    // An edited copy in the mods folder (Save Changes / Replace File) is what Modify uses: show and edit that one.
+    const QString workspacePath = orchestrator->pathFromHash(hexHash);
+    const QString modsCopy = workspacePath.isEmpty() ? QString() : orchestrator->modFilePath(workspacePath);
     QByteArray data;
     qint64 mainSize = 0;
-    try {
-        data = BlobsetAssetReader::read(entry, orchestrator->gameLocation(), orchestrator->blobsetVersion(),
-                                        platform, &mainSize);
-    } catch (const std::exception& ex) {
-        reportError(QString::fromUtf8(ex.what()));
+    bool fromMods = false;
+    if (!modsCopy.isEmpty() && QFileInfo(modsCopy).isFile()) {
+        QFile file(modsCopy);
+        if (file.open(QIODevice::ReadOnly)) {
+            data = file.readAll();
+            mainSize = -1;   // A standalone TXPK: main section followed by the vram section.
+            fromMods = true;
+        }
+    }
+    if (!fromMods) {
+        try {
+            data = BlobsetAssetReader::read(entry, orchestrator->gameLocation(), orchestrator->blobsetVersion(),
+                                            platform, &mainSize);
+        } catch (const std::exception& ex) {
+            reportError(QString::fromUtf8(ex.what()));
+            return;
+        }
+    }
+
+    if (loadFromBytes(data, mainSize, isBigEndian, u"0x"_s + hexHash.toUpper())) {
+        m_source = CreatorSupport::fromBlobset(entry, orchestrator->blobsetVersion(), m_platform, u"txpk"_s);
+        m_workspacePath = workspacePath;
+        emit changesChanged();
+        if (fromMods)
+            setStatus(true, u"Showing your edited copy from the mods folder: %1"_s.arg(QDir::toNativeSeparators(modsCopy)));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Edit: replace textures, Save Changes
+// ---------------------------------------------------------------------------
+
+QString TxpkToolManager::modsTarget() const {
+    const AppOrchestrator* orchestrator = AppOrchestrator::instance();
+    return orchestrator && !m_workspacePath.isEmpty() ? QDir::toNativeSeparators(orchestrator->modFilePath(m_workspacePath))
+                                                      : QString();
+}
+
+bool TxpkToolManager::replaceEntry(int entry, const QString& file) {
+    if (m_busy || entry < 0 || entry >= m_entries.size())
+        return false;
+    const QString name = QFileInfo(m_entries[entry].ddsPath).fileName();
+    QFile source(file);
+    if (QFileInfo(file).suffix().compare(u"dds"_s, Qt::CaseInsensitive) != 0 || !source.open(QIODevice::ReadOnly)
+        || source.read(4) != "DDS ") {
+        setStatus(false, u"%1 needs a .dds texture (%2 isn't one)."_s.arg(name, QFileInfo(file).fileName()));
+        return false;
+    }
+    m_replacements.insert(entry, QFileInfo(file).absoluteFilePath());
+    m_unsavedChanges = true;
+    emit changesChanged();
+    if (entry == m_previewEntry || entry == m_currentEntry) {
+        releasePreview();
+        refreshPreview();
+    }
+    setStatus(true, u"Replaced %1 with %2 - Save Changes to write the TXPK into the mods folder."_s
+                        .arg(name, QFileInfo(file).fileName()));
+    return true;
+}
+
+bool TxpkToolManager::replaceFileAt(int fileIndex, const QString& pathOrUrl) {
+    return replaceEntry(entryForFile(fileIndex), toLocalPath(pathOrUrl));
+}
+
+int TxpkToolManager::replaceByName(const QStringList& pathsOrUrls) {
+    int replaced = 0;
+    QStringList unmatched;
+    for (const QString& item : pathsOrUrls) {
+        const QString file = toLocalPath(item);
+        const QString name = QFileInfo(file).fileName();
+        int entry = -1;
+        for (int i = 0; i < m_currentFolderFiles.size() && entry < 0; ++i)
+            if (m_currentFolderFiles[i].compare(name, Qt::CaseInsensitive) == 0)
+                entry = entryForFile(i);
+        if (entry < 0) {
+            int matches = 0;
+            for (int i = 0; i < m_entries.size(); ++i) {
+                if (QFileInfo(m_entries[i].ddsPath).fileName().compare(name, Qt::CaseInsensitive) == 0) {
+                    entry = i;
+                    ++matches;
+                }
+            }
+            if (matches != 1)
+                entry = -1;   // Not there, or in more than one folder: drop it onto the texture instead.
+        }
+        if (entry < 0)
+            unmatched << name;
+        else if (replaceEntry(entry, file))
+            ++replaced;
+    }
+    if (!unmatched.isEmpty())
+        setStatus(false, u"No (single) texture called %1 - drop a file onto the texture it should replace."_s
+                             .arg(unmatched.join(u", "_s)));
+    else if (replaced > 1)
+        setStatus(true, u"Replaced %1 textures - Save Changes to write the TXPK into the mods folder."_s.arg(replaced));
+    return replaced;
+}
+
+bool TxpkToolManager::isReplacedAt(int fileIndex) const {
+    return m_replacements.contains(entryForFile(fileIndex));
+}
+
+void TxpkToolManager::revertAt(int fileIndex) {
+    const int entry = entryForFile(fileIndex);
+    if (m_busy || !m_replacements.remove(entry))
+        return;
+    m_unsavedChanges = true;
+    emit changesChanged();
+    if (entry == m_previewEntry || entry == m_currentEntry) {
+        releasePreview();
+        refreshPreview();
+    }
+    setStatus(true, u"%1 is back to the TXPK's own texture."_s.arg(QFileInfo(m_entries[entry].ddsPath).fileName()));
+}
+
+void TxpkToolManager::discardChanges() {
+    if (m_busy || m_replacements.isEmpty())
+        return;
+    m_replacements.clear();
+    m_unsavedChanges = false;
+    emit changesChanged();
+    releasePreview();
+    refreshPreview();
+}
+
+void TxpkToolManager::saveChanges() {
+    if (m_busy || m_entries.isEmpty())
+        return;
+    const QString target = modsTarget();
+    if (target.isEmpty()) {
+        finish(false, u"Save Changes needs a TXPK opened from the game's files (double click it in the workspace)."_s);
+        return;
+    }
+    if (m_replacements.isEmpty()) {
+        finish(false, u"Nothing to save: replace a texture first (drag a .dds onto it, or right click > Replace)."_s);
         return;
     }
 
-    if (loadFromBytes(data, mainSize, isBigEndian, u"0x"_s + hexHash.toUpper()))
-        m_source = CreatorSupport::fromBlobset(entry, orchestrator->blobsetVersion(), m_platform, u"txpk"_s);
+    const QString temp = QDir(QDir::tempPath()).filePath(
+        u"BlobsetTools-TXPK-%1"_s.arg(QDateTime::currentMSecsSinceEpoch()));
+    const QHash<int, QString> replacements = m_replacements;
+    m_cancel = false;
+    setProgress(0);
+    setBusy(true);
+    setStatus(true, u"Saving changes: extracting the TXPK..."_s);
+
+    m_extractFuture = QtConcurrent::run([this, temp, target, replacements]() {
+        QString error;
+        const int count = static_cast<int>(m_entries.size());
+        for (int i = 0; i < count && error.isEmpty(); ++i) {
+            if (m_cancel)
+                error = u"Cancelled."_s;
+            else if (!replacements.contains(i))
+                error = writeEntryTo(i, temp, false, false, true);
+            if (i % 16 == 0)
+                QMetaObject::invokeMethod(this, [this, i, count]() { setProgress(i * 40 / std::max(1, count)); },
+                                          Qt::QueuedConnection);
+        }
+        if (error.isEmpty())
+            error = writeCreatorList(temp);
+        for (auto it = replacements.cbegin(); it != replacements.cend() && error.isEmpty(); ++it) {
+            const QString destination = QDir(temp).filePath(outputPath(it.key(), false));
+            QDir().mkpath(QFileInfo(destination).absolutePath());
+            QFile::remove(destination);
+            if (!QFile::copy(it.value(), destination))
+                error = u"Could not copy %1."_s.arg(QDir::toNativeSeparators(it.value()));
+        }
+
+        QMetaObject::invokeMethod(this, [this, temp, target, error]() {
+            setBusy(false);
+            if (!error.isEmpty()) {
+                QDir(temp).removeRecursively();
+                finish(false, u"Save Changes: "_s + error);
+                return;
+            }
+            m_editTemp = temp;
+            m_savingChanges = true;
+            createTxpk(QDir(temp).filePath(CreatorSupport::txpkListName()), temp, target);
+        }, Qt::QueuedConnection);
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -337,7 +540,14 @@ QString TxpkToolManager::previewImageUrl(int index) {
         releasePreview();
 
         const QString name = m_entries[index].ddsPath;
-        const QByteArray dds = ddsBytesFor(index);
+        QByteArray dds;
+        if (m_replacements.contains(index)) {
+            QFile replacement(m_replacements.value(index));
+            if (replacement.open(QIODevice::ReadOnly))
+                dds = replacement.readAll();
+        } else {
+            dds = ddsBytesFor(index);
+        }
         if (dds.isEmpty()) {
             finish(false, u"The texture data of %1 lies outside of the TXPK or uses an unsupported format."_s.arg(name));
             return {};

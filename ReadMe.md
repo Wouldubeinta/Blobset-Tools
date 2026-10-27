@@ -212,6 +212,26 @@ To extract all files, click **Extract**. The files are saved to:
 
 ---
 
+### Replacing Files
+
+The quickest way to mod a single file:
+
+- **Drag and drop** a file onto a file in the **Files** panel to replace it, or drop files onto the panel to replace
+  the files with the same names in that folder.
+- Or **right-click** a file > **Replace File...**.
+
+The replacement is copied into the mods folder at the same path
+(`Documents\Blobset Tools\games\<Game>\<Platform>\mods\...`) and the file gets a **MOD** badge. Click **Modify**
+to put it into the game. Right-click > **Remove Replacement** takes it out of the mods folder again. The replacement
+needs the same file type (a `.dds` for a `.dds`, ...).
+
+**Inside a TXPK or M3MP**: open it (double-click), then drag textures / files onto the ones they replace, or
+right-click > **Replace**. Replaced files show a **MOD** badge and the preview shows the new texture. Click
+**Save Changes** to rebuild the TXPK / M3MP into the mods folder (with the `.xml` Modify needs), then **Modify**. The
+next time you open it, the viewer shows your edited copy, so you can keep adding to it.
+
+---
+
 ### Creating TXPK Files
 
 1. **Prepare the TXPK Folder**:
@@ -281,7 +301,8 @@ the matching folder under `mods\` and click **Modify**.
 - **Build** (the same as **Modify**) puts the `mods` folder and every enabled mod into the game. Mods you disabled
   or removed since the last build are taken out again.
 
-Mod authors can add a `blobsetmod.json` (name, author, version, description, url) to the mod's root folder.
+Mod authors can add a `blobsetmod.json` (name, author, version, description, url, image) and a `preview.png`
+picture to the mod's root folder. Use **Set Image...** to give any installed mod a picture.
 See [docs/MOD_MANAGER.md](docs/MOD_MANAGER.md) for the details.
 
 ### Vortex Mod Manager
@@ -320,6 +341,9 @@ Blobset-Tools.exe --game "Rugby League Live 3" --restore
   instead of changing the game's files.
 - **Open Data Folder**: Opens `Documents\Blobset Tools`.
 - **Restore Backup Files**: Puts back every original file that was replaced by mods.
+- **Check for Updates** (About): Looks for a newer release on GitHub. Blobset Tools also checks by itself once a day
+  when it starts; **Download and Install** gets the new setup, closes Blobset Tools and runs it (your games, settings
+  and mods are kept). **Skip This Version** stops the reminder for that release.
 
 ---
 

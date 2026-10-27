@@ -135,7 +135,7 @@ Item {
                 HeaderButton {
                     tip: "Return to the main workspace"
                     text: "◀ Back"
-                    onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
+                    onClicked: m3mpViewRoot.leave()
                 }
 
                 Rectangle { width: 1; Layout.preferredHeight: 28; color: BtDarkStyle.borderDark }
@@ -178,6 +178,21 @@ Item {
                     iconSource: m3mpViewRoot.iconDir + "extract_32.png"
                     enabled: !m3mpManager.busy && m3mpManager.entryCount > 0
                     onClicked: extractDialog.start(true)
+                }
+
+                Rectangle { width: 1; Layout.preferredHeight: 28; color: BtDarkStyle.borderDark }
+
+                // Replacements (drag files onto the list, or right click > Replace) are kept until Save Changes
+                // rebuilds the M3MP into the mods folder.
+                HeaderButton {
+                    tip: m3mpManager.modsTarget !== ""
+                         ? "Rebuild the M3MP with your replacements into " + m3mpManager.modsTarget + " (then Modify puts it into the game)"
+                         : "Open the M3MP from the game's files (double click it in the workspace) to save changes"
+                    text: m3mpManager.unsavedChanges ? "Save Changes (" + m3mpManager.replacedCount + ") •" : "Save Changes"
+                    iconSource: m3mpViewRoot.iconDir + "save_32.png"
+                    enabled: !m3mpManager.busy && m3mpManager.unsavedChanges && m3mpManager.modsTarget !== ""
+                    checked: m3mpManager.unsavedChanges
+                    onClicked: m3mpManager.saveChanges()
                 }
 
                 Item { Layout.fillWidth: true }
@@ -442,9 +457,24 @@ Item {
                         Layout.fillHeight: true
                         color: BtDarkStyle.bgDark
                         border.width: 1
-                        border.color: fileListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.borderDark
+                        border.color: listDrop.containsDrag || fileListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.borderDark
                         radius: 4
                         clip: true
+
+                        // Dropped on the list (not on a file): each file replaces the one with the same name.
+                        DropArea {
+                            id: listDrop
+                            anchors.fill: parent
+                            onDropped: (drop) => {
+                                if (!drop.hasUrls)
+                                    return
+                                const urls = []
+                                for (let i = 0; i < drop.urls.length; ++i)
+                                    urls.push(drop.urls[i].toString())
+                                m3mpManager.replaceByName(urls)
+                                drop.acceptProposedAction()
+                            }
+                        }
 
                         ListView {
                             id: fileListView
@@ -486,6 +516,9 @@ Item {
                                         readonly property int targetFileIndex: columnBlock.startIdx + index
                                         readonly property string currentFileName: m3mpManager.currentFolderFiles[targetFileIndex]
                                         readonly property bool isSelected: m3mpManager.currentFileIndex === targetFileIndex
+                                        // Re-checked whenever the replacements change.
+                                        readonly property bool replaced: m3mpManager.replacedCount >= 0 && m3mpManager.unsavedChanges !== undefined
+                                                                         && m3mpManager.isReplacedAt(targetFileIndex)
 
                                         width: filesPanel.gridColumnWidth
                                         height: filesPanel.itemRowHeight
@@ -496,8 +529,42 @@ Item {
                                         background: Rectangle {
                                             color: fileDelegate.isSelected
                                                    ? (fileListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.accentDim)
-                                                   : (fileDelegate.hovered ? BtDarkStyle.bgHover : "transparent")
+                                                   : (fileDelegate.hovered || itemDrop.containsDrag ? BtDarkStyle.bgHover : "transparent")
+                                            border.width: itemDrop.containsDrag ? 1 : 0
+                                            border.color: BtDarkStyle.accentColor
                                             radius: 2
+                                        }
+
+                                        // A file dropped on this one replaces it (whatever its name).
+                                        DropArea {
+                                            id: itemDrop
+                                            anchors.fill: parent
+                                            onDropped: (drop) => {
+                                                if (!drop.hasUrls)
+                                                    return
+                                                if (drop.urls.length === 1) {
+                                                    m3mpManager.replaceFileAt(fileDelegate.targetFileIndex, drop.urls[0].toString())
+                                                } else {
+                                                    const urls = []
+                                                    for (let i = 0; i < drop.urls.length; ++i)
+                                                        urls.push(drop.urls[i].toString())
+                                                    m3mpManager.replaceByName(urls)
+                                                }
+                                                drop.acceptProposedAction()
+                                            }
+                                        }
+
+                                        // Right click: Replace / Revert.
+                                        TapHandler {
+                                            acceptedButtons: Qt.RightButton
+                                            onTapped: {
+                                                fileListView.forceActiveFocus()
+                                                m3mpManager.selectFile(fileDelegate.targetFileIndex)
+                                                replaceMenu.fileIndex = fileDelegate.targetFileIndex
+                                                replaceMenu.fileName = fileDelegate.currentFileName
+                                                replaceMenu.replaced = fileDelegate.replaced
+                                                replaceMenu.popup()
+                                            }
                                         }
 
                                         contentItem: RowLayout {
@@ -521,6 +588,22 @@ Item {
                                                 font.pixelSize: 11
                                                 Layout.fillWidth: true
                                                 verticalAlignment: Text.AlignVCenter
+                                            }
+                                            Rectangle {
+                                                visible: fileDelegate.replaced
+                                                Layout.alignment: Qt.AlignVCenter
+                                                implicitWidth: replacedBadge.implicitWidth + 8
+                                                implicitHeight: 14
+                                                radius: 3
+                                                color: fileDelegate.isSelected ? "#121214" : BtDarkStyle.accentDim
+                                                Text {
+                                                    id: replacedBadge
+                                                    anchors.centerIn: parent
+                                                    text: "MOD"
+                                                    color: fileDelegate.isSelected ? BtDarkStyle.accentColor : "#121214"
+                                                    font.pixelSize: 8
+                                                    font.bold: true
+                                                }
                                             }
                                         }
 
@@ -853,6 +936,7 @@ Item {
         function start(all) {
             extractAll = all
             title = all ? "Extract All Files to Directory" : "Extract Selected File to Directory"
+            currentFolder = appOrchestrator.workFolderUrl("m3mp")   // Documents\Blobset Tools\games\<game>\<platform>\m3mp
             open()
         }
 
@@ -861,6 +945,87 @@ Item {
                 m3mpManager.extractAll(selectedFolder.toString())
             else
                 m3mpManager.extractSelected(selectedFolder.toString())
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------------
+    // Replace / Save Changes
+    // ------------------------------------------------------------------------------------------------
+    function leave() {
+        if (m3mpManager.unsavedChanges)
+            unsavedChangesDialog.open()
+        else
+            appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
+    }
+
+    Connections {
+        target: m3mpManager
+        // Saved from the "unsaved changes" question on the way out: carry on back to the workspace.
+        function onChangesSaved(target) {
+            if (unsavedChangesDialog.leaveAfterSave) {
+                unsavedChangesDialog.leaveAfterSave = false
+                appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
+            }
+        }
+        function onProcessComplete(success, message) {
+            if (!success)
+                unsavedChangesDialog.leaveAfterSave = false
+        }
+    }
+
+    Menu {
+        id: replaceMenu
+        property int fileIndex: -1
+        property string fileName: ""
+        property bool replaced: false
+        MenuItem {
+            text: "Replace " + replaceMenu.fileName + "..."
+            icon.source: m3mpViewRoot.iconDir + "modify_32.png"
+            icon.color: "transparent"
+            onTriggered: replaceDialog.start(replaceMenu.fileIndex, replaceMenu.fileName)
+        }
+        MenuItem {
+            text: "Undo Replace"
+            visible: replaceMenu.replaced
+            height: visible ? implicitHeight : 0
+            icon.source: m3mpViewRoot.iconDir + "reset_32.png"
+            icon.color: "transparent"
+            onTriggered: m3mpManager.revertAt(replaceMenu.fileIndex)
+        }
+    }
+
+    FileDialog {
+        id: replaceDialog
+        property int fileIndex: -1
+        fileMode: FileDialog.OpenFile
+
+        function start(index, name) {
+            fileIndex = index
+            const dot = name.lastIndexOf(".")
+            const ext = dot > 0 ? name.substring(dot + 1).toLowerCase() : ""
+            title = "Replace " + name
+            nameFilters = ext !== "" ? [ext.toUpperCase() + " file (*." + ext + ")"] : ["All files (*)"]
+            open()
+        }
+
+        onAccepted: m3mpManager.replaceFileAt(fileIndex, selectedFile.toString())
+    }
+
+    MessageDialog {
+        id: unsavedChangesDialog
+        property bool leaveAfterSave: false
+        title: "Unsaved Changes"
+        text: "You replaced " + m3mpManager.replacedCount + " file(s) in this M3MP but haven't saved it."
+        informativeText: "Save Changes rebuilds the M3MP into the mods folder. Save before going back?"
+        buttons: MessageDialog.Save | MessageDialog.Discard | MessageDialog.Cancel
+        onButtonClicked: function (button, role) {
+            if (button === MessageDialog.Save) {
+                leaveAfterSave = true
+                m3mpManager.saveChanges()
+            } else if (button === MessageDialog.Discard) {
+                m3mpManager.discardChanges()
+                appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
+            }
         }
     }
 

@@ -6,6 +6,8 @@
 #include <QFile>
 #include <QRegularExpression>
 #include <QDir>
+#include <QFileInfo>
+#include <QStringList>
 
 namespace Utilities {
 
@@ -39,35 +41,72 @@ namespace Utilities {
         return chunkSizes;
     }
 
-    QString getSteamGamesLocation(quint32 steamGameId) {
+    QStringList steamLibraries() {
+        QStringList roots;
     #ifdef Q_OS_WIN
-        QSettings reg("HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Valve\\Steam", QSettings::NativeFormat);
-        QString steamPath = reg.value("InstallPath").toString();
-
-        if (steamPath.isEmpty()) return "";
-
-        QString vdfPath = steamPath + "\\steamapps\\libraryfolders.vdf";
-        QFile vdfFile(vdfPath);
-        if (!vdfFile.open(QIODevice::ReadOnly | QIODevice::Text)) return "";
-
-        QString vdfContent = vdfFile.readAll();
-
-        // Matches "path", captures the directory string, then matches
-        // forward through "apps" to make sure the targeted game ID exists inside this block.
-        // [^}]* ensures we don't accidentally leak into a different library folder block.
-        QString pattern = QString(R"raw("path"\s+"([^"]+)"[^}]+"apps"\s*\{[^}]*"%1")raw").arg(steamGameId);
-
-        QRegularExpression re(pattern, QRegularExpression::DotMatchesEverythingOption);
-        QRegularExpressionMatch match = re.match(vdfContent);
-
-        if (match.hasMatch()) {
-            return QDir::fromNativeSeparators(match.captured(1));
-        }
-        return "";
-    #else
-        Q_UNUSED(steamGameId);
-        return "";
+        // Steam writes its folder to the user's key (SteamPath, '/' separated) and the machine key (InstallPath).
+        const QSettings user(QStringLiteral("HKEY_CURRENT_USER\\Software\\Valve\\Steam"), QSettings::NativeFormat);
+        roots << user.value(QStringLiteral("SteamPath")).toString();
+        const QSettings machine32(QStringLiteral("HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Valve\\Steam"), QSettings::NativeFormat);
+        roots << machine32.value(QStringLiteral("InstallPath")).toString();
+        const QSettings machine(QStringLiteral("HKEY_LOCAL_MACHINE\\SOFTWARE\\Valve\\Steam"), QSettings::NativeFormat);
+        roots << machine.value(QStringLiteral("InstallPath")).toString();
+        roots << QStringLiteral("C:/Program Files (x86)/Steam") << QStringLiteral("C:/Program Files/Steam");
     #endif
+
+        QStringList libraries;
+        const auto add = [&libraries](QString path) {
+            path = QDir::cleanPath(QDir::fromNativeSeparators(path.trimmed()));
+            if (path.isEmpty() || path == QStringLiteral(".") || !QFileInfo(path).isDir())
+                return;
+            for (const QString& known : std::as_const(libraries))
+                if (known.compare(path, Qt::CaseInsensitive) == 0)
+                    return;
+            libraries.append(path);
+        };
+
+        for (const QString& root : std::as_const(roots)) {
+            if (root.trimmed().isEmpty() || !QFileInfo(root.trimmed()).isDir())
+                continue;
+            add(root);
+            // Every library Steam knows: "path" "D:\\SteamLibrary" (current format) or "1" "D:\\SteamLibrary" (old).
+            for (const QString& vdf : {QStringLiteral("steamapps/libraryfolders.vdf"), QStringLiteral("config/libraryfolders.vdf")}) {
+                QFile file(QDir(root.trimmed()).filePath(vdf));
+                if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+                    continue;
+                const QString content = QString::fromUtf8(file.readAll());
+                static const QRegularExpression pathRe(QStringLiteral(R"re("(?:path|\d+)"\s+"([A-Za-z]:[^"]+)")re"),
+                                                       QRegularExpression::CaseInsensitiveOption);
+                for (auto it = pathRe.globalMatch(content); it.hasNext();)
+                    add(it.next().captured(1).replace(QStringLiteral("\\\\"), QStringLiteral("\\")));   // VDF escapes '\'
+            }
+        }
+        return libraries;
+    }
+
+    QString getSteamGamesLocation(quint32 steamGameId) {
+        if (steamGameId == 0)
+            return {};
+        for (const QString& library : steamLibraries())
+            if (QFileInfo::exists(QDir(library).filePath(QStringLiteral("steamapps/appmanifest_%1.acf").arg(steamGameId))))
+                return library;
+        return {};
+    }
+
+    QString getSteamGameFolder(quint32 steamGameId) {
+        const QString library = getSteamGamesLocation(steamGameId);
+        if (library.isEmpty())
+            return {};
+        QFile manifest(QDir(library).filePath(QStringLiteral("steamapps/appmanifest_%1.acf").arg(steamGameId)));
+        if (!manifest.open(QIODevice::ReadOnly | QIODevice::Text))
+            return {};
+        static const QRegularExpression installDirRe(QStringLiteral(R"re("installdir"\s+"([^"]+)")re"),
+                                                     QRegularExpression::CaseInsensitiveOption);
+        const QString installDir = installDirRe.match(QString::fromUtf8(manifest.readAll())).captured(1).trimmed();
+        if (installDir.isEmpty())
+            return {};
+        const QString folder = QDir(library).filePath(QStringLiteral("steamapps/common/") + installDir);
+        return QFileInfo(folder).isDir() ? folder : QString();
     }
 
     QByteArray readBlobsetHeader(const QString& backupFilePath) {

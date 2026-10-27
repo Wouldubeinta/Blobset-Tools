@@ -185,7 +185,10 @@ Item {
                     text: "Extract Selected"
                     iconSource: bnkViewRoot.iconDir + "extract_32.png"
                     enabled: !bnkManager.busy && bnkManager.currentEntry >= 0
-                    onClicked: extractOneDialog.open()
+                    onClicked: {
+                        extractOneDialog.currentFolder = appOrchestrator.workFolderUrl("audio")
+                        extractOneDialog.open()
+                    }
                 }
 
                 HeaderButton {
@@ -193,7 +196,10 @@ Item {
                     text: "Extract All WEM Files"
                     iconSource: bnkViewRoot.iconDir + "extract_32.png"
                     enabled: !bnkManager.busy && bnkManager.entryCount > 0
-                    onClicked: extractAllDialog.open()
+                    onClicked: {
+                        extractAllDialog.currentFolder = appOrchestrator.workFolderUrl("audio")
+                        extractAllDialog.open()
+                    }
                 }
 
                 Item { Layout.fillWidth: true }

@@ -78,6 +78,7 @@ public:
 signals:
     void actionCompleted(const QString& message);
     void errorOccurred(const QString& message);
+    void saved();   // saveMapping() wrote the file.
     void countChanged();
     void modifiedChanged();
     void filePathChanged();

@@ -41,6 +41,9 @@ public:
                               const QString& description);
     // The files of `id` another enabled mod also has: [{ path, winner (name), others: "A, B" }].
     Q_INVOKABLE QVariantList conflictsFor(const QString& id) const;
+    // The mod's picture (.png / .jpg, file path or file:// URL), copied into its folder as preview.<ext>.
+    Q_INVOKABLE void setImage(const QString& id, const QString& pathOrUrl);
+    Q_INVOKABLE void clearImage(const QString& id);
     // The first `max` files of a mod ('/' separated).
     Q_INVOKABLE QStringList filesOf(const QString& id, int max = 2000) const;
     Q_INVOKABLE void openFolder(const QString& id) const;

@@ -548,12 +548,16 @@ QString AppOrchestrator::currentGameImage() {
             loadedGames = xmlParser.games;
     }
 
-    const int index = gameId();   // The game list order is the game id (see GameSelection.qml).
-    if (index < 0 || index >= loadedGames.size() || loadedGames[index].image.isEmpty())
+    // By folder name: the installer's game list only holds the picked games, so positions aren't game ids.
+    QString image;
+    for (const GameEntry& entry : std::as_const(loadedGames))
+        if (entry.modFolder.compare(m_modGameFolderName, Qt::CaseInsensitive) == 0)
+            image = entry.image;
+    if (image.isEmpty())
         return {};
 
     // Same folder GameSelection.qml shows it from.
-    const QString path = QDir(AppPaths::installDir()).filePath(u"assets/games/"_s + loadedGames[index].image);
+    const QString path = QDir(AppPaths::installDir()).filePath(u"assets/games/"_s + image);
     return QFileInfo::exists(path) ? QUrl::fromLocalFile(path).toString() : QString();
 }
 
@@ -731,6 +735,28 @@ QVariantMap AppOrchestrator::gameInfoPreview(const QString& modGameFolderName, i
     for (QDirIterator it(platformDir.filePath(u"mods"_s), QDir::Files, QDirIterator::Subdirectories); it.hasNext(); it.next())
         ++modCount;
     info[u"modCount"_s] = modCount;
+
+    // Mods installed with the Mod Manager (mod_library), and Vortex's folder when the game has been located.
+    QString externalDir;
+    if (folder == u"pc"_s && blobset.isFile()) {
+        QDir gameRoot = blobset.absoluteDir();
+        if (gameRoot.dirName().compare(u"data"_s, Qt::CaseInsensitive) == 0)
+            gameRoot.cdUp();
+        const QString vortex = gameRoot.filePath(QString::fromLatin1(ModLibrary::kExternalFolder));
+        if (QFileInfo(vortex).isDir())
+            externalDir = vortex;
+    }
+    ModLibrary library(platformDir.absolutePath(), externalDir, ModifyWorker::supportedExtensions(version));
+    library.load();
+    int installed = 0, enabled = 0;
+    for (const ModLibrary::Mod& mod : library.mods()) {
+        if (mod.builtIn)
+            continue;
+        ++installed;
+        enabled += mod.enabled ? 1 : 0;
+    }
+    info[u"installedMods"_s] = installed;
+    info[u"enabledMods"_s] = enabled;
     return info;
 }
 
@@ -746,6 +772,166 @@ QString AppOrchestrator::modsFolderPath() const {
     if (m_modGameFolderName.isEmpty())
         return {};
     return QDir(appPath()).filePath(u"games/%1/%2/mods"_s.arg(m_modGameFolderName, platformFolder()));
+}
+
+QString AppOrchestrator::workFolderUrl(const QString& subFolder) const {
+    if (m_modGameFolderName.isEmpty())
+        return {};
+    const QString folder = QDir::cleanPath(QDir(appPath()).filePath(
+        u"games/%1/%2/%3"_s.arg(m_modGameFolderName, platformFolder(), subFolder)));
+    if (!QDir().mkpath(folder))
+        return {};
+    return QUrl::fromLocalFile(folder).toString();
+}
+
+QString AppOrchestrator::modFilePath(const QString& workspacePath) const {
+    const QString platformDir = platformDirPath();
+    QString relative = QDir::cleanPath(QString(workspacePath).replace(u'\\', u'/'));
+    while (relative.startsWith(u'/'))
+        relative.remove(0, 1);
+    if (platformDir.isEmpty() || relative.isEmpty() || relative == u".."_s || relative.startsWith(u"../"_s)
+        || relative.contains(u':'))
+        return {};
+    return QDir::cleanPath(QDir(platformDir).filePath(u"mods/"_s + relative));
+}
+
+bool AppOrchestrator::hasModFile(const QString& workspacePath) const {
+    const QString path = modFilePath(workspacePath);
+    return !path.isEmpty() && QFileInfo(path).isFile();
+}
+
+QVariantMap AppOrchestrator::replaceAsset(const QString& workspacePath, const QString& sourcePathOrUrl) {
+    const auto result = [this](bool ok, const QString& message, const QString& target = {}) {
+        emit uiConsoleUpdate(message);
+        return QVariantMap{{u"ok"_s, ok}, {u"message"_s, message}, {u"target"_s, target}};
+    };
+    const QString source = sourcePathOrUrl.startsWith(u"file:"_s, Qt::CaseInsensitive) ? QUrl(sourcePathOrUrl).toLocalFile()
+                                                                                       : sourcePathOrUrl;
+    const QString target = modFilePath(workspacePath);
+    const QString name = QFileInfo(QString(workspacePath).replace(u'\\', u'/')).fileName();
+    if (target.isEmpty())
+        return result(false, u"Replace File: load a game first."_s);
+    if (!QFileInfo(source).isFile())
+        return result(false, u"Replace File: %1 isn't a file."_s.arg(QDir::toNativeSeparators(source)));
+
+    const QString wanted = QFileInfo(name).suffix().toLower();
+    const QString given = QFileInfo(source).suffix().toLower();
+    if (wanted != given)
+        return result(false, u"Replace File: %1 needs a .%2 file, not %3."_s
+                                 .arg(name, wanted, QFileInfo(source).fileName()));
+
+    // .txpk / .m3mp: Modify needs the <name>.xml the TXPK / M3MP Creator writes next to it.
+    const bool needsXml = wanted == u"txpk"_s || wanted == u"m3mp"_s;
+    const auto sidecar = [](const QString& file) {
+        const QFileInfo info(file);
+        return info.absolutePath() + u'/' + info.completeBaseName() + u".xml"_s;
+    };
+    if (needsXml && !QFileInfo(sidecar(source)).isFile())
+        return result(false, u"Replace File: %1 needs its %2 next to it (the %3 Creator writes it). Or open %4 in the "
+                             u"%3 viewer, replace what you want inside it and click Save Changes."_s
+                                 .arg(QFileInfo(source).fileName(), QFileInfo(sidecar(source)).fileName(),
+                                      wanted.toUpper(), name));
+
+    if (QDir::cleanPath(QFileInfo(source).absoluteFilePath()).compare(target, Qt::CaseInsensitive) != 0) {
+        QDir().mkpath(QFileInfo(target).absolutePath());
+        QFile::remove(target);
+        if (!QFile::copy(source, target))
+            return result(false, u"Replace File: could not copy %1 to %2."_s
+                                     .arg(QDir::toNativeSeparators(source), QDir::toNativeSeparators(target)));
+        QFile(target).setPermissions(QFile(target).permissions() | QFileDevice::WriteOwner);
+        if (needsXml) {
+            QFile::remove(sidecar(target));
+            if (!QFile::copy(sidecar(source), sidecar(target)))
+                return result(false, u"Replace File: could not copy %1."_s.arg(QDir::toNativeSeparators(sidecar(source))));
+        }
+    }
+    ++m_modFilesRevision;
+    emit modFilesChanged();
+
+    QString message = u"Replaced %1 with %2 (mods\\%3). Click Modify to put it into the game."_s
+                          .arg(name, QFileInfo(source).fileName(),
+                               QDir::toNativeSeparators(QDir(QDir(platformDirPath()).filePath(u"mods"_s)).relativeFilePath(target)));
+    if (!ModifyWorker::supportedExtensions(blobsetVersion()).contains(wanted))
+        message += u" Note: Modify doesn't put .%1 files into this game, so it won't be used yet."_s.arg(wanted);
+    return result(true, message, QDir::toNativeSeparators(target));
+}
+
+QVariantMap AppOrchestrator::writeModFile(const QString& workspacePath, const QByteArray& data) {
+    const QString target = modFilePath(workspacePath);
+    QVariantMap result{{u"ok"_s, false}, {u"target"_s, QDir::toNativeSeparators(target)}};
+    if (target.isEmpty()) {
+        result[u"message"_s] = u"Load a game first."_s;
+        return result;
+    }
+    QDir().mkpath(QFileInfo(target).absolutePath());
+    QSaveFile file(target);
+    if (!file.open(QIODevice::WriteOnly) || file.write(data) != data.size() || !file.commit()) {
+        result[u"message"_s] = u"Could not write %1."_s.arg(QDir::toNativeSeparators(target));
+        return result;
+    }
+    ++m_modFilesRevision;
+    emit modFilesChanged();
+    result[u"ok"_s] = true;
+    result[u"message"_s] = u"Saved %1 (mods\\%2). Click Modify to put it into the game."_s
+                               .arg(QFileInfo(target).fileName(),
+                                    QDir::toNativeSeparators(QDir(QDir(platformDirPath()).filePath(u"mods"_s)).relativeFilePath(target)));
+    return result;
+}
+
+void AppOrchestrator::notifyModFilesChanged() {
+    ++m_modFilesRevision;
+    emit modFilesChanged();
+}
+
+QString AppOrchestrator::pathFromHash(const QString& hexHash) const {
+    const QString key = BlobsetEntryRegistry::normalizeKey(hexHash);
+    if (key.isEmpty())
+        return {};
+    QMutexLocker locker(&m_mutex);
+    for (auto it = m_pathHashLookup.cbegin(); it != m_pathHashLookup.cend(); ++it)
+        if (BlobsetEntryRegistry::makeKey(it.value()) == key)
+            return it.key();
+    return {};
+}
+
+bool AppOrchestrator::removeModFile(const QString& workspacePath) {
+    const QString target = modFilePath(workspacePath);
+    if (target.isEmpty() || !QFileInfo(target).isFile())
+        return false;
+    if (!QFile::remove(target)) {
+        emit uiConsoleUpdate(u"Could not remove %1 (is it open somewhere?)."_s.arg(QDir::toNativeSeparators(target)));
+        return false;
+    }
+    // A .txpk / .m3mp's <name>.xml (Modify's info about it) goes with it.
+    const QString suffix = QFileInfo(target).suffix().toLower();
+    if (suffix == u"txpk"_s || suffix == u"m3mp"_s)
+        QFile::remove(QFileInfo(target).absolutePath() + u'/' + QFileInfo(target).completeBaseName() + u".xml"_s);
+    // Empty folders left behind are fine (File Mapping makes the whole mods tree anyway).
+    ++m_modFilesRevision;
+    emit modFilesChanged();
+    emit uiConsoleUpdate(u"Removed the replacement mods\\%1. Modify / Restore Backup Files puts the original back in the game."_s
+                             .arg(QDir::toNativeSeparators(QDir(QDir(platformDirPath()).filePath(u"mods"_s)).relativeFilePath(target))));
+    return true;
+}
+
+void AppOrchestrator::showModFile(const QString& workspacePath) const {
+    const QString target = modFilePath(workspacePath);
+    QString folder = target.isEmpty() ? QDir(platformDirPath()).filePath(u"mods"_s) : QFileInfo(target).absolutePath();
+    while (!folder.isEmpty() && !QFileInfo(folder).isDir() && QFileInfo(folder).absolutePath() != folder)
+        folder = QFileInfo(folder).absolutePath();
+    if (!folder.isEmpty())
+        QDesktopServices::openUrl(QUrl::fromLocalFile(folder));
+}
+
+QString AppOrchestrator::readAppTextFile(const QString& fileName) const {
+    if (fileName.isEmpty() || fileName.contains(u'/') || fileName.contains(u'\\') || fileName.contains(u".."_s))
+        return {};
+    QFile file(QDir(AppPaths::installDir()).filePath(fileName));
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return {};
+    QString text = QString::fromUtf8(file.readAll());
+    text.remove(QChar(0xFEFF));   // UTF-8 byte order mark (Notepad).
+    return text.trimmed();
 }
 
 QString AppOrchestrator::dataFolderPath() const {
@@ -801,13 +987,13 @@ bool AppOrchestrator::selectGameHeadless(int gameId, int platformId, const QStri
                                          const QString& gameFolderName) {
     {
         QMutexLocker locker(&m_mutex);
-        m_gameId = gameId;
         m_platformId = platformId;
     }
+    m_selectionIndex = gameId;
     m_modGameFolderName = modGameFolderName;
     m_gameFolderName = gameFolderName;
     m_isBigEndian = platformId > 0;
-    m_relativeBlobsetPath = gameId < 11 ? archiveName() : u"data/"_s + archiveName();
+    applyGameId(gameId);
 
     if (!QFileInfo::exists(gameInfoIniPath())) {
         emit uiConsoleUpdate(u"Error: %1 has no GameInfo.ini for %2 (%3)."_s
@@ -821,6 +1007,32 @@ bool AppOrchestrator::selectGameHeadless(int gameId, int platformId, const QStri
 
 /// The mapping lives in the data folder; one shipped with Blobset Tools (install folder, or a few levels above a
 /// build folder) is used until Update File Mapping Data writes the game's own.
+QString AppOrchestrator::writableMappingFilePath() {
+    const QString existing = findMappingFile();
+    if (existing.isEmpty())
+        return {};
+    const QString inData = QDir(appPath()).filePath(u"games/%1/%2/data/%3.mapping"_s
+                                                        .arg(m_modGameFolderName, platformFolder(), archiveName()));
+    if (QDir::cleanPath(existing) == QDir::cleanPath(inData))
+        return inData;
+    QDir().mkpath(QFileInfo(inData).absolutePath());
+    if (!QFile::copy(existing, inData))
+        return existing;   // The editor reports it if saving there fails.
+    QFile(inData).setPermissions(QFile(inData).permissions() | QFileDevice::WriteOwner);
+    return inData;
+}
+
+void AppOrchestrator::reloadWorkspace() {
+    if (m_modGameFolderName.isEmpty()) {
+        emit viewChanged(kMainFormView);
+        return;
+    }
+    BlobsetEntryRegistry::clear();
+    m_currentFolderFiles.clear();
+    emit currentFolderFilesChanged();
+    selectGameAndLoad(m_selectionIndex, m_platformId, m_modGameFolderName, m_gameFolderName);
+}
+
 QString AppOrchestrator::findMappingFile() const {
     const QString relative = u"games/%1/%2/data/%3.mapping"_s.arg(m_modGameFolderName, platformFolder(), archiveName());
     const QString inData = QDir(appPath()).filePath(relative);
@@ -839,6 +1051,23 @@ QString AppOrchestrator::findMappingFile() const {
 // ---------------------------------------------------------------------------
 // INI / game location
 // ---------------------------------------------------------------------------
+
+void AppOrchestrator::applyGameId(int fallbackId) {
+    int id = fallbackId;
+    if (QFileInfo::exists(gameInfoIniPath())) {
+        QSettings ini(gameInfoIniPath(), QSettings::IniFormat);
+        bool ok = false;
+        const int fromIni = ini.value(u"GameInfo/GameId"_s).toInt(&ok);
+        if (ok && fromIni >= 0)
+            id = fromIni;
+    }
+    {
+        QMutexLocker locker(&m_mutex);
+        m_gameId = id;
+    }
+    // AFL Live .. RLL4 (ids 0 - 10) keep the blobset in the game folder, the newer games in its data folder.
+    m_relativeBlobsetPath = id < 11 ? archiveName() : u"data/"_s + archiveName();
+}
 
 void AppOrchestrator::readGameIni(const QString& iniPath) {
     const QFileInfo iniFileInfo(iniPath);
@@ -892,18 +1121,34 @@ bool AppOrchestrator::resolveGameLocation() {
         return true;
     }
 
-    // 2. Steam library (games without a Steam id have to be located by hand).
-    if (m_steamGameId > 0) {
-        const QString steamLocation = Utilities::getSteamGamesLocation(m_steamGameId);
-        if (!steamLocation.isEmpty()) {
-            const QString discovered = QDir(steamLocation).filePath(
-                u"steamapps/common/%1/%2"_s.arg(m_gameFolderName, m_relativeBlobsetPath));
-            if (QFileInfo(discovered).isFile()) {
-                storeGameLocation(discovered);
-                emit uiConsoleUpdate(u"Found the game in the Steam library: %1"_s.arg(discovered));
-                return true;
+    // 2. Steam (PC; games without a Steam id have to be located by hand): the folder Steam installed the game to
+    //    (its appmanifest), then <library>\steamapps\common\<FolderName>.
+    if (m_steamGameId > 0 && m_platformId == 0) {
+        QStringList folders;
+        const QString installed = Utilities::getSteamGameFolder(m_steamGameId);
+        if (!installed.isEmpty())
+            folders.append(installed);
+        const QString library = Utilities::getSteamGamesLocation(m_steamGameId);
+        if (!library.isEmpty() && !m_gameFolderName.isEmpty())
+            folders.append(QDir(library).filePath(u"steamapps/common/"_s + m_gameFolderName));
+
+        const QStringList relatives{m_relativeBlobsetPath, archiveName(), u"data/"_s + archiveName()};
+        for (const QString& folder : std::as_const(folders)) {
+            for (const QString& relative : relatives) {
+                const QString discovered = QDir::cleanPath(QDir(folder).filePath(relative));
+                if (QFileInfo(discovered).isFile()) {
+                    storeGameLocation(discovered);
+                    emit uiConsoleUpdate(u"Found the game in the Steam library: %1"_s.arg(QDir::toNativeSeparators(discovered)));
+                    return true;
+                }
             }
         }
+        emit uiConsoleUpdate(installed.isEmpty() && library.isEmpty()
+                                 ? u"Steam doesn't list %1 (app %2) as installed: select its %3 by hand."_s
+                                       .arg(currentGameName()).arg(m_steamGameId).arg(archiveName())
+                                 : u"%1 is in Steam (%2) but its %3 wasn't found there: select it by hand."_s
+                                       .arg(currentGameName(), QDir::toNativeSeparators(installed.isEmpty() ? library : installed),
+                                            archiveName()));
     }
     return false;
 }
@@ -964,6 +1209,43 @@ void AppOrchestrator::checkSteamUpdate() {
                                                         .arg(mappedBuild, steam.buildId);
     emit uiConsoleUpdate(u"%1 was updated by Steam. %2 Run Options > Update File Mapping Data."_s.arg(name, details));
     emit steamUpdateDetected(false, name, details);
+}
+
+void AppOrchestrator::readGameVersionFile() {
+    if (m_platformId != 0 || steamGameId() == 0)
+        return;
+    const QString root = gameRootPath();
+    if (root.isEmpty())
+        return;
+    // version.txt sits in the game's folder (next to the exe); a few games keep it in the data folder.
+    QString versionFile;
+    for (const QString& candidate : {QDir(root).filePath(u"version.txt"_s), QDir(root).filePath(u"data/version.txt"_s)}) {
+        if (QFileInfo(candidate).isFile()) {
+            versionFile = candidate;
+            break;
+        }
+    }
+    if (versionFile.isEmpty())
+        return;
+
+    QFile file(versionFile);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return;
+    QString version;
+    while (!file.atEnd() && version.isEmpty())
+        version = QString::fromUtf8(file.readLine(4096)).trimmed();
+    version.remove(QChar(0xFEFF));   // UTF-8 byte order mark.
+    version = version.left(200).trimmed();
+    if (version.isEmpty())
+        return;
+
+    QSettings ini(gameInfoIniPath(), QSettings::IniFormat);
+    if (ini.value(u"GameInfo/Version"_s).toString() == version)
+        return;
+    ini.setValue(u"GameInfo/Version"_s, version);
+    ini.sync();
+    emit uiConsoleUpdate(u"Game version from version.txt: %1"_s.arg(version));
+    emit gameInfoChanged();
 }
 
 void AppOrchestrator::recordSteamBuild() {
@@ -1049,16 +1331,18 @@ void AppOrchestrator::selectGameAndLoad(int gameId, int platformId, const QStrin
     if (gameId < 0)
         return;
 
+    // gameId here is the game's place in the game list (GameSelection.qml). The installer's list only holds the
+    // games the player picked, so the real game id comes from the game's GameInfo.ini (applyGameId).
     {
         QMutexLocker locker(&m_mutex);
-        m_gameId = gameId;
         m_platformId = platformId;
     }
-    emit gameInfoChanged();   // MainForm's game picture follows the selection.
+    m_selectionIndex = gameId;
     m_modGameFolderName = modGameFolderName;
     m_gameFolderName = gameFolderName;
     m_isBigEndian = platformId > 0;
-    m_relativeBlobsetPath = gameId < 11 ? archiveName() : u"data/"_s + archiveName();
+    applyGameId(gameId);
+    emit gameInfoChanged();   // MainForm's game picture follows the selection.
 
     QSettings settings(settingsPath(), QSettings::IniFormat);
     settings.beginGroup(u"Settings"_s);
@@ -1276,6 +1560,7 @@ void AppOrchestrator::loadGameProfile() {
         m_gameId = settings.value(u"DefaultGame"_s, 0).toInt();
         m_platformId = settings.value(u"Platform"_s, 0).toInt();
     }
+    m_selectionIndex = m_gameId;
     m_modGameFolderName = settings.value(u"ModGameFolderName"_s).toString();
     m_gameFolderName = settings.value(u"GameFolderName"_s).toString();
     settings.endGroup();
@@ -1283,7 +1568,7 @@ void AppOrchestrator::loadGameProfile() {
 
     gameSelectionInfo();
 
-    emit profileLoaded(m_gameId, m_platformId, m_modGameFolderName, m_gameFolderName);
+    emit profileLoaded(m_selectionIndex, m_platformId, m_modGameFolderName, m_gameFolderName);
     emit uiConsoleUpdate(u"Restored previous game profile settings."_s);
 }
 
@@ -1420,6 +1705,7 @@ void AppOrchestrator::updateFileMapping() {
         return;
     }
     m_updateMappingAfterLocation = false;
+    readGameVersionFile();   // Steam games with a version.txt: GameInfo.ini Version follows the installed game.
 
     // Always written into the data folder. A mapping found elsewhere (shipped with Blobset Tools) is copied there
     // first, so a V4 update only has to add what changed.
@@ -1440,6 +1726,20 @@ void AppOrchestrator::updateFileMapping() {
     m_treeModel->clear();
     m_currentFolderFiles.clear();
     emit currentFolderFilesChanged();
+
+    // When the mapping is done, Resolve File Names names what it can of the new / unknown entries; the workspace is
+    // read again after that.
+    m_nextTask = [this]() {
+        emit uiConsoleUpdate(u"File mapping updated: resolving file names..."_s);
+        resolveFileNames();
+        if (m_workerRunning)
+            return;
+        // It didn't start: the mapping update still worked.
+        if (m_headless)
+            emit taskCompleted(true, u"File mapping updated."_s);   // The command line waits for this.
+        else
+            reloadWorkspace();
+    };
 
     runWorker(new FileMappingWorker(gameLocation(), blobsetVersion(), m_isBigEndian, outputMapping, gameId(), platform()),
               &FileMappingWorker::generate_mapping);
@@ -1609,7 +1909,7 @@ void AppOrchestrator::handleFinished(const QString& finalStatus) {
         emit currentFolderFilesChanged();
 
         loadGameProfile();
-        selectGameAndLoad(m_gameId, m_platformId, m_modGameFolderName, m_gameFolderName);
+        selectGameAndLoad(m_selectionIndex, m_platformId, m_modGameFolderName, m_gameFolderName);
     }
 
     // Load Game: start the game once Modify / Create succeeded.

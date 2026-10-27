@@ -485,6 +485,13 @@ Item {
                             text: "Info";
                             onClicked: aboutWindow.open()
                         }
+                        NavigationItem {
+                            tip: "See whether a newer Blobset Tools is on GitHub, and install it"
+                            iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/extract_32.png"
+                            text: updater.checking ? "Checking for Updates..." : "Check for Updates";
+                            enabled: !updater.checking && !updater.downloading
+                            onClicked: updater.checkNow()
+                        }
                     }
                 }
             }
@@ -770,7 +777,21 @@ Item {
                             border.width: 1;
                             radius: 4;
                             clip: true
-                            border.color: fileMasterListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.borderDark
+                            border.color: panelDrop.containsDrag ? BtDarkStyle.accentColor
+                                          : (fileMasterListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.borderDark)
+
+                            // Files dropped on the panel (not on a file): each replaces the file with the same name
+                            // in this folder (copied into the mods folder).
+                            DropArea {
+                                id: panelDrop
+                                anchors.fill: parent
+                                onDropped: (drop) => {
+                                    if (drop.hasUrls) {
+                                        mainFormView.replaceByName(drop.urls)
+                                        drop.acceptProposedAction()
+                                    }
+                                }
+                            }
 
                             ListView {
                                 id: fileMasterListView;
@@ -835,14 +856,34 @@ Item {
                                             property int targetFileIndex: columnBlock.startIdx + index;
                                             property string currentFileName: appOrchestrator.currentFolderFiles[targetFileIndex];
                                             property bool isKeyboardSelected: filesPanelContainer.keyboardActiveFileIndex === targetFileIndex
+                                            // A replacement is in the mods folder (Replace File / the TXPK / M3MP viewers).
+                                            readonly property bool modded: appOrchestrator.modFilesRevision >= 0
+                                                                           && appOrchestrator.hasModFile(mainFormView.filePathOf(currentFileName))
                                             width: filesPanelContainer.gridColumnWidth;
                                             height: filesPanelContainer.itemRowHeight;
                                             leftPadding: 4;
                                             rightPadding: 4;
                                             highlighted: isKeyboardSelected
                                             background: Rectangle {
-                                                color: isKeyboardSelected ? (fileMasterListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.accentDim) : (hovered ? BtDarkStyle.bgHover : "transparent");
+                                                color: isKeyboardSelected ? (fileMasterListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.accentDim) : (hovered || itemDrop.containsDrag ? BtDarkStyle.bgHover : "transparent");
+                                                border.width: itemDrop.containsDrag ? 1 : 0
+                                                border.color: BtDarkStyle.accentColor
                                                 radius: 2
+                                            }
+
+                                            // A file dropped on this file replaces it (whatever its name; same extension).
+                                            DropArea {
+                                                id: itemDrop
+                                                anchors.fill: parent
+                                                onDropped: (drop) => {
+                                                    if (!drop.hasUrls)
+                                                        return
+                                                    if (drop.urls.length === 1)
+                                                        mainFormView.replaceFile(targetFileIndex, drop.urls[0])
+                                                    else
+                                                        mainFormView.replaceByName(drop.urls)
+                                                    drop.acceptProposedAction()
+                                                }
                                             }
                                             contentItem: RowLayout {
                                                 anchors.fill: parent;
@@ -867,6 +908,24 @@ Item {
                                                     elide: Text.ElideNone;
                                                     Layout.fillWidth: true;
                                                     verticalAlignment: Text.AlignVCenter
+                                                }
+
+                                                Rectangle {
+                                                    visible: modded
+                                                    Layout.alignment: Qt.AlignVCenter
+                                                    implicitWidth: modBadge.implicitWidth + 8
+                                                    implicitHeight: 14
+                                                    radius: 3
+                                                    color: isKeyboardSelected ? "#121214" : BtDarkStyle.accentDim
+                                                    Text {
+                                                        id: modBadge
+                                                        anchors.centerIn: parent
+                                                        text: "MOD"
+                                                        color: isKeyboardSelected ? BtDarkStyle.accentColor : "#121214"
+                                                        font.pixelSize: 8
+                                                        font.bold: true
+                                                    }
+                                                    BtToolTip { text: "Replaced: the mods folder has this file (Modify puts it into the game)" }
                                                 }
                                             }
 
@@ -1166,7 +1225,7 @@ Item {
                     }
 
                     Text {
-                        text: "v2.1.10.55";
+                        text: "v" + Qt.application.version;
                         color: BtDarkStyle.accentColor;
                         font.pointSize: 9
                     }
@@ -1311,6 +1370,57 @@ Item {
         var dot = name.lastIndexOf(".");
         return { name: name, path: path, ext: dot !== -1 ? name.substring(dot + 1).toLowerCase() : "",
                  hash: appOrchestrator.getHashFromPath(path) };
+    }
+
+    // The blobset path of `name` in the selected folder.
+    function filePathOf(name) {
+        const folderPath = currentFolderPath()
+        return folderPath ? (folderPath + "/" + name) : name
+    }
+
+    // Replace File: `url` replaces file `fileIdx` of the selected folder (copied into the mods folder).
+    function replaceFile(fileIdx, url) {
+        const f = describeFile(fileIdx)
+        if (f === null)
+            return
+        const result = appOrchestrator.replaceAsset(f.path, url.toString())
+        if (result.ok) {
+            filesPanelContainer.keyboardActiveFileIndex = fileIdx
+            fileMasterListView.forceActiveFocus()
+        }
+    }
+
+    // Dropped on the Files panel: each file replaces the one with the same name in the selected folder.
+    function replaceByName(urls) {
+        const files = appOrchestrator.currentFolderFiles || []
+        if (!folderSelection.currentIndex.valid || files.length === 0) {
+            logLine("Replace File: select the folder that has the files first, then drop them on the Files panel.")
+            return
+        }
+        let replaced = 0
+        const unmatched = []
+        for (let i = 0; i < urls.length; ++i) {
+            const url = urls[i].toString()
+            const name = decodeURIComponent(url.substring(url.lastIndexOf("/") + 1))
+            let index = -1
+            for (let j = 0; j < files.length; ++j) {
+                if (files[j].toLowerCase() === name.toLowerCase()) {
+                    index = j
+                    break
+                }
+            }
+            if (index < 0) {
+                unmatched.push(name)
+                continue
+            }
+            if (appOrchestrator.replaceAsset(filePathOf(files[index]), url).ok)
+                ++replaced
+        }
+        if (unmatched.length > 0)
+            logLine("Replace File: no file called " + unmatched.join(", ") + " in this folder. Drop a file onto the "
+                    + "file it should replace to use another name.")
+        if (urls.length > 1)
+            logLine("Replace File: " + replaced + " of " + urls.length + " file(s) replaced.")
     }
 
     // Remembers the selection in AppOrchestrator so it outlives this view.
@@ -1462,6 +1572,7 @@ Item {
         id: saveAsSettings
         category: "SaveAs"
         property string lastFolder: ""     // file:/// URL of the folder last saved to.
+        property string lastReplaceFolder: ""   // file:/// URL of the folder Replace File last picked from.
     }
 
     Menu {
@@ -1471,11 +1582,16 @@ Item {
         property var file: null            // describeFile() of the clicked file.
         readonly property string ext: file ? file.ext : ""
 
+        // .txpk / .m3mp aren't saved from here (open them in their viewer) but can be replaced.
+        readonly property bool canSave: ext !== "txpk" && ext !== "m3mp"
+        property bool modded: false
+
         function openFor(fileIdx) {
             const f = mainFormView.describeFile(fileIdx)
-            if (f === null || f.ext === "txpk" || f.ext === "m3mp")
+            if (f === null)
                 return
             file = f
+            modded = appOrchestrator.hasModFile(f.path)
             popup()
         }
 
@@ -1535,7 +1651,7 @@ Item {
         }
         MenuItem {
             text: "Save As..."
-            visible: saveAsMenu.ext !== "dds" && saveAsMenu.ext !== "wem"
+            visible: saveAsMenu.canSave && saveAsMenu.ext !== "dds" && saveAsMenu.ext !== "wem"
             height: visible ? 40 : 0
             icon.source: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/save_32.png"
             icon.color: "transparent"
@@ -1546,6 +1662,60 @@ Item {
                 saveAsDialog.start(saveAsMenu.file, "raw", ext,
                                    ext !== "" ? ext.toUpperCase() + " file (*." + ext + ")" : "All files (*)")
             }
+        }
+
+        MenuSeparator { visible: saveAsMenu.canSave; height: visible ? implicitHeight : 0 }
+
+        MenuItem {
+            text: "Replace File..."
+            height: 40
+            icon.source: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/modify_32.png"
+            icon.color: "transparent"
+            icon.width: 20
+            icon.height: 20
+            onTriggered: replaceDialog.start(saveAsMenu.file)
+        }
+        MenuItem {
+            text: "Remove Replacement"
+            visible: saveAsMenu.modded
+            height: visible ? 40 : 0
+            icon.source: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/close_32.png"
+            icon.color: "transparent"
+            icon.width: 20
+            icon.height: 20
+            onTriggered: appOrchestrator.removeModFile(saveAsMenu.file.path)
+        }
+        MenuItem {
+            text: "Open in Mods Folder"
+            visible: saveAsMenu.modded
+            height: visible ? 40 : 0
+            icon.source: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/folder_32.png"
+            icon.color: "transparent"
+            icon.width: 20
+            icon.height: 20
+            onTriggered: appOrchestrator.showModFile(saveAsMenu.file.path)
+        }
+    }
+
+    // Replace File...: picks the replacement (same extension) and copies it into the mods folder.
+    FileDialog {
+        id: replaceDialog
+        fileMode: FileDialog.OpenFile
+        property var file: null
+
+        function start(f) {
+            file = f
+            title = "Replace " + f.name
+            nameFilters = f.ext !== "" ? [f.ext.toUpperCase() + " file (*." + f.ext + ")"] : ["All files (*)"]
+            if (saveAsSettings.lastReplaceFolder !== "")
+                currentFolder = saveAsSettings.lastReplaceFolder
+            open()
+        }
+
+        onAccepted: {
+            const url = selectedFile.toString()
+            saveAsSettings.lastReplaceFolder = url.substring(0, url.lastIndexOf("/"))
+            appOrchestrator.replaceAsset(file.path, url)
         }
     }
 

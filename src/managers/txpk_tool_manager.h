@@ -57,6 +57,11 @@ class TxpkToolManager : public QObject {
     Q_PROPERTY(int progress READ progress NOTIFY progressChanged)   // 0..100
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
 
+    // --- Edit (TXPKViewer.qml): replace textures, then Save Changes rebuilds the TXPK into the mods folder ---
+    Q_PROPERTY(int replacedCount READ replacedCount NOTIFY changesChanged)          // Textures replaced so far.
+    Q_PROPERTY(bool unsavedChanges READ unsavedChanges NOTIFY changesChanged)       // Replaced since the last save.
+    Q_PROPERTY(QString modsTarget READ modsTarget NOTIFY changesChanged)            // Where Save Changes writes.
+
 public:
     explicit TxpkToolManager(QObject* parent = nullptr);
     ~TxpkToolManager() override;
@@ -86,6 +91,20 @@ public:
     bool statusOk() const { return m_statusOk; }
     int progress() const { return m_progress; }
     QString appVersion() const;
+
+    int replacedCount() const { return static_cast<int>(m_replacements.size()); }
+    bool unsavedChanges() const { return m_unsavedChanges; }
+    QString modsTarget() const;
+    // fileIndex: inside currentFolderFiles. A .dds replaces the texture (the preview shows it straight away).
+    Q_INVOKABLE bool replaceFileAt(int fileIndex, const QString& pathOrUrl);
+    // Dropped files by name: the selected folder first, then a name that's unique in the TXPK. Returns how many.
+    Q_INVOKABLE int replaceByName(const QStringList& pathsOrUrls);
+    Q_INVOKABLE bool isReplacedAt(int fileIndex) const;
+    Q_INVOKABLE void revertAt(int fileIndex);
+    Q_INVOKABLE void discardChanges();
+    // Threaded: extracts the TXPK, puts the replacements in and rebuilds it (TXPK Creator) as
+    // games\<game>\<platform>\mods\<the TXPK's path> + its .xml. Reports through status / processComplete().
+    Q_INVOKABLE void saveChanges();
 
     // Opens a standalone TXPK file (main section immediately followed by the vram section).
     Q_INVOKABLE void loadTxpk(const QString& txpkPath, bool isBigEndian);
@@ -163,6 +182,8 @@ signals:
     void viewChanged();
     void statusChanged();
     void progressChanged();
+    void changesChanged();
+    void changesSaved(const QString& target);
 
 protected:
     // Protected so the BSB viewer (BsbToolManager) can reuse the TXPK browsing / preview / extraction.
@@ -182,6 +203,15 @@ protected:
         qint64 recordSize = 0;
         qint64 rawDataOffset = 0;   // As stored: relative to the vram section.
     };
+
+    // Edit session: entry index -> replacement .dds file.
+    QHash<int, QString> m_replacements;
+    bool m_unsavedChanges = false;
+    QString m_workspacePath;        // The TXPK's path in the blobset (opened from the game), else empty.
+    QString m_editTemp;             // Save Changes' extraction folder while the creator runs.
+    bool m_savingChanges = false;
+    int entryForFile(int fileIndex) const { return fileIndex >= 0 && fileIndex < m_folderEntries.size() ? m_folderEntries[fileIndex] : -1; }
+    bool replaceEntry(int entry, const QString& file);
 
     // Where the loaded TXPK came from (for TXPK_List.xml) and how it is laid out.
     CreatorSupport::SourceInfo m_source;

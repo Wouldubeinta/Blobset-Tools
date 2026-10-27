@@ -39,6 +39,8 @@ class AppOrchestrator : public QObject {
     // The selected game has no usable file mapping (none yet, empty or unreadable): MainForm.qml offers to run
     // Update File Mapping Data.
     Q_PROPERTY(bool fileMappingMissing READ fileMappingMissing NOTIFY fileMappingMissingChanged)
+    // Goes up whenever Replace File adds / removes a file in the mods folder (MainForm's "MOD" badges re-check).
+    Q_PROPERTY(int modFilesRevision READ modFilesRevision NOTIFY modFilesChanged)
     // From the selected game's GameInfo.ini: CoreDefs::BlobsetVersion value (0 = V1) and Steam app id (0 = none).
     Q_PROPERTY(int blobsetVersion READ blobsetVersion NOTIFY gameInfoChanged)
     Q_PROPERTY(uint steamGameId READ steamGameId NOTIFY gameInfoChanged)
@@ -76,6 +78,24 @@ public:
 
     bool gameLocationRequired() const { return m_gameLocationRequired; }
     bool fileMappingMissing() const { return m_fileMappingMissing; }
+    int modFilesRevision() const { return m_modFilesRevision; }
+
+    // ---- Replace File (MainForm drag & drop / right click, the TXPK / M3MP viewers' Save Changes) ----
+    // workspacePath: the file's path in the blobset ('/' or '\\' separated), as the Files panel shows it.
+    // games\<game>\<platform>\mods\<workspacePath>: where Modify / Build pick the replacement up.
+    Q_INVOKABLE QString modFilePath(const QString& workspacePath) const;
+    Q_INVOKABLE bool hasModFile(const QString& workspacePath) const;
+    // Copies sourcePathOrUrl to modFilePath(workspacePath). The extension has to match. { ok, message, target }
+    Q_INVOKABLE QVariantMap replaceAsset(const QString& workspacePath, const QString& sourcePathOrUrl);
+    // Writes bytes as the replacement (the TXPK / M3MP viewers' rebuilt packs).
+    QVariantMap writeModFile(const QString& workspacePath, const QByteArray& data);
+    Q_INVOKABLE bool removeModFile(const QString& workspacePath);
+    // A file was written into the mods folder elsewhere (the TXPK / M3MP viewers): refresh the "MOD" badges.
+    void notifyModFilesChanged();
+    // The blobset path ('/' separated) of a path hash (the TXPK / M3MP viewers only get the hash), empty if unknown.
+    Q_INVOKABLE QString pathFromHash(const QString& hexHash) const;
+    // Opens the mods folder that holds the file (or the mods folder itself).
+    Q_INVOKABLE void showModFile(const QString& workspacePath) const;
     QString expectedBlobsetName() const { return archiveName(); }
     QString currentGameName() const;
 
@@ -83,6 +103,10 @@ public:
     Q_INVOKABLE QString getHashFromPath(const QString& filePath) const;
     // The loaded game's .mapping file (File Mapping Editor), empty when there is none yet.
     Q_INVOKABLE QString mappingFilePath() const { return findMappingFile(); }
+    // The mapping in the data folder (a shipped one is copied there first), for the File Mapping Editor to save.
+    Q_INVOKABLE QString writableMappingFilePath();
+    // Reads the selected game's mapping and blobset again and shows MainForm (after the mapping was edited).
+    Q_INVOKABLE void reloadWorkspace();
     // games/<game>/<platform>/mods: what Modify / Create read. Empty when no game is loaded.
     Q_INVOKABLE QString modsFolderPath() const;
 
@@ -152,6 +176,11 @@ public:
     Q_INVOKABLE QStringList takeStartupMessages() { return std::exchange(m_startupMessages, {}); }
     // The writable data folder (Documents\Blobset Tools) for "Open Data Folder".
     Q_INVOKABLE QString dataFolderPath() const;
+    // A text file next to the exe (changelog.txt for About > Changelog), empty when it's missing.
+    Q_INVOKABLE QString readAppTextFile(const QString& fileName) const;
+    // file:/// URL of Documents\Blobset Tools\games\<game>\<platform>\<subFolder> (made if missing): the
+    // default folder of the viewers' Extract dialogs (txpk, m3mp, bsb, ...). Empty when no game is loaded.
+    Q_INVOKABLE QString workFolderUrl(const QString& subFolder) const;
     void setHeadless(bool headless) { m_headless = headless; }
 
     // Accepts the blobset file (or the folder that holds it) as a path or file:// URL, saves it to GameInfo.ini
@@ -181,6 +210,7 @@ signals:
     void missingMetadataError(const QString& title, const QString& message);
     void gameLocationRequiredChanged();
     void fileMappingMissingChanged();
+    void modFilesChanged();
     // Steam game (PC) only. pending: Steam has an update waiting to install (Restore Backup Files first);
     // otherwise the game was updated since its file mapping was made (Update File Mapping Data).
     void steamUpdateDetected(bool pending, const QString& gameName, const QString& details);
@@ -211,7 +241,8 @@ private:
     static AppOrchestrator* s_instance;
     mutable QMutex m_mutex; // Protects configuration variables across threads
 
-    int m_gameId;
+    int m_gameId;               // The real game id (GameInfo.ini GameId: 0 AFL Live ... 23 Cricket 26).
+    int m_selectionIndex = 0;   // The game's place in GameSelectionInfo.xml (only the games picked in setup).
     QString m_gameName;
     bool m_launchAfterTask = false;   // Set by a successful Modify / Create, handled in handleFinished().
     uint m_steamGameId;
@@ -226,6 +257,7 @@ private:
     bool m_isBigEndian;
     bool m_gameLocationRequired = false;
     bool m_fileMappingMissing = false;
+    int m_modFilesRevision = 0;
     bool m_updateMappingAfterLocation = false;
     bool m_recordSteamBuildAfterTask = false;   // The running task is Update File Mapping Data.
     QSet<QString> m_steamNoticesShown;          // Each Steam update popup once per session.   // Update File Mapping waits for the game location dialog.
@@ -259,10 +291,14 @@ private:
     void storeGameLocation(const QString& blobsetFile);
     void setGameLocationRequired(bool required);
     void setFileMappingMissing(bool missing);
+    // The real game id (GameInfo.ini GameId, else fallbackId) and where the blobset sits in the game folder.
+    void applyGameId(int fallbackId);
     // Steam's appmanifest against the build the mapping was made from (GameInfo.ini SteamBuildId).
     void checkSteamUpdate();
     // Remembers the installed Steam build as the one the mapping matches (after Update File Mapping Data).
     void recordSteamBuild();
+    // Steam games (PC): the first line of <game>\version.txt becomes GameInfo.ini Version (Update File Mapping).
+    void readGameVersionFile();
 
     void startWorkspaceLoad(const QString& mappingPath);
 

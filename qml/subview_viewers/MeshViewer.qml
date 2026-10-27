@@ -359,6 +359,7 @@ Item {
         function start(fmt) {
             format = fmt
             title = "Extract Mesh as " + (fmt === "obj" ? "OBJ" : "original .mesh") + " to Directory"
+            currentFolder = appOrchestrator.workFolderUrl("mesh")   // Documents\Blobset Tools\games\<game>\<platform>\mesh
             open()
         }
 

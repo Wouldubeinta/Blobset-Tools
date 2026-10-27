@@ -18,7 +18,11 @@ Popup {
 
     readonly property string appVersion: Qt.application.version !== "" ? Qt.application.version : "1.0.0.0"
 
-    onOpened: tabBar.currentIndex = 0
+    onOpened: {
+        tabBar.currentIndex = 0
+        const changelog = appOrchestrator.readAppTextFile("changelog.txt")
+        changelogText = changelog !== "" ? changelog : builtInChangelog
+    }
 
     Overlay.modal: Rectangle { color: "#b0000000" }
 
@@ -70,7 +74,11 @@ Popup {
         "If not, see https://www.gnu.org/licenses/.\n\n" +
         "The libraries listed under Credits are covered by their own licenses."
 
-    readonly property string changelogText:
+    // changelog.txt next to Blobset-Tools.exe (edit it to update this tab; read each time the window opens).
+    property string changelogText: builtInChangelog
+
+    // Shown when changelog.txt is missing.
+    readonly property string builtInChangelog:
         "v" + appVersion + "\n" +
         "  •  New Qt 6 interface with the dark theme\n" +
         "  •  Game Selection shows the game's image and GameInfo.ini details\n" +
@@ -211,14 +219,17 @@ Popup {
                     ScrollView {
                         id: page
                         required property string modelData
+                        required property int index
+                        // The Changelog (changelog.txt) keeps its lines as written: scroll sideways for long ones.
+                        readonly property bool noWrap: index === 3
                         clip: true
-                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        ScrollBar.horizontal.policy: noWrap ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
 
                         TextArea {
                             text: page.modelData
                             readOnly: true
                             selectByMouse: true
-                            wrapMode: TextArea.Wrap
+                            wrapMode: page.noWrap ? TextArea.NoWrap : TextArea.Wrap
                             color: BtDarkStyle.textMain
                             selectionColor: BtDarkStyle.accentDim
                             selectedTextColor: BtDarkStyle.white

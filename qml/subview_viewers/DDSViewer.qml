@@ -385,6 +385,7 @@ Item {
         function start(fmt) {
             format = fmt
             title = "Extract Texture as " + fmt.toUpperCase() + " to Directory"
+            currentFolder = appOrchestrator.workFolderUrl("dds")   // Documents\Blobset Tools\games\<game>\<platform>\dds
             open()
         }
 

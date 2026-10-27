@@ -1,0 +1,37 @@
+v2.1.10.60
+
+  New
+  •  Replace File: drag a file onto a file in the Files panel (or right click > Replace File...) to replace it.
+     It's copied into the mods folder at the same path and gets a MOD badge; Modify puts it into the game.
+     Right click > Remove Replacement takes it out again
+  •  Edit TXPKs and M3MPs: in the TXPK / M3MP viewer, drag textures / files onto the ones they replace (or right
+     click > Replace), then Save Changes rebuilds the pack into the mods folder. Reopening it shows your edited copy
+  •  Auto updater: Blobset Tools checks GitHub for a new version once a day and can download and install it
+     (About > Check for Updates to check right away)
+  •  Mod Manager: pictures for mods - a preview.png in the mod, or Set Image... for any installed mod
+  •  Steam games with a version.txt: Update File Mapping Data sets the game's version from it
+
+  Improved
+  •  Update File Mapping Data runs Resolve File Names straight afterwards
+  •  File Mapping Editor: edit file paths and hashes and save them (the workspace reloads afterwards)
+  •  Game Selection shows how many Mod Manager mods are installed and enabled
+  •  Extract dialogs open in the game's own folders (games\<game>\<platform>\txpk, m3mp, bsb, ...), and the
+     Creators look there first
+  •  The changelog is read from changelog.txt
+
+v2.1.10.55
+  •  New Qt 6 interface with the dark theme
+  •  Installer: pick the games you own; settings, mods and backups live in Documents\Blobset Tools
+  •  Mod Manager, Vortex support and a command line
+  •  Game Selection shows the game's image and GameInfo.ini details
+  •  Mesh viewer: RLL3 / RLL4 meshes, V4 mesh fixes
+  •  Xbox 360 textures
+  •  Middle mouse pan in the DDS, TXPK and Mesh viewers
+  •  Asset search selects the folder and file instead of filtering
+  •  Resolve File Names and new assets in Modify / Create
+  •  Incremental V4 file mapping, mods folder at games\<game>\<platform>\mods
+  •  Blobset Mod Loader for V4 games (the game files stay untouched)
+  •  Restore Backup Files now restores the originals
+  •  Load Game and Validate Steam Files for Steam games
+  •  Steam update reminders and file mapping prompts
+  •  TXPK / M3MP / BSB Creators; Extract All writes the creator lists

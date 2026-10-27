@@ -5,14 +5,19 @@
 #include <QList>
 #include <QPair>
 #include <QString>
+#include <QStringList>
 
 namespace Utilities {
     // Number of chunks `uncompressedSize` bytes are split into (at least 1), and the size of each.
     qint64 ChunkAmount(qint64 uncompressedSize, qint64 chunkSize = 262144);
     QList<qint64> ChunkSizes(qint64 uncompressedSize, qint64 chunkAmount, qint64 chunkSize = 262144);
 
-    // Steam library folder that holds `steamGameId` (Windows registry + libraryfolders.vdf), empty if unknown.
+    // Every Steam library folder ('/' separated): Steam's own folder (registry) and those in libraryfolders.vdf.
+    QStringList steamLibraries();
+    // Steam library folder that holds `steamGameId` (has its appmanifest_<id>.acf), empty if unknown.
     QString getSteamGamesLocation(quint32 steamGameId);
+    // The game's install folder: <library>/steamapps/common/<installdir from the appmanifest>, empty if unknown.
+    QString getSteamGameFolder(quint32 steamGameId);
 
     // Whole file, empty on failure.
     QByteArray readBlobsetHeader(const QString& backupFilePath);

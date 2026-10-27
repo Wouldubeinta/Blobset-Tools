@@ -28,11 +28,17 @@ Put it in the mod's root folder to give the mod a name and details:
   "author": "Someone",
   "version": "1.2",
   "description": "HD bat textures.",
-  "url": "https://www.nexusmods.com/..."
+  "url": "https://www.nexusmods.com/...",
+  "image": "preview.png"
 }
 ```
 
 Without it the archive / folder name is used.
+
+**Picture**: `image` names a .png / .jpg in the mod's folder. Without it, a `preview.png` (or `image`, `screenshot`,
+`cover`, `thumbnail` .png / .jpg) in the mod's root folder is used, or the only picture there. A picture next to the
+mod's root folder inside an archive is kept too. In the Mod Manager, *Set Image…* picks one for any installed mod.
+Pictures are never built into the game.
 
 ## Command line
 

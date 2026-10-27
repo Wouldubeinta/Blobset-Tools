@@ -167,7 +167,10 @@ Item {
                     text: "Extract All"
                     iconSource: bsbViewRoot.iconDir + "extract_32.png"
                     enabled: !bsbManager.busy && bsbManager.hasMovie
-                    onClicked: extractAllDialog.open()
+                    onClicked: {
+                        extractAllDialog.currentFolder = appOrchestrator.workFolderUrl("bsb")
+                        extractAllDialog.open()
+                    }
                 }
 
                 HeaderButton {
@@ -944,6 +947,7 @@ Item {
             format = fmt
             title = (all ? "Extract All Textures" : "Extract Selected Texture")
                     + " as " + fmt.toUpperCase() + " to Directory"
+            currentFolder = appOrchestrator.workFolderUrl("bsb")   // Documents\Blobset Tools\games\<game>\<platform>\bsb
             open()
         }
 

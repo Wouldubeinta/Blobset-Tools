@@ -184,7 +184,10 @@ Item {
                     text: "Extract Selected (WAV)"
                     iconSource: fmodViewRoot.iconDir + "extract_32.png"
                     enabled: !fmodManager.busy && fmodManager.currentEntry >= 0
-                    onClicked: extractOneDialog.open()
+                    onClicked: {
+                        extractOneDialog.currentFolder = appOrchestrator.workFolderUrl("audio")
+                        extractOneDialog.open()
+                    }
                 }
 
                 HeaderButton {
@@ -192,7 +195,10 @@ Item {
                     text: "Extract All as WAV"
                     iconSource: fmodViewRoot.iconDir + "extract_32.png"
                     enabled: !fmodManager.busy && fmodManager.entryCount > 0
-                    onClicked: extractAllDialog.open()
+                    onClicked: {
+                        extractAllDialog.currentFolder = appOrchestrator.workFolderUrl("audio")
+                        extractAllDialog.open()
+                    }
                 }
 
                 Item { Layout.fillWidth: true }

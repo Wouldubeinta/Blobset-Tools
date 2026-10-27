@@ -59,6 +59,11 @@ class M3mpToolManager : public QObject {
     Q_PROPERTY(int progress READ progress NOTIFY progressChanged)
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
 
+    // --- Edit (M3MPViewer.qml): replace files, then Save Changes rebuilds the M3MP into the mods folder -------
+    Q_PROPERTY(int replacedCount READ replacedCount NOTIFY changesChanged)
+    Q_PROPERTY(bool unsavedChanges READ unsavedChanges NOTIFY changesChanged)
+    Q_PROPERTY(QString modsTarget READ modsTarget NOTIFY changesChanged)
+
 public:
     explicit M3mpToolManager(QObject* parent = nullptr);
     ~M3mpToolManager() override;
@@ -89,6 +94,20 @@ public:
     bool statusOk() const { return m_statusOk; }
     int progress() const { return m_progress; }
     QString appVersion() const;
+
+    int replacedCount() const { return static_cast<int>(m_replacements.size()); }
+    bool unsavedChanges() const { return m_unsavedChanges; }
+    QString modsTarget() const;
+    // fileIndex: inside currentFolderFiles. The replacement needs the same extension.
+    Q_INVOKABLE bool replaceFileAt(int fileIndex, const QString& pathOrUrl);
+    // Dropped files by name: the selected folder first, then a name that's unique in the M3MP. Returns how many.
+    Q_INVOKABLE int replaceByName(const QStringList& pathsOrUrls);
+    Q_INVOKABLE bool isReplacedAt(int fileIndex) const;
+    Q_INVOKABLE void revertAt(int fileIndex);
+    Q_INVOKABLE void discardChanges();
+    // Threaded: extracts the M3MP, puts the replacements in and rebuilds it (M3MP Creator) as
+    // games\<game>\<platform>\mods\<the M3MP's path> + its .xml.
+    Q_INVOKABLE void saveChanges();
 
     // Opens a standalone .m3mp file from disk.
     Q_INVOKABLE void loadM3mp(const QString& m3mpPath, bool isBigEndian);
@@ -131,6 +150,8 @@ signals:
     void viewChanged();
     void statusChanged();
     void progressChanged();
+    void changesChanged();
+    void changesSaved(const QString& target);
     void processComplete(bool success, const QString& message);
 
     void creatorLog(const QString& message, bool ok);   // One line for the creator's log.
@@ -145,6 +166,16 @@ private:
     };
 
     CreatorSupport::SourceInfo m_source;   // Where the loaded M3MP came from (for M3MP_List.xml).
+
+    // Edit session: entry index -> replacement file.
+    QHash<int, QString> m_replacements;
+    bool m_unsavedChanges = false;
+    QString m_workspacePath;        // The M3MP's path in the blobset (opened from the game), else empty.
+    QString m_editTemp;
+    bool m_savingChanges = false;
+    int entryForFile(int fileIndex) const { return fileIndex >= 0 && fileIndex < m_folderEntries.size() ? m_folderEntries[fileIndex] : -1; }
+    bool replaceEntry(int entry, const QString& file);
+    QByteArray previewBytes(int index) const;   // The replacement when there is one, else the M3MP's own bytes.
 
     QString m_sourceName;
     QByteArray m_payload;       // All chunks decompressed, one after the other.

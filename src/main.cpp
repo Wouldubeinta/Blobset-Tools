@@ -1,5 +1,6 @@
 #include "app_orchestrator.h"
 #include "app_paths.h"
+#include "update_checker.h"
 #include "command_line.h"
 #include "dds_image_provider.h"
 #include "audio_player.h"
@@ -20,7 +21,8 @@ int main(int argc, char *argv[]) {
     // QApplication (not QGuiApplication): the "already running" QMessageBox below is a widget.
     QApplication app(argc, argv);
     app.setApplicationName("Blobset Tools");
-    app.setApplicationVersion("2.1.10.55");
+    // project(... VERSION x.x.x.x) in CMakeLists.txt: the same number the installer and the updater use.
+    app.setApplicationVersion(QStringLiteral(BT_VERSION));
     app.setOrganizationName("Wouldy Mods");
     app.setWindowIcon(QIcon(":/qt/qml/com/wouldymods/blobset/assets/blobset_tools.ico"));
 
@@ -61,13 +63,19 @@ int main(int argc, char *argv[]) {
     orchestrator.setStartupMessages(QStringList{u"Data folder: "_s + QDir::toNativeSeparators(AppPaths::dataDir())} + startupLog);
     AudioPlayer audioPlayer;
     ModManager modManager(&orchestrator);
+    UpdateChecker updater;
     QQmlApplicationEngine engine;
 
     QObject::connect(&audioPlayer, &AudioPlayer::message,
                      &orchestrator, &AppOrchestrator::uiConsoleUpdate);
 
+    engine.rootContext()->setContextProperty("appProductName", app.applicationName());
+    engine.rootContext()->setContextProperty("appProductVersion", app.applicationVersion());
+    engine.rootContext()->setContextProperty("appCopyright", "Copyright © 2026 Wouldy Mods. All rights reserved.");
+
     engine.rootContext()->setContextProperty("audioPlayer", &audioPlayer);
     engine.rootContext()->setContextProperty("modManager", &modManager);
+    engine.rootContext()->setContextProperty("updater", &updater);
 
     engine.addImageProvider(QStringLiteral("dds_provider"), new DdsImageProvider());
 

@@ -22,6 +22,12 @@ namespace {
 constexpr int kMaxRootDepth = 6;
 const QString kModListFile = u"modlist.json"_s;
 const QString kModInfoFile = u"blobsetmod.json"_s;
+const QStringList kImageSuffixes = {u"png"_s, u"jpg"_s, u"jpeg"_s};
+const QStringList kImageNames = {u"preview"_s, u"image"_s, u"screenshot"_s, u"cover"_s, u"thumbnail"_s, u"thumb"_s};
+
+bool isImageFile(const QString& path) {
+    return kImageSuffixes.contains(QFileInfo(path).suffix().toLower()) && QFileInfo(path).isFile();
+}
 
 QString normalizedKey(QString path) {
     path.replace(u'\\', u'/');
@@ -134,6 +140,7 @@ ModLibrary::Mod ModLibrary::readMod(const QString& id, const QString& folder) co
         mod.description = info.value(u"description"_s).toString();
         mod.url = info.value(u"url"_s).toString();
         mod.installed = QDateTime::fromString(info.value(u"installed"_s).toString(), Qt::ISODate);
+        mod.image = findImage(folder);
     }
     mod.fileCount = static_cast<int>(modFiles(folder).size());
     return mod;
@@ -223,6 +230,83 @@ bool ModLibrary::move(int from, int to) {
     if (from < 0 || from >= m_mods.size() || to < 0 || to >= m_mods.size())
         return false;
     m_mods.move(from, to);
+    return true;
+}
+
+QString ModLibrary::findImage(const QString& folder) {
+    if (folder.isEmpty() || !QFileInfo(folder).isDir())
+        return {};
+    const QDir dir(folder);
+    // 1. blobsetmod.json "image": a path relative to the mod folder.
+    const QString named = readJson(dir.filePath(kModInfoFile)).value(u"image"_s).toString().trimmed();
+    if (!named.isEmpty()) {
+        const QString path = QDir::cleanPath(dir.filePath(named));
+        if (isImageFile(path) && !dir.relativeFilePath(path).startsWith(u".."_s))
+            return path;
+    }
+    // 2. preview.png / image.png / ... in the mod's top folder.
+    QStringList filters;
+    for (const QString& suffix : kImageSuffixes)
+        filters << u"*."_s + suffix;
+    const QStringList pictures = dir.entryList(filters, QDir::Files, QDir::Name | QDir::IgnoreCase);
+    for (const QString& name : kImageNames)
+        for (const QString& picture : pictures)
+            if (QFileInfo(picture).completeBaseName().compare(name, Qt::CaseInsensitive) == 0)
+                return dir.filePath(picture);
+    // 3. The only picture there.
+    return pictures.size() == 1 ? dir.filePath(pictures.first()) : QString();
+}
+
+bool ModLibrary::setImage(const QString& id, const QString& imageFile, QString* error) {
+    const auto failWith = [error](const QString& reason) {
+        if (error)
+            *error = reason;
+        return false;
+    };
+    const Mod* mod = find(id);
+    if (!mod || mod->id != id)
+        return failWith(u"%1 isn't installed."_s.arg(id));
+    if (mod->builtIn)
+        return failWith(u"%1 can't have a picture."_s.arg(mod->name));
+    if (!isImageFile(imageFile))
+        return failWith(u"%1 isn't a .png or .jpg picture."_s.arg(QFileInfo(imageFile).fileName()));
+
+    const QDir dir(mod->path);
+    const QString target = dir.filePath(u"preview."_s + QFileInfo(imageFile).suffix().toLower());
+    if (QDir::cleanPath(QFileInfo(imageFile).absoluteFilePath()).compare(QDir::cleanPath(target), Qt::CaseInsensitive) != 0) {
+        for (const QString& suffix : kImageSuffixes)
+            QFile::remove(dir.filePath(u"preview."_s + suffix));
+        if (!QFile::copy(imageFile, target))
+            return failWith(u"Could not copy the picture into %1."_s.arg(QDir::toNativeSeparators(mod->path)));
+    }
+    QJsonObject info = readJson(dir.filePath(kModInfoFile));
+    info[u"image"_s] = QFileInfo(target).fileName();
+    if (!writeJson(dir.filePath(kModInfoFile), info, error))
+        return false;
+    for (Mod& entry : m_mods)
+        if (entry.id == id)
+            entry.image = target;
+    return true;
+}
+
+bool ModLibrary::clearImage(const QString& id, QString* error) {
+    const Mod* mod = find(id);
+    if (!mod || mod->id != id || mod->builtIn) {
+        if (error)
+            *error = u"%1 isn't an installed mod."_s.arg(id);
+        return false;
+    }
+    const QString image = findImage(mod->path);
+    const QDir dir(mod->path);
+    if (!image.isEmpty())
+        QFile::remove(image);
+    QJsonObject info = readJson(dir.filePath(kModInfoFile));
+    info.remove(u"image"_s);
+    if (!writeJson(dir.filePath(kModInfoFile), info, error))
+        return false;
+    for (Mod& entry : m_mods)
+        if (entry.id == id)
+            entry.image = findImage(entry.path);   // Another picture may still be there.
     return true;
 }
 
@@ -493,6 +577,21 @@ std::optional<ModLibrary::Mod> ModLibrary::install(const QString& sourceIn, cons
     if (!moved && !copyTree(root, target, &reason)) {
         QDir(target).removeRecursively();
         return failWith(reason);
+    }
+
+    // A picture next to the mod's root in the archive (e.g. Mod\preview.png beside Mod\data\...) comes along.
+    if (findImage(target).isEmpty() && QDir::cleanPath(root) != QDir::cleanPath(unpacked)) {
+        QString picture;
+        for (QString dir = QFileInfo(root).absolutePath(); picture.isEmpty(); dir = QFileInfo(dir).absolutePath()) {
+            picture = findImage(dir);
+            if (QDir::cleanPath(dir) == QDir::cleanPath(unpacked) || QDir(dir).isRoot())
+                break;
+        }
+        if (!picture.isEmpty()) {
+            const QString copied = QDir(target).filePath(u"preview."_s + QFileInfo(picture).suffix().toLower());
+            if (QFile::copy(picture, copied))
+                info[u"image"_s] = QFileInfo(copied).fileName();
+        }
     }
 
     info[u"name"_s] = name;

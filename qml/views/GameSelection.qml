@@ -51,6 +51,27 @@ Item {
         appOrchestrator.loadGameProfile()
     }
 
+    // Selects the last game by its folder name (the list only holds the games picked in setup, so positions
+    // change), otherwise the first game (no Settings.ini yet, or that game isn't in the list any more).
+    function applyProfile(platformId, modGameFolderName) {
+        const games = gameDropdown.model || []
+        let index = -1
+        if (modGameFolderName) {
+            for (let i = 0; i < games.length; ++i) {
+                if ((games[i].modFolder || "").toLowerCase() === modGameFolderName.toLowerCase()) {
+                    index = i
+                    break
+                }
+            }
+        }
+        const restored = index >= 0
+        if (!restored && games.length > 0)
+            index = 0
+        gameDropdown.currentIndex = -1      // Always a change, so the picture / platforms / info card update.
+        gameDropdown.currentIndex = index
+        platformDropdown.selectPlatform(restored ? (platformId ?? 0) : 0)   // By id: console-only games list PS3 first.
+    }
+
     // =======================================================================
     // 🔄 REACTION HOOK (Handling the Signal emitted from C++)
     // Connects to AppOrchestrator's profileLoaded(...) signal to update the dropdowns
@@ -58,9 +79,9 @@ Item {
     Connections {
         target: appOrchestrator
 
-        function onProfileLoaded(gameId, platformId) {
-            gameDropdown.currentIndex = gameId ?? 0
-            platformDropdown.selectPlatform(platformId ?? 0)   // By id: console-only games list PS3 first.
+        function onProfileLoaded(gameId, platformId, modGameFolderName) {
+            // After the game list has been filled in (it arrives just before this).
+            Qt.callLater(gameSelectionView.applyProfile, platformId, modGameFolderName)
         }
 
         function onGameSelectionInfoLoaded(gameSelectedInfo) {
@@ -175,7 +196,10 @@ Item {
                             ["Blobset",        (infoCard.info.blobsetVersion || "") + "  ·  " + (infoCard.info.compression || "")],
                             ["Blobset Size",   infoCard.info.locationExists ? infoCard.info.blobsetSize : "Not found"],
                             ["File Mapping",   infoCard.info.mappingExists ? "Mapped  ·  " + infoCard.info.mappingDate : "Not mapped yet"],
-                            ["Mod Files",      infoCard.info.modCount ?? 0]
+                            ["Mods",           (infoCard.info.installedMods ?? 0) === 0
+                                                   ? "None installed"
+                                                   : infoCard.info.installedMods + " installed  ·  " + infoCard.info.enabledMods + " enabled"],
+                            ["Mods Folder",    (infoCard.info.modCount ?? 0) + " file(s)"]
                         ]
                         delegate: Item {
                             Layout.fillWidth: true

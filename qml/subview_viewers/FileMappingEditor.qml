@@ -43,6 +43,7 @@ Item {
     FileMappingEditorModel {
         id: mappingModel
         onActionCompleted: (msg) => editorRoot.setStatus(true, msg)
+        onSaved: editorRoot.savedChanges = true   // MainForm has to read the mapping again.
         onErrorOccurred: (msg) => editorRoot.setStatus(false, msg)
         onModelReset: {
             editorRoot.currentRow = -1
@@ -130,8 +131,13 @@ Item {
         }
     }
 
+    property bool savedChanges: false   // MainForm reads the mapping again on the way back.
+
     function goBack() {
-        appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
+        if (savedChanges)
+            appOrchestrator.reloadWorkspace()
+        else
+            appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
     }
 
     function fileName(path) {
@@ -140,7 +146,8 @@ Item {
     }
 
     Component.onCompleted: {
-        const path = targetFilePath !== "" ? targetFilePath : appOrchestrator.mappingFilePath()
+        // The data folder's copy (Documents\Blobset Tools\games\...), so Save never writes into Program Files.
+        const path = targetFilePath !== "" ? targetFilePath : appOrchestrator.writableMappingFilePath()
         if (path === "")
             setStatus(false, "There's no file mapping for this game yet: run 'Update File Mapping Data' first.")
         else
@@ -589,8 +596,13 @@ Item {
                             border.width: 1
                         }
                         Component.onCompleted: selectAll()
-                        // Validated by the model: a bad path / hash is refused and reported in the status bar.
-                        TableView.onCommit: cell.display = text
+                        // Written through the model (assigning cell.display would only change this delegate).
+                        // Validated there: a bad path / hash is refused and reported in the status bar.
+                        TableView.onCommit: {
+                            if (mappingModel.setData(mappingModel.index(cell.row, cell.column), text))
+                                editorRoot.setStatus(true, (cell.column === 0 ? "Path" : "Hash") + " changed on row "
+                                                           + (cell.row + 1) + " - Save Changes to keep it")
+                        }
                     }
                 }
 

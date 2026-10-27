@@ -383,6 +383,34 @@ Item {
                                         Layout.preferredWidth: 24
                                     }
 
+                                    // The mod's picture (preview.png ...), letterboxed.
+                                    Rectangle {
+                                        Layout.preferredWidth: 72
+                                        Layout.preferredHeight: 42
+                                        color: BtDarkStyle.bgDarkest
+                                        border.color: BtDarkStyle.borderDark
+                                        radius: 3
+                                        visible: !row.modelData.builtIn
+                                        Image {
+                                            anchors.fill: parent
+                                            anchors.margins: 1
+                                            source: row.modelData.image || ""
+                                            visible: source.toString() !== ""
+                                            fillMode: Image.PreserveAspectCrop
+                                            asynchronous: true
+                                            sourceSize.width: 144
+                                            sourceSize.height: 84
+                                            clip: true
+                                        }
+                                        Text {
+                                            anchors.centerIn: parent
+                                            visible: !row.modelData.image
+                                            text: "No image"
+                                            color: BtDarkStyle.textDim
+                                            font.pixelSize: 9
+                                        }
+                                    }
+
                                     CheckBox {
                                         checked: row.modelData.enabled
                                         BtToolTip { text: row.modelData.enabled ? "Enabled: Build puts it into the game" : "Disabled: Build leaves it out" }
@@ -494,6 +522,24 @@ Item {
                     spacing: 8
                     visible: managerRoot.selectedMod !== null
 
+                    // The mod's picture: blobsetmod.json "image", or preview.png / image.png ... in its folder.
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: managerRoot.selectedMod && managerRoot.selectedMod.image ? 180 : 0
+                        visible: Layout.preferredHeight > 0
+                        color: BtDarkStyle.bgDark
+                        border.color: BtDarkStyle.borderDark
+                        radius: 4
+                        Image {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            source: managerRoot.selectedMod ? (managerRoot.selectedMod.image || "") : ""
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                            sourceSize.height: 360
+                        }
+                    }
+
                     GridLayout {
                         Layout.fillWidth: true
                         columns: 2
@@ -557,6 +603,19 @@ Item {
                             visible: managerRoot.selectedMod !== null && !managerRoot.selectedMod.builtIn
                             onClicked: modManager.saveInfo(managerRoot.selectedMod.id, nameField.text, authorField.text,
                                                            versionField.text, descriptionField.text)
+                        }
+                        SmallButton {
+                            text: managerRoot.selectedMod && managerRoot.selectedMod.image ? "Change Image..." : "Set Image..."
+                            tip: "Pick a .png (or .jpg) for this mod; it's copied into the mod's folder as preview.png"
+                            visible: managerRoot.selectedMod !== null && !managerRoot.selectedMod.builtIn
+                            onClicked: imageDialog.open()
+                        }
+                        SmallButton {
+                            text: "Remove Image"
+                            tip: "Remove the mod's picture"
+                            visible: managerRoot.selectedMod !== null && !managerRoot.selectedMod.builtIn
+                                     && (managerRoot.selectedMod.image || "") !== ""
+                            onClicked: modManager.clearImage(managerRoot.selectedMod.id)
                         }
                         SmallButton {
                             text: "Open Folder"
@@ -742,6 +801,17 @@ Item {
             for (let i = 0; i < selectedFiles.length; ++i)
                 managerRoot.pendingInstalls.push(selectedFiles[i].toString())
             managerRoot.installNext()
+        }
+    }
+
+    FileDialog {
+        id: imageDialog
+        title: "Choose the mod's picture"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Pictures (*.png *.jpg *.jpeg)", "PNG (*.png)"]
+        onAccepted: {
+            if (managerRoot.selectedMod)
+                modManager.setImage(managerRoot.selectedMod.id, selectedFile.toString())
         }
     }
 
