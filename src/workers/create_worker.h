@@ -92,6 +92,7 @@ private:
         QString absolutePath;
         QString relativePath;   // Relative to the mods folder, '/' separated.
         QString extension;      // Lower case, without the dot.
+        bool generic = false;   // Not one of the types with special handling (dds, txpk, ...): any other file.
     };
 
     // A mod file that has been validated and matched to its path hash.
@@ -103,7 +104,8 @@ private:
         bool isNew = false;             // Not in the file mapping: the hash comes from the file name.
         quint32 mainUncompressed = 0;   // TXPK: split point of the file (from its xml info).
         quint32 vramUncompressed = 0;
-        // DAT only: the original entry decides how the data is stored.
+        // DAT and any other type (str, lua, mesh, ...): the original entry decides how the data is stored.
+        bool generic = false;
         quint32 origMainCompressed = 0;
         quint32 origVramCompressed = 0;
         quint32 origMainUncompressed = 0;

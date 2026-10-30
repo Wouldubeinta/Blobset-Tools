@@ -65,7 +65,8 @@ public:
     // path, the later one wins (Mod Manager load order). Empty: only the workspace mods folder.
     void setModSources(const QStringList& folders) { m_modSources = folders; }
 
-    // The file types Modify puts into a blobset of this CoreDefs::BlobsetVersion (lower case, no dot).
+    // The usual mod file types for this CoreDefs::BlobsetVersion (lower case, no dot): the ones with special handling
+    // plus the common asset types. (Modify itself takes any file that matches one of the game's.)
     static QStringList supportedExtensions(int version);
 
 public slots:
@@ -107,6 +108,7 @@ private:
         QString absolutePath;
         QString relativePath;   // Relative to the mods folder, '/' separated.
         QString extension;      // Lower case, without the dot.
+        bool generic = false;   // Not one of the types with special handling (dds, txpk, ...): any other file.
     };
 
     // A mod file that has been matched to a blobset header entry.
@@ -121,6 +123,13 @@ private:
         QString fileHash;
         quint32 mainUncompressed = 0;   // TXPK only: split point of the file (from its xml info).
         quint32 vramUncompressed = 0;
+        // Any other file type (str, lua, mesh, ...): stored like the entry it replaces - its main section is the
+        // original's main size (the rest is vram), each section raw or compressed like the original's.
+        bool generic = false;
+        quint32 origMainCompressed = 0;
+        quint32 origMainUncompressed = 0;
+        quint32 origVramCompressed = 0;
+        quint32 origVramUncompressed = 0;
     };
 
     // Where a section (main / vram) ended up inside the container and how big it is.

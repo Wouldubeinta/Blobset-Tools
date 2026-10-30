@@ -1,4 +1,4 @@
 .qtcreator
 installer/stage/
 installer/output/
-build
+build/

@@ -75,6 +75,27 @@ QByteArray readZstdChunks(PackageStream& in, qint64 maxBytes) {
 
 } // namespace
 
+QString BlobsetAssetReader::dataFilePath(const QString& headerPath, const BlobsetEntry& entry) {
+    const QString relative = entry.folderHashName + u'/' + entry.fileHashName;
+    const QDir headerDir = QFileInfo(headerPath).absoluteDir();
+    const QString path = headerDir.filePath(relative);
+    if (QFile::exists(path))
+        return path;
+
+    // <game>\BlobsetMods\data\<header>: files that aren't modded come from <game>\data.
+    QDir modsRoot = headerDir;
+    if (headerDir.dirName().compare(u"data"_s, Qt::CaseInsensitive) == 0 && modsRoot.cdUp()
+        && modsRoot.dirName().compare(u"BlobsetMods"_s, Qt::CaseInsensitive) == 0) {
+        QDir gameRoot = modsRoot;
+        if (gameRoot.cdUp()) {
+            const QString original = QDir(gameRoot.filePath(u"data"_s)).filePath(relative);
+            if (QFile::exists(original))
+                return original;
+        }
+    }
+    return path;
+}
+
 QByteArray BlobsetAssetReader::read(const BlobsetEntry& entry, const QString& gameLocation, int version,
                                     int platform, qint64* mainSizeOut, bool includeVram) {
     const bool bigEndian = platform != static_cast<int>(CoreDefs::Platforms::Windows);
@@ -86,8 +107,7 @@ QByteArray BlobsetAssetReader::read(const BlobsetEntry& entry, const QString& ga
     // V3 (Cricket 19) and V4 keep every asset in its own file; V3 uses XORed LZMA chunks instead of ZSTD.
     const bool v3 = version == static_cast<int>(CoreDefs::BlobsetVersion::V3);
     if (v3 || version == static_cast<int>(CoreDefs::BlobsetVersion::V4)) {
-        const QString path = QDir(QFileInfo(gameLocation).absolutePath())
-                                 .filePath(entry.folderHashName + u'/' + entry.fileHashName);
+        const QString path = dataFilePath(gameLocation, entry);
         if (!QFile::exists(path))
             fail(u"Asset file not found: "_s + path);
 

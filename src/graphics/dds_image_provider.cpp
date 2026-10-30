@@ -79,7 +79,7 @@ LoadedTexture readTexture(const BlobsetEntry& entry, const AppOrchestrator* orch
 
     // Right container (V1/V2: data-N.blob...), right byte order, LZMA / ZSTD - all handled here.
     qint64 mainSize = 0;
-    QByteArray asset = BlobsetAssetReader::read(entry, orchestrator->gameLocation(),
+    QByteArray asset = BlobsetAssetReader::read(entry, orchestrator->assetLocation(),
                                                 orchestrator->blobsetVersion(), texture.platform, &mainSize);
     mainSize = std::clamp<qint64>(mainSize, 0, asset.size());
 
@@ -132,7 +132,7 @@ LoadedTexture loadTexture(const QString& hash) {
 
     // Everything that identifies the stored bytes: a rebuilt blobset moves or resizes the entry.
     const QString key = QStringLiteral("%1|%2|%3|%4|%5|%6|%7|%8")
-                            .arg(orchestrator->gameLocation(), hash)
+                            .arg(orchestrator->assetLocation(), hash)
                             .arg(BlobsetEntryRegistry::generation())
                             .arg(entry.blobSetNumber)
                             .arg(entry.mainFinalOffset)

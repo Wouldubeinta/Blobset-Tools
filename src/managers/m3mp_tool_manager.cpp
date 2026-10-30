@@ -7,6 +7,7 @@
 #include "core_defs.h"
 #include "dds_image_provider.h"
 #include "dds_processor.h"
+#include "lua_script.h"
 #include "m3mp_file.h"
 #include "package_stream.h"
 #include "utilities.h"
@@ -20,6 +21,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QImage>
+#include <QPointer>
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QThread>
@@ -154,6 +156,9 @@ M3mpToolManager::M3mpToolManager(QObject* parent) : QObject(parent) {
 M3mpToolManager::~M3mpToolManager() {
     m_cancel = true;
     m_extractFuture.waitForFinished(); // The worker thread still reads our members.
+    m_luaFuture.waitForFinished();
+    if (!m_luaTemp.isEmpty())
+        QDir(m_luaTemp).removeRecursively();
     DdsImageProvider::releaseImage(m_previewKey);
 }
 
@@ -193,8 +198,11 @@ void M3mpToolManager::setProgress(int percent) {
 void M3mpToolManager::clearEntries() {
     const bool hadChanges = !m_replacements.isEmpty();
     m_replacements.clear();
+    m_luaHeaders.clear();
+    m_luaSources.clear();
     m_unsavedChanges = false;
     m_workspacePath.clear();
+    m_loadedFromMods = false;
     if (hadChanges)
         emit changesChanged();
     m_entries.clear();
@@ -348,7 +356,7 @@ void M3mpToolManager::loadM3mpFromBlobset(const QString& hexHash) {
     }
     if (!fromMods) {
         try {
-            data = BlobsetAssetReader::read(entry, orchestrator->gameLocation(), version, platform);
+            data = BlobsetAssetReader::read(entry, orchestrator->assetLocation(), version, platform);
         } catch (const std::exception& ex) {
             reportError(QString::fromUtf8(ex.what()));
             return;
@@ -358,6 +366,7 @@ void M3mpToolManager::loadM3mpFromBlobset(const QString& hexHash) {
     if (loadFromBytes(data, platform != static_cast<int>(CoreDefs::Platforms::Windows), version, u"0x"_s + hexHash.toUpper())) {
         m_source = CreatorSupport::fromBlobset(entry, version, platform, u"m3mp"_s);
         m_workspacePath = workspacePath;
+        m_loadedFromMods = fromMods;
         emit changesChanged();
         if (fromMods)
             setStatus(true, u"Showing your edited copy from the mods folder: %1"_s.arg(QDir::toNativeSeparators(modsCopy)));
@@ -397,6 +406,7 @@ bool M3mpToolManager::replaceEntry(int entry, const QString& file) {
         return false;
     }
     m_replacements.insert(entry, QFileInfo(file).absoluteFilePath());
+    m_luaSources.remove(entry);   // saveLua() puts its text back; a dropped file has none.
     m_unsavedChanges = true;
     emit changesChanged();
     if (entry == m_currentEntry) {
@@ -406,6 +416,28 @@ bool M3mpToolManager::replaceEntry(int entry, const QString& file) {
     setStatus(true, u"Replaced %1 with %2 - Save Changes to write the M3MP into the mods folder."_s
                         .arg(name, QFileInfo(file).fileName()));
     return true;
+}
+
+int M3mpToolManager::entryByPath(const QString& path) const {
+    const QString wanted = QString(path).replace(u'\\', u'/');
+    for (int i = 0; i < m_entries.size(); ++i)
+        if (m_entries[i].path.compare(wanted, Qt::CaseInsensitive) == 0
+            || m_entries[i].storedPath.compare(wanted, Qt::CaseInsensitive) == 0)
+            return i;
+    return -1;
+}
+
+QByteArray M3mpToolManager::entryDataByPath(const QString& path) const {
+    return entryBytes(entryByPath(path));
+}
+
+bool M3mpToolManager::replaceEntryByPath(const QString& path, const QString& file) {
+    const int entry = entryByPath(path);
+    if (entry < 0) {
+        setStatus(false, u"The M3MP has no %1."_s.arg(path));
+        return false;
+    }
+    return replaceEntry(entry, file);
 }
 
 bool M3mpToolManager::replaceFileAt(int fileIndex, const QString& pathOrUrl) {
@@ -454,6 +486,7 @@ void M3mpToolManager::revertAt(int fileIndex) {
     const int entry = entryForFile(fileIndex);
     if (m_busy || !m_replacements.remove(entry))
         return;
+    m_luaSources.remove(entry);
     m_unsavedChanges = true;
     emit changesChanged();
     if (entry == m_currentEntry) {
@@ -467,6 +500,7 @@ void M3mpToolManager::discardChanges() {
     if (m_busy || m_replacements.isEmpty())
         return;
     m_replacements.clear();
+    m_luaSources.clear();
     m_unsavedChanges = false;
     emit changesChanged();
     if (m_currentEntry >= 0) {
@@ -530,6 +564,126 @@ void M3mpToolManager::saveChanges() {
             createM3mp(QDir(temp).filePath(CreatorSupport::m3mpListName()), temp, target);
         }, Qt::QueuedConnection);
     });
+}
+
+// ---------------------------------------------------------------------------
+// Lua scripts
+// ---------------------------------------------------------------------------
+
+bool M3mpToolManager::isLuaAt(int fileIndex) const {
+    const int entry = entryForFile(fileIndex);
+    if (entry < 0 || entry >= m_entries.size())
+        return false;
+    if (m_entries[entry].path.endsWith(u".lua"_s, Qt::CaseInsensitive))
+        return true;
+    const QByteArray head = m_entries[entry].valid ? m_payload.mid(m_entries[entry].offset, 5) : QByteArray();
+    return LuaScript::isBytecode(head);
+}
+
+void M3mpToolManager::openLuaAt(int fileIndex) {
+    const int entry = entryForFile(fileIndex);
+    if (entry < 0 || entry >= m_entries.size() || m_luaFuture.isRunning())
+        return;
+    const QString path = m_entries[entry].path;
+
+    // Your own saved text: shown as you wrote it (decompiling your build would rename the locals again).
+    if (m_replacements.contains(entry) && m_luaSources.contains(entry)) {
+        emit luaOpened(entry, path, m_luaSources.value(entry), luaWritableNote(entry).isEmpty(), luaWritableNote(entry));
+        return;
+    }
+
+    const QByteArray data = previewBytes(entry);
+    if (data.isEmpty()) {
+        emit luaOpenFailed(path, u"The file is empty or lies outside of the M3MP."_s);
+        return;
+    }
+    setStatus(true, u"Decompiling %1..."_s.arg(QFileInfo(path).fileName()));
+    QPointer<M3mpToolManager> self(this);
+    m_luaFuture = QtConcurrent::run([self, entry, path, data]() {
+        const LuaScript::Decompiled result = LuaScript::decompile(data, QFileInfo(path).fileName());
+        QMetaObject::invokeMethod(qApp, [self, entry, path, result]() {
+            if (!self)
+                return;
+            if (!result.ok) {
+                self->setStatus(false, result.error);
+                emit self->luaOpenFailed(path, result.error);
+                return;
+            }
+            self->m_luaHeaders.insert(entry, result.bytecode ? (result.version << 8 | result.flags) : -1);
+            const QString note = self->luaWritableNote(entry);
+            self->setStatus(true, result.bytecode ? u"Decompiled %1 (LuaJIT bytecode v%2)."_s.arg(QFileInfo(path).fileName())
+                                                         .arg(result.version)
+                                                  : u"Opened %1 (Lua source)."_s.arg(QFileInfo(path).fileName()));
+            emit self->luaOpened(entry, path, result.source, note.isEmpty(), note);
+        }, Qt::QueuedConnection);
+    });
+}
+
+QString M3mpToolManager::luaWritableNote(int entry) const {
+    if (modsTarget().isEmpty())
+        return u"Read only: open the M3MP from the game's files (double click it in the workspace) to save scripts "
+               "into the mods folder."_s;
+    const int header = m_luaHeaders.value(entry, -1);
+    if (header < 0)
+        return {};
+    const QString why = LuaScript::checkWritable(static_cast<quint8>(header >> 8), static_cast<quint8>(header & 0xFF));
+    return why.isEmpty() ? QString() : u"Read only: "_s + why;
+}
+
+QVariantMap M3mpToolManager::checkLua(int entry, const QString& source) const {
+    const int header = m_luaHeaders.value(entry, -1);
+    if (header < 0)
+        return {{u"ok"_s, true}, {u"line"_s, 0}, {u"error"_s, QString()}};
+    const LuaScript::Compiled compiled = LuaScript::compile(source, QFileInfo(m_entries.value(entry).path).fileName(),
+                                                            static_cast<quint8>(header & 0xFF));
+    return {{u"ok"_s, compiled.ok}, {u"line"_s, compiled.line}, {u"error"_s, compiled.error}};
+}
+
+bool M3mpToolManager::saveLua(int entry, const QString& source, bool rebuild) {
+    if (m_busy || entry < 0 || entry >= m_entries.size())
+        return false;
+    const QString name = QFileInfo(m_entries[entry].path).fileName();
+    const QString note = luaWritableNote(entry);
+    if (!note.isEmpty()) {
+        setStatus(false, note);
+        emit luaCompileFailed(0, note);
+        return false;
+    }
+
+    // Bytecode scripts are compiled with the original's header (strip flag); Lua source is saved as it is.
+    QByteArray bytes;
+    const int header = m_luaHeaders.value(entry, -1);
+    if (header >= 0) {
+        const LuaScript::Compiled compiled = LuaScript::compile(source, name, static_cast<quint8>(header & 0xFF));
+        if (!compiled.ok) {
+            setStatus(false, u"%1 doesn't compile: %2"_s.arg(name, compiled.error));
+            emit luaCompileFailed(compiled.line, compiled.error);
+            return false;
+        }
+        bytes = compiled.bytecode;
+    } else {
+        QString text = source;
+        if (entryBytes(entry).contains("\r\n"))
+            text.replace(u"\n"_s, u"\r\n"_s);
+        bytes = text.toUtf8();
+    }
+
+    if (m_luaTemp.isEmpty() || !QFileInfo(m_luaTemp).isDir())
+        m_luaTemp = QDir(QDir::tempPath()).filePath(u"BlobsetTools-Lua-%1"_s.arg(QDateTime::currentMSecsSinceEpoch()));
+    const QString file = QDir(m_luaTemp).filePath(u"%1/%2"_s.arg(entry).arg(name));
+    QDir().mkpath(QFileInfo(file).absolutePath());
+    QSaveFile out(file);
+    if (!out.open(QIODevice::WriteOnly) || out.write(bytes) != bytes.size() || !out.commit()) {
+        setStatus(false, u"Could not write %1."_s.arg(QDir::toNativeSeparators(file)));
+        emit luaCompileFailed(0, statusText());
+        return false;
+    }
+    if (!replaceEntry(entry, file))
+        return false;
+    m_luaSources.insert(entry, source);
+    if (rebuild)
+        saveChanges();
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -603,7 +757,9 @@ void M3mpToolManager::loadPreview(int index) {
     } else {
         m_previewKind = u"hex"_s;
         m_previewText = data.isEmpty() ? u"(empty file)"_s : hexDump(data, kHexPreviewLimit);
-        m_infoLine = u"%1  |  Binary  |  %2"_s.arg(entry.path, size);
+        m_infoLine = LuaScript::isBytecode(data)
+                         ? u"%1  |  LuaJIT bytecode  |  %2  |  double click to edit the script"_s.arg(entry.path, size)
+                         : u"%1  |  Binary  |  %2"_s.arg(entry.path, size);
     }
     setStatus(true, m_infoLine);
 }

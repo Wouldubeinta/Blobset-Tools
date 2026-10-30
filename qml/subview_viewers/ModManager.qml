@@ -219,7 +219,7 @@ Item {
                 Rectangle { width: 1; Layout.preferredHeight: 28; color: BtDarkStyle.borderDark }
 
                 Image {
-                    source: managerRoot.iconDir + "modify_32.png"
+                    source: managerRoot.iconDir + "mod_manager_32.png"
                     Layout.preferredWidth: 24
                     Layout.preferredHeight: 24
                     fillMode: Image.PreserveAspectFit

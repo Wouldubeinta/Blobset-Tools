@@ -50,7 +50,9 @@ Popup {
         "  •  XZ Utils / liblzma - Lasse Collin and the Tukaani Project (public domain / 0BSD)\n" +
         "  •  vgmstream - vgmstream contributors (ISC)\n" +
         "  •  FFmpeg - FFmpeg developers (LGPL v2.1+)\n" +
-        "  •  Ogg, Vorbis and Opus - Xiph.Org Foundation (BSD)\n"
+        "  •  Ogg, Vorbis and Opus - Xiph.Org Foundation (BSD)\n" +
+        "  •  LuaJIT - Mike Pall (MIT)\n" +
+        "  •  LuaJIT Decompiler v2 - marsinator358 (MIT)\n"
 
     readonly property string infoText:
         "Description: Extract and Modify BigAnt games blobset files\n\n" +

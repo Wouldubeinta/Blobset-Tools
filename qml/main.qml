@@ -42,17 +42,17 @@ ApplicationWindow {
         target: updater
         function onUpdateAvailable(version, notes) {
             updateDialog.errorText = ""
-            updateDialog.open()
+            Qt.callLater(updateDialog.open)
         }
         function onUpToDate(version) {
             updateInfoDialog.title = "No Update Available"
             updateInfoDialog.text = "Blobset Tools " + version + " is the latest version."
-            updateInfoDialog.open()
+            Qt.callLater(updateInfoDialog.open)
         }
         function onCheckFailed(message) {
             updateInfoDialog.title = "Check for Updates"
             updateInfoDialog.text = "Couldn't check for updates.\n\n" + message
-            updateInfoDialog.open()
+            Qt.callLater(updateInfoDialog.open)
         }
         function onDownloadFailed(message) {
             updateDialog.errorText = message
@@ -61,9 +61,48 @@ ApplicationWindow {
         }
     }
 
-    MessageDialog {
+    // "No Update Available" / "Couldn't check": an in-window dialog. (A native message box opened from the
+    // update check's callback could leave the window unresponsive after OK.)
+    Dialog {
         id: updateInfoDialog
-        buttons: MessageDialog.Ok
+        property string text: ""
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: Math.min(rootWindow.width - 80, 440)
+        modal: true
+        padding: 20
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        background: Rectangle {
+            color: BtDarkStyle.bgDark
+            border.color: BtDarkStyle.accentColor
+            border.width: 1
+            radius: 6
+        }
+        header: Text {
+            text: updateInfoDialog.title
+            color: BtDarkStyle.accentColor
+            font.bold: true
+            font.pixelSize: 15
+            leftPadding: 20
+            topPadding: 16
+        }
+        contentItem: Text {
+            text: updateInfoDialog.text
+            color: BtDarkStyle.textMain
+            font.pixelSize: 13
+            wrapMode: Text.WordWrap
+        }
+        footer: RowLayout {
+            Item { Layout.fillWidth: true }
+            Button {
+                Layout.rightMargin: 16
+                Layout.bottomMargin: 14
+                text: "OK"
+                highlighted: true
+                onClicked: updateInfoDialog.close()
+            }
+        }
     }
 
     Dialog {

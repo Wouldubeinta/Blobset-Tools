@@ -6,6 +6,7 @@
 #include "blobset_entry_registry.h"
 #include "core_defs.h"
 #include "utilities.h"
+#include "wem_file.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -182,18 +183,174 @@ void BnkToolManager::loadBnkFromBlobset(const QString& hexHash) {
         return;
     }
 
+    // An edited copy in the mods folder (Save Changes) is what Modify uses: show and edit that one.
+    const QString workspacePath = orchestrator->pathFromHash(hexHash);
+    const QString modsCopy = workspacePath.isEmpty() ? QString() : orchestrator->modFilePath(workspacePath);
+    QByteArray data;
+    bool fromMods = false;
+    if (!modsCopy.isEmpty() && QFileInfo(modsCopy).isFile()) {
+        QFile file(modsCopy);
+        if (file.open(QIODevice::ReadOnly)) {
+            data = file.readAll();
+            fromMods = true;
+        }
+    }
+
     // Wwise banks ship in V3 (Cricket 19) and V4 blobsets. BlobsetAssetReader finds the asset's file for either
     // (32 / 64 bit hash names) and undoes the section compression, so a stored or compressed bank both load.
-    QByteArray data;
-    try {
-        data = BlobsetAssetReader::read(entry, orchestrator->gameLocation(), orchestrator->blobsetVersion(),
-                                        orchestrator->platform());
-    } catch (const std::exception& ex) {
-        failLoad(u"Failed to read the sound bank: "_s + QString::fromUtf8(ex.what()));
-        return;
+    if (!fromMods) {
+        try {
+            data = BlobsetAssetReader::read(entry, orchestrator->assetLocation(), orchestrator->blobsetVersion(),
+                                            orchestrator->platform());
+        } catch (const std::exception& ex) {
+            failLoad(u"Failed to read the sound bank: "_s + QString::fromUtf8(ex.what()));
+            return;
+        }
     }
 
     loadBytes(std::move(data), u"0x"_s + hexHash.toUpper());
+    if (m_bank.media.isEmpty() && m_data.isEmpty())
+        return;   // Failed to load.
+    m_workspacePath = workspacePath;
+    emit changesChanged();
+    if (fromMods)
+        setStatus(true, u"Showing your edited copy from the mods folder: %1"_s.arg(QDir::toNativeSeparators(modsCopy)));
+}
+
+// ---------------------------------------------------------------------------
+// Edit: replace WEMs, Save Changes
+// ---------------------------------------------------------------------------
+
+QString BnkToolManager::modsTarget() const {
+    const AppOrchestrator* orchestrator = AppOrchestrator::instance();
+    return orchestrator && !m_workspacePath.isEmpty() ? QDir::toNativeSeparators(orchestrator->modFilePath(m_workspacePath))
+                                                      : QString();
+}
+
+bool BnkToolManager::replaceEntry(int entry, const QString& file) {
+    if (m_busy || entry < 0 || entry >= m_bank.media.size())
+        return false;
+    const BnkFile::Media& media = m_bank.media[entry];
+    const QString name = wemFileName(media.id);
+    const QString suffix = QFileInfo(file).suffix().toLower();
+    if (suffix != u"wav"_s && suffix != u"wem"_s) {
+        setStatus(false, u"%1 can be replaced with a .wav or a .wem (not %2)."_s.arg(name, QFileInfo(file).fileName()));
+        return false;
+    }
+    QFile input(file);
+    if (!input.open(QIODevice::ReadOnly)) {
+        setStatus(false, u"Could not read %1."_s.arg(QDir::toNativeSeparators(file)));
+        return false;
+    }
+    const QByteArray original = m_data.mid(media.offset, media.size);
+    QString error;
+    const QByteArray wem = suffix == u"wav"_s ? WemFile::fromWav(input.readAll(), original, &error)
+                                              : WemFile::withOriginalHash(input.readAll(), original, &error);
+    if (wem.isEmpty()) {
+        setStatus(false, u"%1: %2"_s.arg(QFileInfo(file).fileName(), error));
+        return false;
+    }
+
+    m_replacements.insert(entry, wem);
+    m_unsavedChanges = true;
+    m_infoCache.remove(entry);
+    emit changesChanged();
+    if (entry == m_currentEntry) {
+        m_entryInfo = buildEntryInfo(entry);
+        emit currentChanged();
+    }
+    setStatus(true, u"Replaced %1 with %2 (%3) - Save Changes to write the bank into the mods folder."_s
+                        .arg(name, QFileInfo(file).fileName(), WemFile::describe(wem)));
+    return true;
+}
+
+bool BnkToolManager::replaceRow(int row, const QString& pathOrUrl) {
+    return replaceEntry(m_model->entryAt(row), toLocalPath(pathOrUrl));
+}
+
+int BnkToolManager::replaceByName(const QStringList& pathsOrUrls) {
+    int replaced = 0;
+    QStringList unmatched;
+    for (const QString& item : pathsOrUrls) {
+        const QString file = toLocalPath(item);
+        const QString base = QFileInfo(file).completeBaseName();
+        int entry = -1;
+        for (int i = 0; i < m_bank.media.size() && entry < 0; ++i)
+            if (QString::number(m_bank.media[i].id) == base)
+                entry = i;
+        if (entry < 0)
+            unmatched << QFileInfo(file).fileName();
+        else if (replaceEntry(entry, file))
+            ++replaced;
+    }
+    if (!unmatched.isEmpty())
+        setStatus(false, u"No WEM with the id of %1 in this bank - name the file <id>.wav / <id>.wem, or drop it onto "
+                         u"the WEM it should replace."_s.arg(unmatched.join(u", "_s)));
+    else if (replaced > 1)
+        setStatus(true, u"Replaced %1 WEMs - Save Changes to write the bank into the mods folder."_s.arg(replaced));
+    return replaced;
+}
+
+void BnkToolManager::revertRow(int row) {
+    const int entry = m_model->entryAt(row);
+    if (m_busy || !m_replacements.remove(entry))
+        return;
+    m_unsavedChanges = true;
+    m_infoCache.remove(entry);
+    emit changesChanged();
+    if (entry == m_currentEntry) {
+        m_entryInfo = buildEntryInfo(entry);
+        emit currentChanged();
+    }
+    setStatus(true, u"%1 is back to the bank's own audio."_s.arg(wemFileName(m_bank.media[entry].id)));
+}
+
+void BnkToolManager::discardChanges() {
+    if (m_busy || m_replacements.isEmpty())
+        return;
+    m_replacements.clear();
+    m_unsavedChanges = false;
+    m_infoCache.clear();
+    emit changesChanged();
+    if (m_currentEntry >= 0) {
+        m_entryInfo = buildEntryInfo(m_currentEntry);
+        emit currentChanged();
+    }
+}
+
+void BnkToolManager::saveChanges() {
+    if (m_busy)
+        return;
+    AppOrchestrator* orchestrator = AppOrchestrator::instance();
+    if (!orchestrator || m_workspacePath.isEmpty()) {
+        setStatus(false, u"Save Changes needs a sound bank opened from the game's files (double click it in the workspace)."_s);
+        return;
+    }
+    if (m_replacements.isEmpty()) {
+        setStatus(false, u"Nothing to save: replace a WEM first (drag a .wav / .wem onto it, or right click > Replace)."_s);
+        return;
+    }
+
+    int patched = 0;
+    QString error;
+    const QByteArray rebuilt = BnkFile::rebuild(m_data, m_bank, m_replacements, &patched, &error);
+    if (rebuilt.isEmpty()) {
+        setStatus(false, u"Save Changes: "_s + error);
+        return;
+    }
+    const QVariantMap written = orchestrator->writeModFile(m_workspacePath, rebuilt);
+    if (!written.value(u"ok"_s).toBool()) {
+        setStatus(false, u"Save Changes: "_s + written.value(u"message"_s).toString());
+        return;
+    }
+    m_unsavedChanges = false;
+    emit changesChanged();
+    const QString target = modsTarget();
+    const QString message = u"Saved the bank to %1 (%2 WEM(s) replaced, %3 sound source(s) updated). Click Modify to put "
+                            u"it into the game."_s.arg(target).arg(m_replacements.size()).arg(patched);
+    emit orchestrator->uiConsoleUpdate(message);
+    setStatus(true, message);
+    emit changesSaved(target);
 }
 
 void BnkToolManager::loadFile(const QString& path, const QString& sourceName) {
@@ -240,6 +397,12 @@ void BnkToolManager::failLoad(const QString& message) {
 }
 
 void BnkToolManager::clearBank() {
+    const bool hadChanges = !m_replacements.isEmpty() || m_unsavedChanges || !m_workspacePath.isEmpty();
+    m_replacements.clear();
+    m_unsavedChanges = false;
+    m_workspacePath.clear();
+    if (hadChanges)
+        emit changesChanged();
     m_data.clear();
     m_bank = BnkFile();
     m_sourceName.clear();
@@ -335,7 +498,10 @@ QVariantList BnkToolManager::buildEntryInfo(int entry) {
          << infoRow(u"Wwise ID"_s, idText(media.id))
          << infoRow(u"Entry"_s, u"%1 of %2"_s.arg(entry + 1).arg(m_bank.media.size()))
          << infoRow(u"Offset in bank"_s, u"0x"_s + QString::number(media.offset, 16).toUpper())
-         << infoRow(u"Size"_s, sizeWithBytes(media.size));
+         << infoRow(u"Size"_s, m_replacements.contains(entry)
+                                   ? sizeWithBytes(m_replacements.value(entry).size()) + u"  (replaced, was "_s
+                                         + humanSize(media.size) + u")"_s
+                                   : sizeWithBytes(media.size));
 
     Metadata meta;
     if (AudioProcessor::probeAudioBuffer(wemBytes(entry), wemFileName(media.id), meta)) {
@@ -365,6 +531,8 @@ QVariantList BnkToolManager::buildEntryInfo(int entry) {
 QByteArray BnkToolManager::wemBytes(int entry) const {
     if (entry < 0 || entry >= m_bank.media.size())
         return {};
+    if (m_replacements.contains(entry))
+        return m_replacements.value(entry);   // Play / probe the replacement.
 
     const BnkFile::Media& media = m_bank.media[entry];
     return m_data.mid(media.offset, media.size);

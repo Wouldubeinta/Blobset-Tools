@@ -1,5 +1,6 @@
 #include "extract_worker.h"
 #include "asset_signatures.h"
+#include "blobset_asset_reader.h"
 #include "compression_io.h"
 #include "dds_processor.h"
 #include "gcm_texture.h"
@@ -1092,7 +1093,6 @@ void ExtractWorker::extractV4() {
             }
         }
 
-        const QString blobsetDir = QFileInfo(m_blobsetFile).absolutePath();
         const int fileCount = static_cast<int>(blobset.filesCount);
 
         for (int i = 0; i < fileCount; ++i) {
@@ -1100,7 +1100,8 @@ void ExtractWorker::extractV4() {
             QString progress;
 
             // V4 archives keep every asset in its own physical file, addressed by the hashes.
-            currentFile = QDir(blobsetDir).filePath(joinPath(entry.folderHashName, entry.fileHashName));
+            // The Mod Loader view (header in <game>\BlobsetMods\data): the modded file, else the game's own.
+            currentFile = BlobsetAssetReader::dataFilePath(m_blobsetFile, entry);
 
             if (QFile::exists(currentFile)) {
                 try {

@@ -143,7 +143,7 @@ void HexViewerModel::loadFromBlobset(const QString& hexHash, const QString& disp
     }
 
     // Read the settings here (UI thread); the worker only gets plain values.
-    const QString gameLocation = orchestrator->gameLocation();
+    const QString gameLocation = orchestrator->assetLocation();   // The Mod Loader's build while that view is on.
     const int version = orchestrator->blobsetVersion();
     const int platform = orchestrator->platform();
 

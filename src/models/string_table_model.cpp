@@ -242,7 +242,7 @@ bool StringTableModel::loadFromBlobset(const QString& hexHash, const QString& wo
 
     QByteArray data;
     try {
-        data = BlobsetAssetReader::read(entry, orchestrator->gameLocation(), orchestrator->blobsetVersion(),
+        data = BlobsetAssetReader::read(entry, orchestrator->assetLocation(), orchestrator->blobsetVersion(),
                                         orchestrator->platform());
     } catch (const std::exception& ex) {
         emit errorOccurred(QString::fromUtf8(ex.what()));

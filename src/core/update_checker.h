@@ -1,13 +1,11 @@
 #ifndef UPDATE_CHECKER_H
 #define UPDATE_CHECKER_H
 
-#include <QNetworkReply>   // Complete type for QPointer<QNetworkReply>.
+#include <QFuture>
 #include <QObject>
-#include <QPointer>
 #include <QString>
 
-class QNetworkAccessManager;
-class QSaveFile;
+#include <atomic>
 
 /// Auto updater: asks GitHub for the latest release of Wouldubeinta/Blobset-Tools, and when it's newer than this
 /// build, downloads
@@ -18,6 +16,9 @@ class QSaveFile;
 /// main.qml checks at startup (at most once a day, Settings.ini [Update] AutoCheck / LastCheck / SkipVersion);
 /// Options > Check for Updates checks right away. Portable copies (portable.txt) get the release page instead of
 /// the installer.
+///
+/// All network traffic (the release check and the download) runs on a worker thread with its own
+/// QNetworkAccessManager, so a slow connection or Windows' proxy auto-detection never blocks the window.
 class UpdateChecker : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString currentVersion READ currentVersion CONSTANT)
@@ -38,8 +39,8 @@ public:
     QString latestVersion() const { return m_latestVersion; }
     QString releaseNotes() const { return m_releaseNotes; }
     QString releaseUrl() const { return m_releaseUrl; }
-    bool checking() const { return m_checkReply != nullptr; }
-    bool downloading() const { return m_downloadReply != nullptr; }
+    bool checking() const { return m_checking; }
+    bool downloading() const { return m_downloading; }
     double progress() const { return m_progress; }
     bool portable() const;
     bool autoCheck() const;
@@ -72,14 +73,17 @@ signals:
 
 private:
     void check(bool userAsked);
-    void handleCheckReply(bool userAsked);
-    void finishDownload();
+    // On the GUI thread, with what the worker thread fetched: error empty = body is the release JSON.
+    void handleCheckResult(bool userAsked, const QString& error, const QByteArray& body);
+    // On the GUI thread once the download thread is done: error empty = the installer is at m_downloadPath.
+    void finishDownload(const QString& error);
     QString installerUrl() const;
 
-    QNetworkAccessManager* m_network = nullptr;
-    QPointer<QNetworkReply> m_checkReply;
-    QPointer<QNetworkReply> m_downloadReply;
-    QSaveFile* m_downloadFile = nullptr;
+    bool m_checking = false;
+    bool m_downloading = false;
+    std::atomic<bool> m_cancel{false};
+    QFuture<void> m_checkFuture;
+    QFuture<void> m_downloadFuture;
     QString m_downloadPath;
 
     QString m_latestVersion;   // "2.1.10.56" (tag without a leading 'v').

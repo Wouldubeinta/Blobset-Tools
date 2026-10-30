@@ -386,7 +386,7 @@ Item {
                         CategoryHeader { text: "Tools" }
                         NavigationItem {
                             tip: "Install, enable and order mods; Build puts them all into the game"
-                            iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/modify_32.png"
+                            iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/mod_manager_32.png"
                             text: "Mod Manager";
                             onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/ModManager.qml")
                         }
@@ -414,6 +414,14 @@ Item {
                             iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/mapping_32.png"
                             text: "File Mapping Editor";
                             onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/FileMappingEditor.qml")
+                        }
+                        NavigationItem {
+                            tip: "Edit the game's teams and players (squads, lineups, jerseys, ratings, stadiums, ...)"
+                            iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/database_editor_32.png"
+                            text: "Database Editor";
+                            // The games whose database the editor reads (DatabaseManager).
+                            visible: ["Rugby League 26", "Rugby League Live 4", "Rugby League Live 3", "Rugby 25"].indexOf(appOrchestrator.currentGameName) >= 0
+                            onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/DatabaseEditor.qml")
                         }
                         NavigationItem {
                             tip: "Edit the game's text (text\\strings\\*.str, one table per language)"
@@ -457,9 +465,9 @@ Item {
                             onClicked: appOrchestrator.validateSteamFiles()
                         }
                         NavigationItem {
-                            tip: "When on, Modify writes the mods to <game>\\BlobsetMods for the Blobset Mod Loader instead of changing the game's files"
+                            tip: "When on, Modify writes the mods to <game>\\BlobsetMods for the Blobset Mod Loader instead of changing the game's files, and the folders and files show that build (the modded files from <game>\\BlobsetMods\\data, the rest from the game)"
                             // V4 games: Modify builds the mods in <game>\BlobsetMods for the Blobset Mod Loader.
-                            iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/modify_32.png"
+                            iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/mod_loader_32.png"
                             text: "Mod Loader: " + (appOrchestrator.modLoaderMode ? "On" : "Off");
                             visible: appOrchestrator.blobsetVersion === 3
                             onClicked: appOrchestrator.modLoaderMode = !appOrchestrator.modLoaderMode
@@ -487,7 +495,7 @@ Item {
                         }
                         NavigationItem {
                             tip: "See whether a newer Blobset Tools is on GitHub, and install it"
-                            iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/extract_32.png"
+                            iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/check_updates_32.png"
                             text: updater.checking ? "Checking for Updates..." : "Check for Updates";
                             enabled: !updater.checking && !updater.downloading
                             onClicked: updater.checkNow()
@@ -726,6 +734,8 @@ Item {
                                 return baseDir + "obj_32.png";
                             case ".fev":
                                 return baseDir + "fev1_32.png";
+                            case ".mat":
+                                return baseDir + "mat_32.png";
                             case ".dat":
                                 return baseDir + "dat_32.png";
                             default:
@@ -763,11 +773,35 @@ Item {
                         anchors.margins: 10;
                         spacing: 8
 
-                        Text {
-                            text: "Files";
-                            color: BtDarkStyle.accentColor;
-                            font.bold: true;
-                            font.pointSize: 10
+                        RowLayout {
+                            spacing: 8
+                            Text {
+                                text: "Files";
+                                color: BtDarkStyle.accentColor;
+                                font.bold: true;
+                                font.pointSize: 10
+                            }
+                            // Mod Loader view: the files are read from the Mod Loader's build (<game>\BlobsetMods\data).
+                            Rectangle {
+                                visible: appOrchestrator.modLoaderView
+                                implicitWidth: loaderViewLabel.implicitWidth + 12
+                                implicitHeight: 16
+                                radius: 3
+                                color: BtDarkStyle.accentDim
+                                Text {
+                                    id: loaderViewLabel
+                                    anchors.centerIn: parent
+                                    text: "BLOBSETMODS"
+                                    color: "#121214"
+                                    font.pixelSize: 9
+                                    font.bold: true
+                                }
+                                HoverHandler { id: loaderViewHover }
+                                BtToolTip {
+                                    text: "Mod Loader on: modded files are read from <game>\\BlobsetMods\\data, the rest from the game's own files (as the game sees them)"
+                                    visible: loaderViewHover.hovered
+                                }
+                            }
                         }
 
                         Rectangle {
@@ -777,21 +811,8 @@ Item {
                             border.width: 1;
                             radius: 4;
                             clip: true
-                            border.color: panelDrop.containsDrag ? BtDarkStyle.accentColor
-                                          : (fileMasterListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.borderDark)
-
-                            // Files dropped on the panel (not on a file): each replaces the file with the same name
-                            // in this folder (copied into the mods folder).
-                            DropArea {
-                                id: panelDrop
-                                anchors.fill: parent
-                                onDropped: (drop) => {
-                                    if (drop.hasUrls) {
-                                        mainFormView.replaceByName(drop.urls)
-                                        drop.acceptProposedAction()
-                                    }
-                                }
-                            }
+                            border.color: filesDrop.containsDrag || fileMasterListView.activeFocus ? BtDarkStyle.accentColor
+                                                                                                   : BtDarkStyle.borderDark
 
                             ListView {
                                 id: fileMasterListView;
@@ -865,25 +886,11 @@ Item {
                                             rightPadding: 4;
                                             highlighted: isKeyboardSelected
                                             background: Rectangle {
-                                                color: isKeyboardSelected ? (fileMasterListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.accentDim) : (hovered || itemDrop.containsDrag ? BtDarkStyle.bgHover : "transparent");
-                                                border.width: itemDrop.containsDrag ? 1 : 0
+                                                readonly property bool dropTarget: filesDrop.containsDrag && filesDrop.hoverIndex === targetFileIndex
+                                                color: isKeyboardSelected ? (fileMasterListView.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.accentDim) : (hovered || dropTarget ? BtDarkStyle.bgHover : "transparent");
+                                                border.width: dropTarget ? 1 : 0
                                                 border.color: BtDarkStyle.accentColor
                                                 radius: 2
-                                            }
-
-                                            // A file dropped on this file replaces it (whatever its name; same extension).
-                                            DropArea {
-                                                id: itemDrop
-                                                anchors.fill: parent
-                                                onDropped: (drop) => {
-                                                    if (!drop.hasUrls)
-                                                        return
-                                                    if (drop.urls.length === 1)
-                                                        mainFormView.replaceFile(targetFileIndex, drop.urls[0])
-                                                    else
-                                                        mainFormView.replaceByName(drop.urls)
-                                                    drop.acceptProposedAction()
-                                                }
                                             }
                                             contentItem: RowLayout {
                                                 anchors.fill: parent;
@@ -952,6 +959,66 @@ Item {
                                 ScrollBar.horizontal: ScrollBar {
                                     active: true;
                                     policy: ScrollBar.AsNeeded
+                                }
+                            }
+
+                            // Replace File by drag and drop: one drop area over the whole panel (on top of the file
+                            // list, so drops always arrive here). Files and folders are matched by name / path:
+                            // see AppOrchestrator::replaceDropped(). One file that matches nothing replaces the file
+                            // it was dropped on.
+                            DropArea {
+                                id: filesDrop
+                                anchors.fill: parent
+                                property int hoverIndex: -1   // The file under the cursor while dragging.
+
+                                function fileIndexAt(x, y) {
+                                    const files = appOrchestrator.currentFolderFiles || []
+                                    const p = fileMasterListView.mapFromItem(filesDrop, x, y)
+                                    const column = fileMasterListView.indexAt(p.x + fileMasterListView.contentX,
+                                                                              p.y + fileMasterListView.contentY)
+                                    if (column < 0)
+                                        return -1
+                                    const row = Math.floor((p.y + fileMasterListView.contentY) / filesPanelContainer.itemRowHeight)
+                                    if (row < 0 || row >= filesPanelContainer.rowsPerColumn)
+                                        return -1
+                                    const index = column * filesPanelContainer.rowsPerColumn + row
+                                    return index < files.length ? index : -1
+                                }
+
+                                onPositionChanged: (drag) => hoverIndex = fileIndexAt(drag.x, drag.y)
+                                onExited: hoverIndex = -1
+                                onDropped: (drop) => {
+                                    hoverIndex = -1
+                                    if (!drop.hasUrls)
+                                        return
+                                    const urls = []
+                                    for (let i = 0; i < drop.urls.length; ++i)
+                                        urls.push(drop.urls[i].toString())
+                                    const index = fileIndexAt(drop.x, drop.y)
+                                    const target = index >= 0 ? mainFormView.describeFile(index) : null
+                                    appOrchestrator.replaceDropped(urls, mainFormView.currentFolderPath(),
+                                                                   target !== null ? target.path : "")
+                                    drop.acceptProposedAction()
+                                }
+                            }
+
+                            // While dragging: what a drop will do.
+                            Rectangle {
+                                visible: filesDrop.containsDrag
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: 20
+                                width: dropHint.implicitWidth + 20
+                                height: 26
+                                radius: 4
+                                color: BtDarkStyle.bgMedium
+                                border.color: BtDarkStyle.accentColor
+                                Text {
+                                    id: dropHint
+                                    anchors.centerIn: parent
+                                    text: "Drop files or folders to replace the matching files (copied into the mods folder)"
+                                    color: BtDarkStyle.accentColor
+                                    font.pixelSize: 11
                                 }
                             }
 
@@ -1071,15 +1138,133 @@ Item {
                                     fillMode: Image.Tile;
                                     source: previewBridge.hasImage ? "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/grid_dark.bmp" : "";
 
-                                    Image {
+                                    // Texture canvas: the mouse wheel zooms around the cursor, holding the middle mouse
+                                    // button moves the texture (same as the DDS viewer). A new texture starts fitted.
+                                    Item {
+                                        id: previewCanvas
                                         anchors.fill: parent;
                                         anchors.margins: 5;
-                                        fillMode: Image.PreserveAspectFit;
-                                        // No texture selected: the selected game's picture (as on the game selection screen),
-                                        // or the Blobset Tools logo when the game has none.
-                                        source: previewBridge.hasImage ? previewBridge.imageSource
-                                              : appOrchestrator.currentGameImage !== "" ? appOrchestrator.currentGameImage
-                                              : "qrc:/qt/qml/com/wouldymods/blobset/assets/blobset_tools.png";
+                                        clip: true
+
+                                        property real zoom: 1.0          // 1.0 = fitted to the box.
+                                        property real panX: 0            // Offset of the texture's centre from the box's centre.
+                                        property real panY: 0
+                                        readonly property real minZoom: 0.25
+                                        readonly property real maxZoom: 32.0
+                                        readonly property bool zoomable: previewBridge.hasImage && previewImage.status === Image.Ready
+                                                                         && previewImage.sourceSize.width > 0 && previewImage.sourceSize.height > 0
+                                        readonly property real fitScale: zoomable
+                                            ? Math.min(width / previewImage.sourceSize.width, height / previewImage.sourceSize.height) : 1.0
+                                        readonly property real displayScale: fitScale * zoom   // 1.0 = one texel per screen pixel.
+
+                                        // Another texture (flip / alpha keep the view).
+                                        property string resetKey: previewBridge.fileName + "|" + previewBridge.hasImage
+                                        onResetKeyChanged: resetView()
+
+                                        function resetView() {
+                                            zoom = 1.0
+                                            panX = 0
+                                            panY = 0
+                                        }
+
+                                        // At least 40 px of the texture stays in the box.
+                                        function clampPan() {
+                                            const limitX = Math.max(0, (width + previewImage.width) / 2 - 40)
+                                            const limitY = Math.max(0, (height + previewImage.height) / 2 - 40)
+                                            panX = Math.max(-limitX, Math.min(limitX, panX))
+                                            panY = Math.max(-limitY, Math.min(limitY, panY))
+                                        }
+
+                                        // Zooms by `factor`, keeping the texel under (px, py) under the cursor.
+                                        function zoomAt(factor, px, py) {
+                                            const newZoom = Math.max(minZoom, Math.min(maxZoom, zoom * factor))
+                                            if (!zoomable || newZoom === zoom)
+                                                return
+                                            const texelX = (px - width / 2 - panX) / displayScale
+                                            const texelY = (py - height / 2 - panY) / displayScale
+                                            zoom = newZoom
+                                            panX = px - width / 2 - texelX * displayScale
+                                            panY = py - height / 2 - texelY * displayScale
+                                            clampPan()
+                                        }
+
+                                        Image {
+                                            id: previewImage
+                                            // Zoomable texture: its own size times the zoom, centred plus the pan.
+                                            // Otherwise (the game's picture / the logo) simply fitted into the box.
+                                            width: previewCanvas.zoomable ? sourceSize.width * previewCanvas.displayScale : previewCanvas.width
+                                            height: previewCanvas.zoomable ? sourceSize.height * previewCanvas.displayScale : previewCanvas.height
+                                            x: (previewCanvas.width - width) / 2 + (previewCanvas.zoomable ? previewCanvas.panX : 0)
+                                            y: (previewCanvas.height - height) / 2 + (previewCanvas.zoomable ? previewCanvas.panY : 0)
+                                            fillMode: Image.PreserveAspectFit;
+                                            smooth: !previewCanvas.zoomable || previewCanvas.displayScale < 2   // Crisp texels when zoomed in.
+                                            // No texture selected: the selected game's picture (as on the game selection screen),
+                                            // or the Blobset Tools logo when the game has none.
+                                            source: previewBridge.hasImage ? previewBridge.imageSource
+                                                  : appOrchestrator.currentGameImage !== "" ? appOrchestrator.currentGameImage
+                                                  : "qrc:/qt/qml/com/wouldymods/blobset/assets/blobset_tools.png";
+                                        }
+
+                                        // Wheel: zoom. Middle button held: move the texture.
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            acceptedButtons: Qt.MiddleButton
+                                            enabled: previewCanvas.zoomable
+                                            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.ArrowCursor
+                                            property real lastX: 0
+                                            property real lastY: 0
+                                            onPressed: (mouse) => { lastX = mouse.x; lastY = mouse.y }
+                                            onPositionChanged: (mouse) => {
+                                                previewCanvas.panX += mouse.x - lastX
+                                                previewCanvas.panY += mouse.y - lastY
+                                                previewCanvas.clampPan()
+                                                lastX = mouse.x
+                                                lastY = mouse.y
+                                            }
+                                            onWheel: (wheel) => {
+                                                if (wheel.angleDelta.y === 0) {
+                                                    wheel.accepted = false
+                                                    return
+                                                }
+                                                previewCanvas.zoomAt(Math.pow(1.0015, wheel.angleDelta.y), wheel.x, wheel.y)   // ~20% per notch.
+                                            }
+                                        }
+
+                                        // Zoom level (top right) once zoomed or moved. Click to fit the texture again.
+                                        Rectangle {
+                                            anchors.top: parent.top
+                                            anchors.right: parent.right
+                                            anchors.margins: 6
+                                            width: previewZoomLabel.implicitWidth + 14
+                                            height: 22
+                                            radius: 4
+                                            color: previewZoomArea.containsMouse ? BtDarkStyle.bgMedium : BtDarkStyle.bgDark
+                                            border.width: 1
+                                            border.color: previewZoomArea.containsMouse ? BtDarkStyle.accentColor : BtDarkStyle.borderDark
+                                            opacity: 0.9
+                                            visible: previewCanvas.zoomable
+                                                     && (previewCanvas.zoom !== 1.0 || previewCanvas.panX !== 0 || previewCanvas.panY !== 0)
+
+                                            Text {
+                                                id: previewZoomLabel
+                                                anchors.centerIn: parent
+                                                text: Math.round(previewCanvas.displayScale * 100) + "%  ⟲"
+                                                color: previewZoomArea.containsMouse ? BtDarkStyle.accentColor : BtDarkStyle.textMain
+                                                font.family: "Consolas"
+                                                font.pixelSize: 11
+                                            }
+
+                                            MouseArea {
+                                                id: previewZoomArea
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: previewCanvas.resetView()
+                                            }
+
+                                            ToolTip.visible: previewZoomArea.containsMouse
+                                            ToolTip.text: "Scroll to zoom, hold the middle mouse button to move. Click to fit."
+                                        }
                                     }
 
                                     Rectangle {
@@ -1378,51 +1563,6 @@ Item {
         return folderPath ? (folderPath + "/" + name) : name
     }
 
-    // Replace File: `url` replaces file `fileIdx` of the selected folder (copied into the mods folder).
-    function replaceFile(fileIdx, url) {
-        const f = describeFile(fileIdx)
-        if (f === null)
-            return
-        const result = appOrchestrator.replaceAsset(f.path, url.toString())
-        if (result.ok) {
-            filesPanelContainer.keyboardActiveFileIndex = fileIdx
-            fileMasterListView.forceActiveFocus()
-        }
-    }
-
-    // Dropped on the Files panel: each file replaces the one with the same name in the selected folder.
-    function replaceByName(urls) {
-        const files = appOrchestrator.currentFolderFiles || []
-        if (!folderSelection.currentIndex.valid || files.length === 0) {
-            logLine("Replace File: select the folder that has the files first, then drop them on the Files panel.")
-            return
-        }
-        let replaced = 0
-        const unmatched = []
-        for (let i = 0; i < urls.length; ++i) {
-            const url = urls[i].toString()
-            const name = decodeURIComponent(url.substring(url.lastIndexOf("/") + 1))
-            let index = -1
-            for (let j = 0; j < files.length; ++j) {
-                if (files[j].toLowerCase() === name.toLowerCase()) {
-                    index = j
-                    break
-                }
-            }
-            if (index < 0) {
-                unmatched.push(name)
-                continue
-            }
-            if (appOrchestrator.replaceAsset(filePathOf(files[index]), url).ok)
-                ++replaced
-        }
-        if (unmatched.length > 0)
-            logLine("Replace File: no file called " + unmatched.join(", ") + " in this folder. Drop a file onto the "
-                    + "file it should replace to use another name.")
-        if (urls.length > 1)
-            logLine("Replace File: " + replaced + " of " + urls.length + " file(s) replaced.")
-    }
-
     // Remembers the selection in AppOrchestrator so it outlives this view.
     function persistBrowserState(fileName) {
         appOrchestrator.saveBrowserState(currentFolderPath(), fileName);
@@ -1706,7 +1846,9 @@ Item {
         function start(f) {
             file = f
             title = "Replace " + f.name
-            nameFilters = f.ext !== "" ? [f.ext.toUpperCase() + " file (*." + f.ext + ")"] : ["All files (*)"]
+            // A .wem can also be replaced by a .wav (converted to a PCM WEM with the original's header).
+            nameFilters = f.ext === "wem" ? ["Wwise audio or WAV (*.wem *.wav)", "WAV (*.wav)", "Wwise audio (*.wem)"]
+                        : f.ext !== "" ? [f.ext.toUpperCase() + " file (*." + f.ext + ")"] : ["All files (*)"]
             if (saveAsSettings.lastReplaceFolder !== "")
                 currentFolder = saveAsSettings.lastReplaceFolder
             open()

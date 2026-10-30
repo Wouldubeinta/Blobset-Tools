@@ -1,3 +1,47 @@
+v2.1.10.63
+
+  New
+  •  Database Editor (Rugby League 26, Rugby League Live 4, Rugby League Live 3 and Rugby 25 - Tools > Database
+     Editor, or double click the database M3MP): edit the teams and players like the game's own editor - names,
+     colours, logos, stadiums, squads, lineups and roles, feeder clubs, player details, ratings, career numbers,
+     match stats and appearance, with OVR ratings and Randomize Stats. Save to Mods rebuilds the database M3MP into
+     the mods folder, ready for Modify
+  •  Jersey editor: every team's uniforms - add, copy, remove, choose which is used for home / away / special
+     rounds / Nines, and edit the layers, colours, decals, name and number styles; export / import a team's
+     jerseys
+  •  The Database Editor shows the team logos and commentary names straight from the game's blobset
+  •  Rugby League Live 3: logo, supporters, country of birth / representative country, jersey manufacturer and
+     licensed jersey are drop downs with names (Wouldy's RLL3 lists); the licensed jerseys follow the manufacturer
+  •  Rugby League Live 4: logo / World Cup logo, supporters, commentary, home grounds, country of birth /
+     representative country, jersey manufacturer and licensed jersey are drop downs with names (Wouldy's RLL4 lists)
+  •  Lua editor: double click a Lua script in the M3MP viewer (or right click > Edit Script) to decompile the LuaJIT
+     bytecode into an editor with line numbers, colours, Find and Go to Line. Save to Mods (Ctrl+S) compiles it back
+     to LuaJIT bytecode, puts it into the M3MP and rebuilds the M3MP into the mods folder; Check (F7) shows any
+     mistakes with their line
+  •  Mod Loader view (V4 games): with Mod Loader on, the folders, files and viewers show the Mod Loader's build - the
+     modded files from <game>\BlobsetMods\data, the rest from the game - with a BLOBSETMODS badge on the Files panel.
+     Switching Mod Loader on / off in the menu switches the view
+  •  Sounds (V4): drop a .wav onto a .wem (or a <id>.wav onto the Files panel) and it's converted to a PCM WEM
+     that keeps the original's id and header (hash chunk). A dropped .wem gets the original's hash too
+  •  BNK viewer: replace embedded WEMs with a .wav or .wem (drag and drop or right click), then Save Changes
+     rebuilds the bank (audio data, media index and the sounds' size / codec) into the mods folder
+
+  Improved
+  •  Replace File: drop whole folders onto the Files panel too - each file replaces the one it matches by path or
+     name, wherever you're browsing
+  •  Modify / Create put every file type from the mods folder into the game (.str, .lua, .mesh, ...), for all
+     blobset versions and the Mod Loader - stored the way the file it replaces is
+  •  Image Preview: zoom with the mouse wheel, hold the middle mouse button to move the texture
+  •  Check for Updates no longer freezes the window (the check runs in the background)
+  •  About: the changelog scrolls sideways instead of wrapping
+  •  Update File Mapping Data no longer runs Resolve File Names afterwards (Options > Resolve File Names when needed)
+
+  Fixed
+  •  The Update File Mapping and Locate Game dialogs (and the Mod Manager header) sometimes showed the previous
+     game's name
+  •  Database Editor: on smaller screens the bottom of the team / player tabs was cut off (e.g. the team colours);
+     every tab scrolls now, and so does the Jerseys list
+
 v2.1.10.60
 
   New

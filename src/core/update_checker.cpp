@@ -6,6 +6,7 @@
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QDir>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -20,6 +21,9 @@
 #include <QStandardPaths>
 #include <QTimer>
 #include <QUrl>
+#include <QtConcurrent/QtConcurrentRun>
+
+#include <algorithm>
 
 using namespace Qt::StringLiterals;
 
@@ -43,10 +47,10 @@ QString withoutV(QString version) {
     return version;
 }
 
-QNetworkRequest request(const QUrl& url) {
+QNetworkRequest request(const QUrl& url, const QString& userAgent) {
     QNetworkRequest r(url);
     // GitHub's API refuses requests without a User-Agent.
-    r.setHeader(QNetworkRequest::UserAgentHeader, u"Blobset-Tools/%1"_s.arg(QCoreApplication::applicationVersion()));
+    r.setHeader(QNetworkRequest::UserAgentHeader, userAgent);
     r.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     r.setTransferTimeout(30000);
     return r;
@@ -54,13 +58,13 @@ QNetworkRequest request(const QUrl& url) {
 
 } // namespace
 
-UpdateChecker::UpdateChecker(QObject* parent)
-    : QObject(parent), m_network(new QNetworkAccessManager(this)) {}
+UpdateChecker::UpdateChecker(QObject* parent) : QObject(parent) {}
 
 UpdateChecker::~UpdateChecker() {
-    if (m_downloadReply)
-        m_downloadReply->abort();
-    delete m_downloadFile;
+    // The worker threads post their results back to this object: let them finish first.
+    m_cancel = true;
+    m_checkFuture.waitForFinished();
+    m_downloadFuture.waitForFinished();
 }
 
 QString UpdateChecker::currentVersion() const {
@@ -109,28 +113,46 @@ void UpdateChecker::checkNow() {
 }
 
 void UpdateChecker::check(bool userAsked) {
-    if (m_checkReply || m_downloadReply)
+    if (m_checking || m_downloading)
         return;
-    m_checkReply = m_network->get(request(QUrl(kLatestReleaseApi)));
+    m_checking = true;
     emit stateChanged();
-    connect(m_checkReply, &QNetworkReply::finished, this, [this, userAsked]() { handleCheckReply(userAsked); });
+
+    const QString userAgent = u"Blobset-Tools/%1"_s.arg(currentVersion());
+    m_checkFuture = QtConcurrent::run([this, userAsked, userAgent]() {
+        // Worker thread: its own network manager and event loop.
+        QString error;
+        QByteArray body;
+        {
+            QNetworkAccessManager network;
+            QEventLoop loop;
+            QNetworkReply* reply = network.get(request(QUrl(kLatestReleaseApi), userAgent));
+            QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+            loop.exec();
+            if (reply->error() != QNetworkReply::NoError)
+                error = u"Couldn't reach GitHub: %1"_s.arg(reply->errorString());
+            else
+                body = reply->readAll();
+            delete reply;
+        }
+        QMetaObject::invokeMethod(this, [this, userAsked, error, body]() { handleCheckResult(userAsked, error, body); },
+                                  Qt::QueuedConnection);
+    });
 }
 
-void UpdateChecker::handleCheckReply(bool userAsked) {
-    QNetworkReply* reply = m_checkReply;
-    m_checkReply = nullptr;
-    reply->deleteLater();
+void UpdateChecker::handleCheckResult(bool userAsked, const QString& error, const QByteArray& body) {
+    m_checking = false;
     emit stateChanged();
 
     const auto fail = [this, userAsked](const QString& message) {
         if (userAsked)
             emit checkFailed(message);
     };
-    if (reply->error() != QNetworkReply::NoError) {
-        fail(u"Couldn't reach GitHub: %1"_s.arg(reply->errorString()));
+    if (!error.isEmpty()) {
+        fail(error);
         return;
     }
-    const QJsonObject release = QJsonDocument::fromJson(reply->readAll()).object();
+    const QJsonObject release = QJsonDocument::fromJson(body).object();
     const QString tag = release.value(u"tag_name"_s).toString().trimmed();
     if (tag.isEmpty()) {
         fail(u"GitHub didn't say which release is the latest."_s);
@@ -172,7 +194,7 @@ QString UpdateChecker::installerUrl() const {
 }
 
 void UpdateChecker::downloadAndInstall() {
-    if (m_downloadReply || m_latestVersion.isEmpty())
+    if (m_downloading || m_checking || m_latestVersion.isEmpty())
         return;
     if (portable()) {
         openReleasePage();   // A portable copy isn't updated by the installer.
@@ -181,91 +203,111 @@ void UpdateChecker::downloadAndInstall() {
 
     const QString folder = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
     m_downloadPath = QDir(folder).filePath(u"BlobsetTools-Setup-%1.exe"_s.arg(m_latestVersion));
-    delete m_downloadFile;
-    m_downloadFile = new QSaveFile(m_downloadPath);
-    if (!m_downloadFile->open(QIODevice::WriteOnly)) {
-        emit downloadFailed(u"Couldn't write %1."_s.arg(QDir::toNativeSeparators(m_downloadPath)));
-        return;
-    }
-
+    m_cancel = false;
+    m_downloading = true;
     m_progress = m_assetSize > 0 ? 0.0 : -1.0;
     emit progressChanged();
-    m_downloadReply = m_network->get(request(QUrl(installerUrl())));
-    m_downloadReply->setReadBufferSize(0);
     emit stateChanged();
 
-    connect(m_downloadReply, &QNetworkReply::readyRead, this, [this]() {
-        if (m_downloadReply && m_downloadFile)
-            m_downloadFile->write(m_downloadReply->readAll());
+    const QUrl url(installerUrl());
+    const QString path = m_downloadPath;
+    const qint64 expectedSize = m_assetSize;
+    const QString userAgent = u"Blobset-Tools/%1"_s.arg(currentVersion());
+
+    m_downloadFuture = QtConcurrent::run([this, url, path, expectedSize, userAgent]() {
+        // Worker thread: download into the temp folder; progress is posted to the GUI thread.
+        QString error;
+        {
+            QSaveFile file(path);
+            if (!file.open(QIODevice::WriteOnly)) {
+                error = u"Couldn't write %1."_s.arg(QDir::toNativeSeparators(path));
+            } else {
+                QNetworkAccessManager network;
+                QEventLoop loop;
+                QNetworkReply* reply = network.get(request(url, userAgent));
+                reply->setReadBufferSize(0);
+                QObject::connect(reply, &QNetworkReply::readyRead, reply, [reply, &file]() { file.write(reply->readAll()); });
+
+                qint64 lastPost = 0;
+                QObject::connect(reply, &QNetworkReply::downloadProgress, reply,
+                                 [this, expectedSize, &lastPost](qint64 received, qint64 total) {
+                    if (total <= 0)
+                        total = expectedSize;
+                    // A few updates a second are plenty for the progress bar.
+                    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+                    if (now - lastPost < 100 && received != total)
+                        return;
+                    lastPost = now;
+                    const double progress = total > 0 ? double(received) / double(total) : -1.0;
+                    QMetaObject::invokeMethod(this, [this, progress]() {
+                        m_progress = progress;
+                        emit progressChanged();
+                    }, Qt::QueuedConnection);
+                });
+
+                // Cancel (the dialog's button) is a flag: look at it a few times a second.
+                QTimer cancelPoll;
+                QObject::connect(&cancelPoll, &QTimer::timeout, reply, [this, reply]() {
+                    if (m_cancel)
+                        reply->abort();
+                });
+                cancelPoll.start(100);
+
+                QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+                loop.exec();
+                cancelPoll.stop();
+
+                if (reply->error() == QNetworkReply::OperationCanceledError) {
+                    error = u"The download was cancelled."_s;
+                } else if (reply->error() != QNetworkReply::NoError) {
+                    error = u"The download failed: %1\n%2"_s.arg(reply->errorString(), url.toString());
+                } else {
+                    file.write(reply->readAll());
+                    const qint64 size = file.size();
+                    if (size < 1024 * 1024 || (expectedSize > 0 && size != expectedSize))
+                        error = u"The downloaded installer is incomplete (%1 bytes). Try again, or download it from "
+                                u"the release page."_s.arg(size);
+                    else if (!file.commit())
+                        error = u"Couldn't save %1."_s.arg(QDir::toNativeSeparators(path));
+                }
+                delete reply;
+            }
+            // Not committed (error): QSaveFile drops the partial file.
+        }
+
+        // A Windows program starts with "MZ"; anything else is an error page, not the installer.
+        if (error.isEmpty()) {
+            QFile check(path);
+            const bool isProgram = check.open(QIODevice::ReadOnly) && check.read(2) == "MZ";
+            check.close();
+            if (!isProgram) {
+                QFile::remove(path);
+                error = u"The download isn't the installer. Try again, or download it from the release page."_s;
+            }
+        }
+        QMetaObject::invokeMethod(this, [this, error]() { finishDownload(error); }, Qt::QueuedConnection);
     });
-    connect(m_downloadReply, &QNetworkReply::downloadProgress, this, [this](qint64 received, qint64 total) {
-        if (total <= 0)
-            total = m_assetSize;
-        m_progress = total > 0 ? double(received) / double(total) : -1.0;
-        emit progressChanged();
-    });
-    connect(m_downloadReply, &QNetworkReply::finished, this, &UpdateChecker::finishDownload);
 }
 
 void UpdateChecker::cancelDownload() {
-    if (m_downloadReply)
-        m_downloadReply->abort();   // finishDownload() cleans up.
+    m_cancel = true;   // The download thread aborts and reports back through finishDownload().
 }
 
-void UpdateChecker::finishDownload() {
-    QNetworkReply* reply = m_downloadReply;
-    m_downloadReply = nullptr;
-    reply->deleteLater();
-
-    const auto fail = [this](const QString& message) {
-        if (m_downloadFile)
-            m_downloadFile->cancelWriting();
-        delete m_downloadFile;
-        m_downloadFile = nullptr;
+void UpdateChecker::finishDownload(const QString& error) {
+    m_downloading = false;
+    if (!error.isEmpty()) {
         m_progress = 0.0;
         emit progressChanged();
         emit stateChanged();
-        emit downloadFailed(message);
-    };
-
-    if (reply->error() == QNetworkReply::OperationCanceledError) {
-        fail(u"The download was cancelled."_s);
+        emit downloadFailed(error);
         return;
-    }
-    if (reply->error() != QNetworkReply::NoError) {
-        fail(u"The download failed: %1\n%2"_s.arg(reply->errorString(), installerUrl()));
-        return;
-    }
-    m_downloadFile->write(reply->readAll());
-
-    // A Windows program starts with "MZ"; anything else is an error page, not the installer.
-    const qint64 size = m_downloadFile->size();
-    if (size < 1024 * 1024 || (m_assetSize > 0 && size != m_assetSize)) {
-        fail(u"The downloaded installer is incomplete (%1 bytes). Try again, or download it from the release page."_s.arg(size));
-        return;
-    }
-    if (!m_downloadFile->commit()) {
-        fail(u"Couldn't save %1."_s.arg(QDir::toNativeSeparators(m_downloadPath)));
-        return;
-    }
-    delete m_downloadFile;
-    m_downloadFile = nullptr;
-    {
-        QFile check(m_downloadPath);
-        if (!check.open(QIODevice::ReadOnly) || check.read(2) != "MZ") {
-            check.close();
-            QFile::remove(m_downloadPath);
-            fail(u"The download isn't the installer. Try again, or download it from the release page."_s);
-            return;
-        }
     }
 
     m_progress = 1.0;
     emit progressChanged();
     emit stateChanged();
 
-    // /SP- skips "This will install..."; setup closes nothing itself (Blobset Tools quits below) and keeps the games
-    // picked last time.
+    // /SP- skips "This will install..."; setup keeps the games picked last time. Blobset Tools quits below.
     if (!QProcess::startDetached(m_downloadPath, {u"/SP-"_s})) {
         emit downloadFailed(u"Couldn't start %1. Run it yourself to update."_s.arg(QDir::toNativeSeparators(m_downloadPath)));
         return;

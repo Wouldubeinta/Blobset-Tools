@@ -5,7 +5,8 @@ import QtQuick.Dialogs
 import com.wouldymods.blobset 1.0
 
 // M3MP viewer: same layout and behaviour as TXPKViewer.qml. Images (DDS / PNG / JPEG / BMP) get the zoomable
-// preview with Flip / Alpha, text files are shown as text, everything else as a hex dump.
+// preview with Flip / Alpha, text files are shown as text, everything else as a hex dump. Lua scripts (LuaJIT
+// bytecode) open in LuaEditor.qml on a double click: decompiled to edit, compiled back and saved into the mods folder.
 
 Item {
     id: m3mpViewRoot
@@ -563,6 +564,7 @@ Item {
                                                 replaceMenu.fileIndex = fileDelegate.targetFileIndex
                                                 replaceMenu.fileName = fileDelegate.currentFileName
                                                 replaceMenu.replaced = fileDelegate.replaced
+                                                replaceMenu.lua = m3mpManager.isLuaAt(fileDelegate.targetFileIndex)
                                                 replaceMenu.popup()
                                             }
                                         }
@@ -610,6 +612,11 @@ Item {
                                         onClicked: {
                                             fileListView.forceActiveFocus()
                                             m3mpManager.selectFile(targetFileIndex)
+                                        }
+                                        // Lua scripts: decompile into the editor.
+                                        onDoubleClicked: {
+                                            if (m3mpManager.isLuaAt(targetFileIndex))
+                                                luaEditor.request(targetFileIndex, currentFileName)
                                         }
                                     }
                                 }
@@ -952,6 +959,10 @@ Item {
     // Replace / Save Changes
     // ------------------------------------------------------------------------------------------------
     function leave() {
+        if (luaEditor.visible) {
+            luaEditor.close(() => m3mpViewRoot.leave())
+            return
+        }
         if (m3mpManager.unsavedChanges)
             unsavedChangesDialog.open()
         else
@@ -978,6 +989,15 @@ Item {
         property int fileIndex: -1
         property string fileName: ""
         property bool replaced: false
+        property bool lua: false
+        MenuItem {
+            text: "Edit Script..."
+            visible: replaceMenu.lua
+            height: visible ? implicitHeight : 0
+            icon.source: m3mpViewRoot.iconDir + "lua_32.png"
+            icon.color: "transparent"
+            onTriggered: luaEditor.request(replaceMenu.fileIndex, replaceMenu.fileName)
+        }
         MenuItem {
             text: "Replace " + replaceMenu.fileName + "..."
             icon.source: m3mpViewRoot.iconDir + "modify_32.png"
@@ -1027,6 +1047,14 @@ Item {
                 appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
             }
         }
+    }
+
+    // The Lua script editor, over the whole viewer while it's open.
+    LuaEditor {
+        id: luaEditor
+        anchors.fill: parent
+        z: 100
+        manager: m3mpManager
     }
 
     Component.onCompleted: {

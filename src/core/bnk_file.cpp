@@ -1,5 +1,7 @@
 #include "bnk_file.h"
 
+#include "wem_file.h"
+
 #include <QtEndian>
 
 using namespace Qt::StringLiterals;
@@ -136,4 +138,148 @@ void BnkFile::readStid(const QByteArray& data, qint64 body, quint32 size) {
         if (bankName.isEmpty() || id == bankId)
             bankName = name;
     }
+}
+
+
+// ---------------------------------------------------------------------------
+// Rebuild (BNK viewer: Save Changes)
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Wwise codec plugin ids (company 0, type 1 = codec): PCM 1, ADPCM 2, Vorbis 4.
+constexpr quint32 kPluginPcm = 0x00010001;
+constexpr quint32 kPluginVorbis = 0x00040001;
+
+quint32 pluginFor(const QByteArray& wem) {
+    switch (WemFile::formatTag(wem)) {
+    case 0x0001:
+    case 0xFFFE: return kPluginPcm;
+    case 0xFFFF: return kPluginVorbis;
+    default:     return 0;   // Unknown: keep the bank's.
+    }
+}
+
+} // namespace
+
+QByteArray BnkFile::rebuild(const QByteArray& data, const BnkFile& bank, const QHash<int, QByteArray>& replacements,
+                            int* hircPatched, QString* error) {
+    const auto fail = [error](const QString& message) {
+        if (error)
+            *error = message;
+        return QByteArray();
+    };
+    if (hircPatched)
+        *hircPatched = 0;
+    if (bank.truncated)
+        return fail(u"The bank ends in the middle of a chunk; it can't be rebuilt."_s);
+    if (bank.media.isEmpty())
+        return fail(u"The bank has no embedded audio."_s);
+
+    const bool big = bank.isBigEndian;
+    const auto rd = [&](const QByteArray& d, qint64 o) {
+        const auto* p = reinterpret_cast<const uchar*>(d.constData()) + o;
+        return big ? qFromBigEndian<quint32>(p) : qFromLittleEndian<quint32>(p);
+    };
+    const auto wr = [&](QByteArray& d, qint64 o, quint32 v) {
+        auto* p = reinterpret_cast<uchar*>(d.data()) + o;
+        if (big)
+            qToBigEndian(v, p);
+        else
+            qToLittleEndian(v, p);
+    };
+    const auto append = [&](QByteArray& d, quint32 v) {
+        const qint64 o = d.size();
+        d.resize(o + 4);
+        wr(d, o, v);
+    };
+
+    // Alignment of the media in DATA: 16 when every original offset is a multiple of 16 (Wwise), else none.
+    quint32 alignment = 16;
+    for (const Media& m : bank.media)
+        if ((m.offset - bank.dataOffset) % 16 != 0)
+            alignment = 1;
+
+    // New DATA and the new offsets / sizes, in DIDX order.
+    QByteArray newData;
+    QList<quint32> offsets, sizes;
+    struct Change { quint32 id, oldSize, newSize, plugin; };
+    QList<Change> changes;
+    for (int i = 0; i < bank.media.size(); ++i) {
+        const Media& m = bank.media[i];
+        const bool replaced = replacements.contains(i);
+        const QByteArray bytes = replaced ? replacements.value(i) : data.mid(m.offset, m.size);
+        while (newData.size() % alignment != 0)
+            newData.append('\0');
+        offsets.append(static_cast<quint32>(newData.size()));
+        sizes.append(static_cast<quint32>(bytes.size()));
+        newData.append(bytes);
+        if (replaced) {
+            const quint32 oldPlugin = pluginFor(data.mid(m.offset, m.size));
+            const quint32 newPlugin = pluginFor(bytes);
+            changes.append({m.id, m.size, static_cast<quint32>(bytes.size()),
+                            newPlugin != 0 && newPlugin != oldPlugin ? newPlugin : 0});
+        }
+    }
+
+    QByteArray out;
+    out.reserve(data.size() + newData.size() - static_cast<qint64>(bank.dataSize) + 64);
+    qint64 pos = 0;
+    const qint64 total = data.size();
+    while (pos + 8 <= total) {
+        const QByteArray tag = data.mid(pos, 4);
+        const quint32 size = rd(data, pos + 4);
+        const qint64 body = pos + 8;
+        if (body + static_cast<qint64>(size) > total)
+            return fail(u"The bank ends in the middle of the %1 chunk."_s.arg(QString::fromLatin1(tag)));
+
+        QByteArray chunk;
+        if (tag == "DIDX") {
+            for (int i = 0; i < bank.media.size(); ++i) {
+                append(chunk, bank.media[i].id);
+                append(chunk, offsets[i]);
+                append(chunk, sizes[i]);
+            }
+        } else if (tag == "DATA") {
+            chunk = newData;
+        } else if (tag == "HIRC") {
+            chunk = data.mid(body, size);
+            // Objects: u8 type, u32 size, body. Look for the replaced media's source records inside each.
+            if (chunk.size() >= 4) {
+                const quint32 count = rd(chunk, 0);
+                qint64 p = 4;
+                for (quint32 o = 0; o < count && p + 5 <= chunk.size(); ++o) {
+                    const qint64 objectSize = rd(chunk, p + 1);
+                    const qint64 objectBody = p + 5;
+                    const qint64 objectEnd = std::min<qint64>(objectBody + objectSize, chunk.size());
+                    for (qint64 k = objectBody + 5; k + 8 <= objectEnd; ++k) {
+                        for (const Change& change : std::as_const(changes)) {
+                            if (rd(chunk, k) != change.id || rd(chunk, k + 4) != change.oldSize)
+                                continue;
+                            const quint8 streamType = static_cast<quint8>(chunk.at(k - 1));
+                            const quint32 plugin = rd(chunk, k - 5);
+                            if (streamType > 1 || (plugin & 0xF) != 1 || plugin > 0x00FFFFFF)
+                                continue;   // Not a source record (in-memory / prefetch media of a codec).
+                            wr(chunk, k + 4, change.newSize);
+                            if (change.plugin != 0)
+                                wr(chunk, k - 5, change.plugin);
+                            if (hircPatched)
+                                ++*hircPatched;
+                        }
+                    }
+                    p = objectBody + objectSize;
+                }
+            }
+        } else {
+            chunk = data.mid(body, size);
+        }
+
+        out.append(tag);
+        append(out, static_cast<quint32>(chunk.size()));
+        out.append(chunk);
+        pos = body + size;
+    }
+    if (pos < total)
+        out.append(data.mid(pos));   // Trailing bytes after the last chunk.
+    return out;
 }

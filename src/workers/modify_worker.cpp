@@ -271,7 +271,15 @@ QHash<QString, quint64> ModifyWorker::loadMappingData() const {
 
 QStringList ModifyWorker::supportedExtensions(int version) {
     const auto v = static_cast<CoreDefs::BlobsetVersion>(version);
-    return v == CoreDefs::BlobsetVersion::V1 || v == CoreDefs::BlobsetVersion::V2 ? kV1Extensions : kV4Extensions;
+    QStringList types = v == CoreDefs::BlobsetVersion::V1 || v == CoreDefs::BlobsetVersion::V2 ? kV1Extensions
+                                                                                               : kV4Extensions;
+    // Modify takes any file that replaces one of the game's; these are the usual ones, so the Mod Manager counts
+    // them as mod files (and finds a mod's root folder by them).
+    for (const QString& other : {u"str"_s, u"lua"_s, u"mesh"_s, u"col"_s, u"hjo"_s, u"mat"_s, u"bsb"_s, u"bmf"_s,
+                                 u"bank"_s, u"fsb"_s, u"fev"_s, u"wem"_s, u"bnk"_s, u"m3mp"_s, u"dat"_s})
+        if (!types.contains(other))
+            types.append(other);
+    return types;
 }
 
 QList<ModifyWorker::ModFile> ModifyWorker::collectModFiles(const QStringList& extensions) const {
@@ -279,8 +287,27 @@ QList<ModifyWorker::ModFile> ModifyWorker::collectModFiles(const QStringList& ex
     QList<ModFile> files;
     int overridden = 0;
 
-    // Grouped by extension (in the order given), alphabetical inside each group, so every run produces the same layout.
-    for (const QString& extension : extensions) {
+    // The types with special handling first (in the order given), then every other type found in the mods folders
+    // (str, lua, mesh, ...): those replace the blobset files they match, stored like the originals (planJobs()).
+    QStringList order = extensions;
+    {
+        QSet<QString> others;
+        for (const QString& source : sources) {
+            QDirIterator it(source, QDir::Files, QDirIterator::Subdirectories);
+            while (it.hasNext()) {
+                const QString suffix = QFileInfo(it.next()).suffix().toLower();
+                if (!suffix.isEmpty() && !extensions.contains(suffix))
+                    others.insert(suffix);
+            }
+        }
+        QStringList sorted(others.cbegin(), others.cend());
+        sorted.sort();
+        order += sorted;
+    }
+
+    // Grouped by extension (in that order), alphabetical inside each group, so every run produces the same layout.
+    for (const QString& extension : std::as_const(order)) {
+        const bool generic = !extensions.contains(extension);
         // Same path in two sources: the later source wins (it keeps the position the first one had).
         QHash<QString, qsizetype> byKey;
         QList<ModFile> group;
@@ -296,7 +323,16 @@ QList<ModifyWorker::ModFile> ModifyWorker::collectModFiles(const QStringList& ex
                 found.append(it.next());
 
             for (const QString& path : std::as_const(found)) {
-                const ModFile file{path, sourceDir.relativeFilePath(path), extension};
+                const QFileInfo info(path);
+                if (generic && extension == u"xml"_s) {
+                    // A TXPK / M3MP's <name>.xml is information for Modify, not a game file.
+                    const QString base = info.absolutePath() + u'/' + info.completeBaseName();
+                    if (QFileInfo::exists(base + u".txpk"_s) || QFileInfo::exists(base + u".m3mp"_s))
+                        continue;
+                }
+                if (info.fileName().compare(u"blobsetmod.json"_s, Qt::CaseInsensitive) == 0)
+                    continue;   // A mod's details (Mod Manager).
+                const ModFile file{path, sourceDir.relativeFilePath(path), extension, generic};
                 const QString key = normalizedKey(file.relativePath);
                 const auto existing = byKey.constFind(key);
                 if (existing != byKey.constEnd()) {
@@ -421,9 +457,24 @@ QList<ModifyWorker::ModJob> ModifyWorker::planJobs(const QStringList& extensions
     QList<ModJob> jobs;
     QHash<quint32, QString> claimedBy;
     QHash<quint64, QString> newClaimedBy;
+    QStringList notInBlobset;   // Other file types that don't replace a file of the game (readmes, pictures, ...).
 
     for (const ModFile& file : collectModFiles(extensions)) {
-        const ModJob job = resolveJob(file, mapping, indexByHash, blobset);
+        ModJob job = resolveJob(file, mapping, indexByHash, blobset);
+
+        if (file.generic) {
+            // Any other type only replaces an existing file: it's stored the way that file is.
+            if (job.isNew) {
+                notInBlobset.append(file.relativePath);
+                continue;
+            }
+            const BlobsetEntry& entry = blobset.entries[job.headerIndex];
+            job.generic = true;
+            job.origMainCompressed = entry.mainCompressedSize;
+            job.origMainUncompressed = entry.mainUnCompressedSize;
+            job.origVramCompressed = entry.vramCompressedSize;
+            job.origVramUncompressed = entry.vramUnCompressedSize;
+        }
 
         if (use64BitHash && (!isHexName(job.folderHash) || !isHexName(job.fileHash)))
             fail(u"%1 - invalid folder/file hash '%2/%3'."_s.arg(file.relativePath, job.folderHash, job.fileHash));
@@ -446,8 +497,30 @@ QList<ModifyWorker::ModJob> ModifyWorker::planJobs(const QStringList& extensions
         jobs.append(job);
     }
 
+    if (!notInBlobset.isEmpty())
+        emit const_cast<ModifyWorker*>(this)->updateConsole(
+            u"Skipped %1 file(s) that don't match a file of the game (only known types can be added as new files): %2%3"_s
+                .arg(notInBlobset.size()).arg(notInBlobset.mid(0, 10).join(u", "_s))
+                .arg(notInBlobset.size() > 10 ? u", ..."_s : QString()));
     return jobs;
 }
+
+namespace {
+// Any other file type: the main section is the original's main size (all of it when the original has no vram),
+// the rest is the vram section.
+void splitGeneric(const QByteArray& data, quint32 origMain, quint32 origVram, const QString& relativePath,
+                  QByteArray& mainData, QByteArray& vramData) {
+    if (origVram == 0) {
+        mainData = data;
+        vramData.clear();
+        return;
+    }
+    if (data.size() < static_cast<qint64>(origMain))
+        fail(u"%1 is smaller than the main section of the file it replaces (%2 bytes)."_s.arg(relativePath).arg(origMain));
+    mainData = data.left(origMain);
+    vramData = data.mid(origMain);
+}
+} // namespace
 
 // ---------------------------------------------------------------------------
 // Mini TXPK (single DDS) header
@@ -691,6 +764,17 @@ ModifyWorker::HeaderUpdate ModifyWorker::writeJobV1(QFile& out, const ModJob& jo
         update.vram = (entry.vramCompressedSize == entry.vramUnCompressedSize)
                           ? writeRaw(out, vramData)
                           : writeLzma(out, vramData, kLzmaChunkSize, order, m_lzmaV2);
+    } else if (job.generic) {
+        // Any other type (str, lua, mesh, ...): split and compressed like the entry it replaces.
+        QByteArray mainData, vramData;
+        splitGeneric(readWholeFile(job.absolutePath), job.origMainUncompressed, job.origVramUncompressed,
+                     job.relativePath, mainData, vramData);
+        update.mainPart = job.origMainCompressed == job.origMainUncompressed
+                          ? writeRaw(out, mainData)
+                          : writeLzma(out, mainData, kLzmaChunkSize, order, m_lzmaV2);
+        update.vram = vramData.isEmpty() || job.origVramCompressed == job.origVramUncompressed
+                      ? writeRaw(out, vramData)
+                      : writeLzma(out, vramData, kLzmaChunkSize, order, m_lzmaV2);
     } else if (const QByteArray bsb = job.extension == u"bsb"_s ? readWholeFile(job.absolutePath) : QByteArray();
                Bsb::mainSectionSize(bsb) > 0) {
         // BSB (Extract / the BSB Creator write main + vram in one file): split again by its header, and compressed
@@ -995,6 +1079,17 @@ ModifyWorker::HeaderUpdate ModifyWorker::writeJobV4(const ModJob& job, const QSt
         update.mainPart = m_lzmaV3 ? writeLzmaV3(out, data.left(mainSize)) : writeZstd(out, data.left(mainSize), true, order);
         update.vram = m_lzmaV3 ? writeLzmaV3(out, data.mid(mainSize, vramSize))
                                : writeZstd(out, data.mid(mainSize, vramSize), false, order);
+    } else if (job.generic) {
+        // Any other type (str, lua, mesh, ...): split and compressed (ZSTD / V3 LZMA) like the entry it replaces.
+        QByteArray mainData, vramData;
+        splitGeneric(readWholeFile(job.absolutePath), job.origMainUncompressed, job.origVramUncompressed,
+                     job.relativePath, mainData, vramData);
+        update.mainPart = job.origMainCompressed == job.origMainUncompressed
+                          ? writeRaw(out, mainData)
+                          : (m_lzmaV3 ? writeLzmaV3(out, mainData) : writeZstd(out, mainData, true, order));
+        update.vram = vramData.isEmpty() || job.origVramCompressed == job.origVramUncompressed
+                      ? writeRaw(out, vramData)
+                      : (m_lzmaV3 ? writeLzmaV3(out, vramData) : writeZstd(out, vramData, false, order));
     } else {
         // m3mp, wem, bnk: stored as they are, no vram section.
         update.mainPart = appendFile(out, job.absolutePath);

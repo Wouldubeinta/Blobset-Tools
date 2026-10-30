@@ -19,6 +19,11 @@ namespace BlobsetAssetReader {
 QByteArray read(const BlobsetEntry& entry, const QString& gameLocation, int version, int platform,
                 qint64* mainSizeOut = nullptr, bool includeVram = true);
 
+/// V3 / V4: the physical file of an entry, "<folder hash>/<file hash>" next to the header. With the header in
+/// <game>\BlobsetMods\data (the Blobset Mod Loader's build, see AppOrchestrator::assetLocation) only the modded files
+/// are there: the others are read from the game's own data folder, the way the loader serves them to the game.
+QString dataFilePath(const QString& headerPath, const BlobsetEntry& entry);
+
 } // namespace BlobsetAssetReader
 
 #endif // BLOBSET_ASSET_READER_H

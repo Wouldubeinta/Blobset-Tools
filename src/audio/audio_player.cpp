@@ -225,7 +225,7 @@ void AudioPlayer::playWemByHash(const QString& hexHash) {
     }
 
     // Any blobset version (Cricket 19's V3 has WEMs too): BlobsetAssetReader finds and decompresses the asset.
-    startDecode(QtConcurrent::run(decodeWemEntry, entry, orch->gameLocation(), orch->blobsetVersion(), orch->platform()));
+    startDecode(QtConcurrent::run(decodeWemEntry, entry, orch->assetLocation(), orch->blobsetVersion(), orch->platform()));
 }
 
 void AudioPlayer::playWavByHash(const QString& hexHash, const QString& name) {
@@ -244,7 +244,7 @@ void AudioPlayer::playWavByHash(const QString& hexHash, const QString& name) {
     }
 
     const QString displayName = name.isEmpty() ? QStringLiteral("0x") + hexHash.toUpper() : name;
-    startDecode(QtConcurrent::run(decodeWavEntry, entry, orch->gameLocation(), orch->blobsetVersion(),
+    startDecode(QtConcurrent::run(decodeWavEntry, entry, orch->assetLocation(), orch->blobsetVersion(),
                                   orch->platform(), displayName));
 }
 

@@ -331,7 +331,7 @@ void TxpkToolManager::loadTxpkFromBlobset(const QString& hexHash) {
     }
     if (!fromMods) {
         try {
-            data = BlobsetAssetReader::read(entry, orchestrator->gameLocation(), orchestrator->blobsetVersion(),
+            data = BlobsetAssetReader::read(entry, orchestrator->assetLocation(), orchestrator->blobsetVersion(),
                                             platform, &mainSize);
         } catch (const std::exception& ex) {
             reportError(QString::fromUtf8(ex.what()));

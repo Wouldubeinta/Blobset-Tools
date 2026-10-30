@@ -164,10 +164,7 @@ Item {
                 HeaderButton {
                     tip: "Return to the main workspace"
                     text: "◀ Back"
-                    onClicked: {
-                        audioPlayer.stop()
-                        appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
-                    }
+                    onClicked: bnkViewRoot.leave()
                 }
 
                 Rectangle { width: 1; Layout.preferredHeight: 28; color: BtDarkStyle.borderDark }
@@ -200,6 +197,20 @@ Item {
                         extractAllDialog.currentFolder = appOrchestrator.workFolderUrl("audio")
                         extractAllDialog.open()
                     }
+                }
+
+                Rectangle { width: 1; Layout.preferredHeight: 28; color: BtDarkStyle.borderDark }
+
+                // Replacements (drag a .wav / .wem onto a WEM, or right click > Replace) are kept until Save Changes
+                // rebuilds the bank into the mods folder.
+                HeaderButton {
+                    tip: bnkManager.modsTarget !== ""
+                         ? "Rebuild the sound bank with your replacements into " + bnkManager.modsTarget + " (then Modify puts it into the game)"
+                         : "Open the sound bank from the game's files (double click it in the workspace) to save changes"
+                    text: bnkManager.unsavedChanges ? "Save Changes (" + bnkManager.replacedCount + ") •" : "Save Changes"
+                    iconSource: bnkViewRoot.iconDir + "save_32.png"
+                    enabled: !bnkManager.busy && bnkManager.unsavedChanges && bnkManager.modsTarget !== ""
+                    onClicked: bnkManager.saveChanges()
                 }
 
                 Item { Layout.fillWidth: true }
@@ -326,9 +337,25 @@ Item {
                         Layout.fillHeight: true
                         color: BtDarkStyle.bgDark
                         border.width: 1
-                        border.color: fileList.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.borderDark
+                        border.color: listDrop.containsDrag || fileList.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.borderDark
                         radius: 4
                         clip: true
+
+                        // Dropped on the list (not on a WEM): <id>.wav / <id>.wem replace the WEM with that id.
+                        DropArea {
+                            id: listDrop
+                            anchors.fill: parent
+                            onDropped: (drop) => {
+                                if (!drop.hasUrls)
+                                    return
+                                audioPlayer.stop()
+                                const urls = []
+                                for (let i = 0; i < drop.urls.length; ++i)
+                                    urls.push(drop.urls[i].toString())
+                                bnkManager.replaceByName(urls)
+                                drop.acceptProposedAction()
+                            }
+                        }
 
                         ListView {
                             id: fileList
@@ -383,8 +410,12 @@ Item {
                                 required property int index
                                 required property string name
                                 required property string sizeText
+                                required property int entry
 
                                 readonly property bool isSelected: ListView.isCurrentItem
+                                // Re-checked whenever the replacements change.
+                                readonly property bool replaced: bnkManager.replacedCount >= 0 && bnkManager.unsavedChanges !== undefined
+                                                                 && bnkManager.isReplacedEntry(entry)
 
                                 width: ListView.view ? ListView.view.width : 0
                                 height: 26
@@ -394,8 +425,43 @@ Item {
                                 background: Rectangle {
                                     color: fileDelegate.isSelected
                                            ? (fileList.activeFocus ? BtDarkStyle.accentColor : BtDarkStyle.accentDim)
-                                           : (fileDelegate.hovered ? BtDarkStyle.bgHover : "transparent")
+                                           : (fileDelegate.hovered || itemDrop.containsDrag ? BtDarkStyle.bgHover : "transparent")
+                                    border.width: itemDrop.containsDrag ? 1 : 0
+                                    border.color: BtDarkStyle.accentColor
                                     radius: 2
+                                }
+
+                                // A .wav / .wem dropped on this WEM replaces it (whatever its name).
+                                DropArea {
+                                    id: itemDrop
+                                    anchors.fill: parent
+                                    onDropped: (drop) => {
+                                        if (!drop.hasUrls)
+                                            return
+                                        audioPlayer.stop()
+                                        if (drop.urls.length === 1) {
+                                            bnkManager.replaceRow(fileDelegate.index, drop.urls[0].toString())
+                                        } else {
+                                            const urls = []
+                                            for (let i = 0; i < drop.urls.length; ++i)
+                                                urls.push(drop.urls[i].toString())
+                                            bnkManager.replaceByName(urls)
+                                        }
+                                        drop.acceptProposedAction()
+                                    }
+                                }
+
+                                // Right click: Replace / Undo Replace.
+                                TapHandler {
+                                    acceptedButtons: Qt.RightButton
+                                    onTapped: {
+                                        fileList.currentIndex = fileDelegate.index
+                                        fileList.forceActiveFocus()
+                                        replaceMenu.row = fileDelegate.index
+                                        replaceMenu.fileName = fileDelegate.name
+                                        replaceMenu.replaced = fileDelegate.replaced
+                                        replaceMenu.popup()
+                                    }
                                 }
 
                                 contentItem: RowLayout {
@@ -419,6 +485,22 @@ Item {
                                         elide: Text.ElideRight
                                         Layout.fillWidth: true
                                         verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Rectangle {
+                                        visible: fileDelegate.replaced
+                                        Layout.alignment: Qt.AlignVCenter
+                                        implicitWidth: replacedBadge.implicitWidth + 8
+                                        implicitHeight: 14
+                                        radius: 3
+                                        color: fileDelegate.isSelected ? "#121214" : BtDarkStyle.accentDim
+                                        Text {
+                                            id: replacedBadge
+                                            anchors.centerIn: parent
+                                            text: "MOD"
+                                            color: fileDelegate.isSelected ? BtDarkStyle.accentColor : "#121214"
+                                            font.pixelSize: 8
+                                            font.bold: true
+                                        }
                                     }
                                     Label {
                                         text: fileDelegate.sizeText
@@ -638,6 +720,72 @@ Item {
         id: extractOneDialog
         title: "Extract Selected Audio to Directory"
         onAccepted: bnkManager.extractSelected(selectedFolder.toString())
+    }
+
+    // ------------------------------------------------------------------------------------------------
+    // Replace / Save Changes
+    // ------------------------------------------------------------------------------------------------
+    function leave() {
+        audioPlayer.stop()
+        if (bnkManager.unsavedChanges)
+            unsavedChangesDialog.open()
+        else
+            appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
+    }
+
+    Menu {
+        id: replaceMenu
+        property int row: -1
+        property string fileName: ""
+        property bool replaced: false
+        MenuItem {
+            text: "Replace " + replaceMenu.fileName + "..."
+            icon.source: bnkViewRoot.iconDir + "wem_32.png"
+            icon.color: "transparent"
+            onTriggered: {
+                audioPlayer.stop()
+                replaceDialog.row = replaceMenu.row
+                replaceDialog.title = "Replace " + replaceMenu.fileName + " (a .wav is converted to a PCM WEM)"
+                replaceDialog.open()
+            }
+        }
+        MenuItem {
+            text: "Undo Replace"
+            visible: replaceMenu.replaced
+            height: visible ? implicitHeight : 0
+            icon.source: bnkViewRoot.iconDir + "reset_32.png"
+            icon.color: "transparent"
+            onTriggered: {
+                audioPlayer.stop()
+                bnkManager.revertRow(replaceMenu.row)
+            }
+        }
+    }
+
+    FileDialog {
+        id: replaceDialog
+        property int row: -1
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["WAV or Wwise audio (*.wav *.wem)", "WAV (*.wav)", "Wwise audio (*.wem)"]
+        onAccepted: bnkManager.replaceRow(row, selectedFile.toString())
+    }
+
+    MessageDialog {
+        id: unsavedChangesDialog
+        title: "Unsaved Changes"
+        text: "You replaced " + bnkManager.replacedCount + " WEM(s) in this sound bank but haven't saved it."
+        informativeText: "Save Changes rebuilds the sound bank into the mods folder. Save before going back?"
+        buttons: MessageDialog.Save | MessageDialog.Discard | MessageDialog.Cancel
+        onButtonClicked: function (button, role) {
+            if (button === MessageDialog.Save) {
+                bnkManager.saveChanges()
+                if (!bnkManager.unsavedChanges)
+                    appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
+            } else if (button === MessageDialog.Discard) {
+                bnkManager.discardChanges()
+                appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/views/MainForm.qml")
+            }
+        }
     }
 
     Component.onCompleted: {

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(Blobset-Tools VERSION 2.1.10.60 LANGUAGES CXX)
+project(Blobset-Tools VERSION 2.1.10.63 LANGUAGES CXX)
 
 if(WIN32)
     enable_language(RC) #
@@ -56,6 +56,8 @@ qt_add_executable(Blobset-Tools
     src/core/bsb_file.cpp
     src/core/bnk_file.h
     src/core/bnk_file.cpp
+    src/core/wem_file.h
+    src/core/wem_file.cpp
     src/core/blobset_file.h
     src/core/blobset_file.cpp
     src/core/gcm_texture.h
@@ -80,6 +82,40 @@ qt_add_executable(Blobset-Tools
     src/core/app_paths.cpp
     src/core/update_checker.h
     src/core/update_checker.cpp
+    src/core/bigant_database.h
+    src/core/bigant_database.cpp
+    src/core/bigant_database_rll3.cpp
+    src/core/pa_serial.h
+    src/core/pa_serial.cpp
+    src/core/pa_serial_names.cpp
+    src/core/rl26_lists.h
+    src/core/rl26_lists.cpp
+    src/core/rll3_lists.h
+    src/core/rll3_lists.cpp
+    src/core/rll4_lists.h
+    src/core/rll4_lists.cpp
+
+    # Lua scripts: LuaJIT bytecode <-> Lua (M3MP viewer's LuaEditor.qml)
+    src/core/lua_script.h
+    src/core/lua_script.cpp
+    src/core/lua_highlighter.h
+    src/core/lua_highlighter.cpp
+    src/thirdparty/ljd/ljd.h
+    src/thirdparty/ljd/ljd.cpp
+    src/thirdparty/ljd/ljd_internal.h
+    src/thirdparty/ljd/ast/ast.h
+    src/thirdparty/ljd/ast/ast.cpp
+    src/thirdparty/ljd/ast/building_blocks.h
+    src/thirdparty/ljd/ast/conditionBuilder.h
+    src/thirdparty/ljd/ast/function.h
+    src/thirdparty/ljd/bytecode/bytecode.h
+    src/thirdparty/ljd/bytecode/bytecode.cpp
+    src/thirdparty/ljd/bytecode/constants.h
+    src/thirdparty/ljd/bytecode/instructions.h
+    src/thirdparty/ljd/bytecode/prototype.h
+    src/thirdparty/ljd/bytecode/prototype.cpp
+    src/thirdparty/ljd/lua/lua.h
+    src/thirdparty/ljd/lua/lua.cpp
 	
     # Application Orchestrator
     src/core/app_orchestrator.h
@@ -131,6 +167,8 @@ qt_add_executable(Blobset-Tools
     src/managers/mesh_tool_manager.cpp
     src/managers/mod_manager.h
     src/managers/mod_manager.cpp
+    src/managers/database_manager.h
+    src/managers/database_manager.cpp
     src/managers/txpk_tool_manager.h
     src/managers/txpk_tool_manager.cpp
     
@@ -149,6 +187,20 @@ qt_add_executable(Blobset-Tools
 
 set_source_files_properties(qml/BtDarkStyle.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
+# luajit-decompiler-v2 (src/thirdparty/ljd) needs char to be unsigned; it's third-party code, so no warnings.
+set(BT_LJD_SOURCES
+    src/thirdparty/ljd/ljd.cpp
+    src/thirdparty/ljd/ast/ast.cpp
+    src/thirdparty/ljd/bytecode/bytecode.cpp
+    src/thirdparty/ljd/bytecode/prototype.cpp
+    src/thirdparty/ljd/lua/lua.cpp)
+if(MSVC)
+    set_source_files_properties(${BT_LJD_SOURCES} PROPERTIES COMPILE_OPTIONS "/J;/w" SKIP_AUTOGEN ON)
+else()
+    set_source_files_properties(${BT_LJD_SOURCES} PROPERTIES COMPILE_OPTIONS "-funsigned-char;-w" SKIP_AUTOGEN ON)
+endif()
+
+
 # QML Module Mapping for Qt6 - Bundling all Blobset Dark-Themed Views
 qt_add_qml_module(Blobset-Tools
     URI "com.wouldymods.blobset"
@@ -164,10 +216,12 @@ qt_add_qml_module(Blobset-Tools
         assets/ext/bmf_32.png
         assets/ext/bnk_32.png
         assets/ext/bsb_32.png
+        assets/ext/check_updates_32.png
         assets/ext/close_32.png
         assets/ext/col_32.png
         assets/ext/compression_32.png
         assets/ext/create_32.png
+        assets/ext/database_editor_32.png
         assets/ext/dat_32.png
         assets/ext/dds_32.png
         assets/ext/extract_32.png
@@ -183,8 +237,11 @@ qt_add_qml_module(Blobset-Tools
         assets/ext/info_32.png
         assets/ext/loading_32.png
         assets/ext/lua_32.png
+        assets/ext/mat_32.png
         assets/ext/m3mp_32.png
         assets/ext/mapping_32.png
+        assets/ext/mod_loader_32.png
+        assets/ext/mod_manager_32.png
         assets/ext/menu_32.png
         assets/ext/mesh_32.png
         assets/ext/modify_32.png
@@ -220,7 +277,9 @@ qt_add_qml_module(Blobset-Tools
         qml/subview_viewers/FMODViewer.qml
         qml/subview_viewers/HexViewer.qml
         qml/subview_viewers/StringEditor.qml
+        qml/subview_viewers/DatabaseEditor.qml
         qml/subview_viewers/M3MPViewer.qml
+        qml/subview_viewers/LuaEditor.qml
         qml/subview_viewers/M3MPCreator.qml
         qml/subview_viewers/MeshViewer.qml
         qml/subview_viewers/TXPKCreator.qml
@@ -241,10 +300,18 @@ target_include_directories(Blobset-Tools PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/ffmpeg"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/directxtex"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/luajit"
 )
 
 # Target third-party library bin directories
 set(BT_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
+
+# LuaJIT 2.1 (compiles the edited Lua scripts back into bytecode, src/core/lua_script.cpp): lib/libluajit.a and
+# include/luajit, built by the LuaJIT-2.1 project with tools/luajit/CMakeLists.txt (it copies them here).
+if(NOT EXISTS "${BT_LIB_DIR}/libluajit.a" OR NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/luajit/lua.h")
+    message(FATAL_ERROR "LuaJIT is missing: build the LuaJIT-2.1 project (tools/luajit/CMakeLists.txt in its folder) "
+                        "with this kit first - it puts libluajit.a into lib and its headers into include/luajit.")
+endif()
 target_link_directories(Blobset-Tools PRIVATE
     "${BT_LIB_DIR}"
 )
@@ -285,6 +352,7 @@ target_link_libraries(Blobset-Tools PRIVATE
     avutil
     swresample
     DirectXTex
+    "${BT_LIB_DIR}/libluajit.a"
 )
 
 # The Vortex game extensions (vortex/<game>): next to the exe, where --install-vortex-extensions copies them from.

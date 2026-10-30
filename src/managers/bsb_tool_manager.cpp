@@ -168,7 +168,7 @@ void BsbToolManager::loadBsbFromBlobset(const QString& hexHash, const QString& w
     QByteArray data;
     qint64 mainSize = 0;
     try {
-        data = BlobsetAssetReader::read(entry, orchestrator->gameLocation(), orchestrator->blobsetVersion(),
+        data = BlobsetAssetReader::read(entry, orchestrator->assetLocation(), orchestrator->blobsetVersion(),
                                         orchestrator->platform(), &mainSize);
     } catch (const std::exception& ex) {
         clearEntries();

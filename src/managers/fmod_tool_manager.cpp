@@ -187,7 +187,7 @@ void FmodToolManager::loadFmodFromBlobset(const QString& hexHash) {
 
     QByteArray data;
     try {
-        data = BlobsetAssetReader::read(entry, orchestrator->gameLocation(), orchestrator->blobsetVersion(),
+        data = BlobsetAssetReader::read(entry, orchestrator->assetLocation(), orchestrator->blobsetVersion(),
                                         orchestrator->platform());
     } catch (const std::exception& ex) {
         failLoad(QString::fromUtf8(ex.what()));

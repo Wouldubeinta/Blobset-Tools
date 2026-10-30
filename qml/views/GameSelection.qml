@@ -108,8 +108,8 @@ Item {
 
         // Dynamic Workspace Logo Display Box
         Rectangle {
-            Layout.preferredWidth: 300
-            Layout.preferredHeight: 300
+            Layout.preferredWidth: 310
+            Layout.preferredHeight: 310
             Layout.alignment: Qt.AlignTop
             color: BtDarkStyle.bgMedium
             border.color: BtDarkStyle.borderDark
@@ -150,7 +150,7 @@ Item {
         Rectangle {
             id: infoCard
             Layout.fillWidth: true
-            Layout.preferredHeight: 300
+            Layout.preferredHeight: 310
             color: BtDarkStyle.bgDark
             border.color: BtDarkStyle.borderDark
             radius: 8
@@ -189,24 +189,25 @@ Item {
 
                     Repeater {
                         model: [
-                            ["Platform",       infoCard.info.platform],
-                            ["Game ID",        infoCard.info.gameId],
-                            ["Version",        infoCard.info.gameVersion],
-                            ["Steam App ID",   infoCard.info.steamGameId > 0 ? infoCard.info.steamGameId : "None (console / non-Steam)"],
-                            ["Blobset",        (infoCard.info.blobsetVersion || "") + "  ·  " + (infoCard.info.compression || "")],
-                            ["Blobset Size",   infoCard.info.locationExists ? infoCard.info.blobsetSize : "Not found"],
-                            ["File Mapping",   infoCard.info.mappingExists ? "Mapped  ·  " + infoCard.info.mappingDate : "Not mapped yet"],
-                            ["Mods",           (infoCard.info.installedMods ?? 0) === 0
-                                                   ? "None installed"
-                                                   : infoCard.info.installedMods + " installed  ·  " + infoCard.info.enabledMods + " enabled"],
-                            ["Mods Folder",    (infoCard.info.modCount ?? 0) + " file(s)"]
+                            ["Platform:",            infoCard.info.platform],
+                            ["Game ID:",             infoCard.info.gameId],
+                            ["Version:",             infoCard.info.gameVersion],
+                            ["Steam App ID:",        infoCard.info.steamGameId > 0 ? infoCard.info.steamGameId : "None (console / non-Steam)"],
+                            ["Blobset Version:",     infoCard.info.blobsetVersion || ""],
+                            ["Blobset Compression:", infoCard.info.compression || ""],
+                            ["Blobset Size:",        infoCard.info.locationExists ? infoCard.info.blobsetSize : "Not found"],
+                            ["File Mapping:",        infoCard.info.mappingExists ? "Mapped  ·  " + infoCard.info.mappingDate : "Not mapped yet"],
+                            ["Mods Installed:",                (infoCard.info.installedMods ?? 0) === 0
+                                                        ? "None installed"
+                                                        : infoCard.info.installedMods + " installed  ·  " + infoCard.info.enabledMods + " enabled"],
+                            ["Mods Folder:",         (infoCard.info.modCount ?? 0) + " file(s)"]
                         ]
                         delegate: Item {
                             Layout.fillWidth: true
                             implicitHeight: valueLabel.implicitHeight
                             Label {
                                 id: keyLabel
-                                width: 110
+                                width: 145
                                 text: modelData[0]
                                 color: BtDarkStyle.textDim
                                 font.pixelSize: 13
@@ -216,8 +217,8 @@ Item {
                                 anchors.left: keyLabel.right
                                 anchors.right: parent.right
                                 text: String(modelData[1] ?? "")
-                                color: (modelData[0] === "Blobset Size" && !infoCard.info.locationExists)
-                                       || (modelData[0] === "File Mapping" && !infoCard.info.mappingExists)
+                                color: (modelData[0] === "Blobset Size:" && !infoCard.info.locationExists)
+                                       || (modelData[0] === "File Mapping:" && !infoCard.info.mappingExists)
                                        ? "#ef5350" : BtDarkStyle.textMain
                                 font.pixelSize: 13
                                 elide: Text.ElideRight

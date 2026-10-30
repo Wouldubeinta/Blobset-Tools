@@ -1,4 +1,4 @@
-![Title Image](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/title.jpg?raw=true)
+![Title Image](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/image.jpg?raw=true)
 
 # Blobset Tools
 
@@ -56,12 +56,17 @@ Manager, Vortex support, a command line, a Mesh Viewer, Xbox 360 textures and mu
 - **Extract** a whole blobset or **Save As** single files (DDS or PNG, WEM or WAV, ...).
 - **Modify** the game with your mods (the originals are backed up first) and **Restore** them any time.
 - **Creators**: TXPK Creator, M3MP Creator and BSB Creator to rebuild packs from extracted files.
-- **Editors**: File Mapping Editor and String Editor (the game's text, one table per language).
+- **Editors**: File Mapping Editor, String Editor (the game's text, one table per language), the Database Editor
+  (teams, players and jerseys of Rugby League 26, Rugby League Live 4, Rugby League Live 3 and Rugby 25) and the
+  Lua editor (the games' LuaJIT scripts, decompiled to edit and compiled back).
+- **Replace files** by drag and drop (files, whole folders, a `.wav` for a sound), and edit inside TXPK, M3MP and BNK
+  files: the changes go into the mods folder.
 - **Mod Manager**: install mods from .zip / .7z / .rar or folders, enable / disable them, set the load order, see
   conflicts, then Build.
 - **Blobset Mod Loader** support for the newer (V4) games: mods go into `<game>\BlobsetMods` and the game's files stay
-  untouched.
+  untouched. With it on, the workspace shows the modded files the way the game sees them.
 - **Vortex Mod Manager** extensions for all the PC games.
+- **Auto updater**: checks GitHub for a new version once a day.
 - **Command line** for scripts and mod managers (`Blobset-Tools.exe --help`).
 
 ---
@@ -140,7 +145,7 @@ Use **Options > Open Data Folder** to open it. Uninstalling Blobset Tools leaves
 Pick the system platform (PC, PS3 or Xbox 360), select your game and click **Load Blobset Tools**. The first time,
 Blobset Tools asks you to find the game's blobset file (e.g. `data-0.blobset.pc`); it's remembered after that.
 
-![Image 1](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/1.jpg?raw=true)
+![Image 1](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/1.jpg?raw=true)
 
 ### First-Time Setup
 
@@ -156,7 +161,7 @@ does this by itself when there's no mapping yet or the game was updated.)
 - Select the game and platform on the game selection screen; Blobset Tools asks for the blobset file to load.
 - To return to the main game selection screen, select **File > Game Selection**.
 
-![Image 2](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/2.jpg?raw=true)
+![Image 2](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/2.jpg?raw=true)
 
 ---
 
@@ -176,17 +181,17 @@ Files panel scrolls it left / right.
   - `.str`, `.lua`, `.txt` as text
   - anything else in the Hex Viewer
 
-![Image 3](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/3.jpg?raw=true)
+![Image 3](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/3.jpg?raw=true)
 
 - **Right-click** a file to **Save As...** (DDS or PNG for textures, WEM or WAV for audio).
 
-![Image 4](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/4.jpg?raw=true)
+![Image 4](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/4.jpg?raw=true)
 
 ### Image Preview
 
 - Right-click the image preview to **Flip Image** or toggle the **Alpha** channel.
 
-![Image 5](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/5.jpg?raw=true)
+![Image 5](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/5.jpg?raw=true)
 
 ### Extracting Files
 
@@ -208,7 +213,7 @@ To extract all files, click **Extract**. The files are saved to:
 > **$$\color{red}Important:$$** Make sure the main blobset file is loaded before creating a new one; don't have the
 > update (DLC) blobset loaded.
 
-![Image 6](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/6.jpg?raw=true)
+![Image 6](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/6.jpg?raw=true)
 
 ---
 
@@ -216,8 +221,10 @@ To extract all files, click **Extract**. The files are saved to:
 
 The quickest way to mod a single file:
 
-- **Drag and drop** a file onto a file in the **Files** panel to replace it, or drop files onto the panel to replace
-  the files with the same names in that folder.
+- **Drag and drop** files or whole folders onto the **Files** panel. Each file replaces the file it matches: by its
+  path (a dropped `ui` folder's `ui\textures\x.dds` replaces `ui/textures/x.dds`, wherever you are browsing), or by its
+  name (the open folder first, then a name that's unique in the game). A single file that matches nothing replaces
+  the file you dropped it on.
 - Or **right-click** a file > **Replace File...**.
 
 The replacement is copied into the mods folder at the same path
@@ -225,10 +232,23 @@ The replacement is copied into the mods folder at the same path
 to put it into the game. Right-click > **Remove Replacement** takes it out of the mods folder again. The replacement
 needs the same file type (a `.dds` for a `.dds`, ...).
 
+**Sounds (V4 games)**: a `.wav` can replace a `.wem` - drop it onto the WEM, or drop `<id>.wav` onto the Files panel.
+It's converted to a PCM WEM that keeps the original's id and header (its `hash` chunk), so the game finds it like the
+original. In the **BNK viewer** you can do the same for the WEMs inside a sound bank, then **Save Changes** rebuilds the
+bank into the mods folder.
+
 **Inside a TXPK or M3MP**: open it (double-click), then drag textures / files onto the ones they replace, or
 right-click > **Replace**. Replaced files show a **MOD** badge and the preview shows the new texture. Click
 **Save Changes** to rebuild the TXPK / M3MP into the mods folder (with the `.xml` Modify needs), then **Modify**. The
 next time you open it, the viewer shows your edited copy, so you can keep adding to it.
+
+**Lua scripts**: the games' scripts are LuaJIT bytecode inside M3MPs. Double-click a `.lua` in the M3MP viewer (or
+right-click > **Edit Script**) and it's decompiled into the Lua editor (line numbers, colours, Find with Ctrl+F, Go to
+Line with Ctrl+G). **Check** (F7) compiles it to find mistakes, and **Save to Mods** (Ctrl+S) compiles it back to
+LuaJIT bytecode, puts it into the M3MP and rebuilds the M3MP into the mods folder; then click **Modify**. Opening the
+script again shows your text as you saved it. Decompiled scripts have numbered names for locals (`var_3_1`) and may
+write some conditions differently, but they compile to the same code. The editor is read only for bytecode Blobset Tools
+can't write back (LuaJIT 2.0, 32 bit or console scripts) and for M3MPs not opened from the game's files.
 
 ---
 
@@ -244,7 +264,7 @@ next time you open it, the viewer shows your edited copy, so you can keep adding
 3. **Extract the TXPK**:
    - Click **Extract All** (or **Extract Selected**) and choose the `txpk` folder above.
 
-![Image 7](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/7.jpg?raw=true)
+![Image 7](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/7.jpg?raw=true)
 
 4. **Modify DDS Files**:
    - Edit the `.dds` files in the `txpk` folder.
@@ -254,9 +274,9 @@ next time you open it, the viewer shows your edited copy, so you can keep adding
      **`Documents\Blobset Tools\games\<The Game You Picked Folder>\<Game Platform (pc-ps3-xbox360)>\mods\dds_txpk\`**
    - You can name the TXPK file as you wish, but the matching `.xml` file must have the same name.
 
-![Image 8](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/8.jpg?raw=true)
+![Image 8](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/8.jpg?raw=true)
 
-![Image 9](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/9.jpg?raw=true)
+![Image 9](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/9.jpg?raw=true)
 
 ### Creating an M3MP File
 
@@ -271,7 +291,7 @@ next time you open it, the viewer shows your edited copy, so you can keep adding
 3. **Extract the M3MP File**:
    - Click **Extract All** (or **Extract Selected**) and choose the `m3mp` folder above.
 
-![Image 10](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/10.jpg?raw=true)
+![Image 10](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/10.jpg?raw=true)
 
 4. **Modify the Extracted Files** in the `m3mp` folder.
 
@@ -281,12 +301,45 @@ next time you open it, the viewer shows your edited copy, so you can keep adding
      (if it was extracted from the uncompressed folder).
    - You can name the `.m3mp` file as you wish, but the matching `.xml` file must have the same name.
 
-![Image 11](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/11.jpg?raw=true)
+![Image 11](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/11.jpg?raw=true)
 
 ### BSB Creator
 
 **Tools > BSB Creator** rebuilds a BSB (Flash UI screen) from its extracted movie and textures. Save the result into
 the matching folder under `mods\` and click **Modify**.
+
+### Database Editor
+
+Rugby League 26, Rugby League Live 4, Rugby League Live 3 and Rugby 25: **Tools > Database Editor** (or double click
+the database M3MP) edits the game's team and player databases, laid out like the game's own editor. The newer databases describe their
+own fields, so each game shows the fields it has; Rugby League Live 3's older layout is read the way Wouldy's RLL3
+Database Editor reads it.
+
+- **Teams**: names, team type, affiliation, logo, colours, supporters, commentary, home grounds (with custom names),
+  the squad (up to 64 players), every lineup the game has (NRL 2026, League, Nines, Union, ...) with shirt numbers,
+  captain / goal kicker / play makers, and the feeder clubs.
+- **Jerseys**: each team's uniforms (up to 20 in RL26, 8 in RLL4 / Rugby 25, 6 in RLL3): add a copy, remove, rename,
+  hide, pick which one the game uses for home, away, the special rounds and Nines, and edit the jersey, shorts and socks
+  layers and colours, the decals (position, scale, rotation, flip), the name and number fonts and colours, and the
+  headwear. Export / Import copies a team's whole set of jerseys to another team.
+- **Players**: identity (names, jersey name and number, date of birth, height, weight, club, positions, countries,
+  State of Origin / City v Country / All Stars, contract, commentary name), the ratings, personality and perk,
+  career numbers and match stats, and the **Appearance** (face, hair, body, gear, tattoos).
+  **Randomize** rolls star, average or rookie stats for the player's position (rugby league games). Overall
+  ratings (OVR) are worked out the same way as the original RL26 Database Editor.
+- Search and filter teams and players (by name, id, gender, position or a team's squad), and export both lists
+  as CSV.
+- **Save to Mods** writes `defaultdata_clubs` and `defaultdata_players` back into the M3MP in the mods folder; click
+  **Modify** to put it into the game. Next time the editor opens your edited copy.
+
+Team logos come from the game's blobset (`ui\club_logos\large_mirrored\<logo>.pc.dds`), and the commentary names
+from the sound M3MP (`sound\dialogue.mempack.m3mp` in RL26 / Rugby 25, `sound\ui.mempack.m3mp` in RLL3 / RLL4).
+Jersey and appearance fields whose names the games' files don't give away are shown as "Unknown 0x...". RLL3
+jerseys show the name, manufacturer, licensed jersey and the name / number styles (colours are palette numbers);
+RLL3's logo, supporters, countries, manufacturer and licensed jersey, and RLL4's logos, supporters, commentary,
+stadiums, countries, manufacturer and licensed jersey are picked by name from Wouldy's lists.
+
+Based on Wouldy's RL26 and RLL3 Database Editors (C#).
 
 ---
 
@@ -329,8 +382,8 @@ Blobset-Tools.exe --game "Rugby League Live 3" --restore
 
 ## Options
 
-![Image 12](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/12.jpg?raw=true)
-![Image 13](https://github.com/Wouldubeinta/Blobset-Tools/blob/master/ReadMe/13.jpg?raw=true)
+![Image 12](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/12.jpg?raw=true)
+![Image 13](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/13.jpg?raw=true)
 
 - **Update File Mapping Data**: Maps all files in the blobset so Blobset Tools knows each file. It runs by itself the
   first time and after a game update.
@@ -338,7 +391,10 @@ Blobset-Tools.exe --game "Rugby League Live 3" --restore
 - **Load Game**: When on, the game starts after **Modify** / **Create** succeeds.
 - **Validate Steam Files**: Asks Steam to verify the game's files and download any that changed.
 - **Mod Loader** (V4 games): When on, **Modify** writes the mods to `<game>\BlobsetMods` for the Blobset Mod Loader
-  instead of changing the game's files.
+  instead of changing the game's files, and the folders and files show that build (a **BLOBSETMODS** badge on the Files
+  panel): the modded files are read from `<game>\BlobsetMods\data`, the rest from the game's own files, the way the
+  game sees them. Turning it off shows the game's own files again. The game's files are shown while there's no build
+  yet, or when the game was updated since the last Modify (run Modify again).
 - **Open Data Folder**: Opens `Documents\Blobset Tools`.
 - **Restore Backup Files**: Puts back every original file that was replaced by mods.
 - **Check for Updates** (About): Looks for a newer release on GitHub. Blobset Tools also checks by itself once a day
@@ -355,6 +411,9 @@ Requirements:
 - **CMake 3.21+** (comes with Qt Creator)
 - The third-party libraries in `lib` / `include` (FFmpeg, vgmstream, DirectXTex, zstd, liblzma, Ogg / Vorbis / Opus,
   ATRAC9, CELT, mpg123)
+- LuaJIT 2.1 as `lib/libluajit.a` + `include/luajit`: put `tools/luajit/CMakeLists.txt` into a LuaJIT 2.1 folder, open
+  it in Qt Creator with the same MinGW 64-bit kit and build Release; it copies the library and headers here (see
+  `tools/luajit/README.txt`). The LuaJIT decompiler is in `src/thirdparty/ljd`.
 
 Open `CMakeLists.txt` in Qt Creator and build the **Release** configuration. The build copies the DLLs,
 `GameSelectionInfo.xml`, `assets\games`, `defaults` and `vortex` next to the exe and runs windeployqt.
@@ -389,6 +448,8 @@ The Vortex extensions are generated with `python tools/make_vortex_extensions.py
 - **Lasse Collin and the XZ Utils team**: [liblzma](https://tukaani.org/xz/)
 - **Xiph.Org**: [Ogg, Vorbis and Opus](https://xiph.org/)
 - **Thealexbarney**: [LibAtrac9](https://github.com/Thealexbarney/LibAtrac9)
+- **Mike Pall**: [LuaJIT](https://luajit.org/)
+- **marsinator358**: For the Lua script decompiler - [LuaJIT Decompiler v2](https://github.com/marsinator358/luajit-decompiler-v2)
 - **mpg123**: [mpg123](https://www.mpg123.de/)
 - **Xenia**: For the Xbox 360 texture tiling reference - [Xenia](https://github.com/xenia-project/xenia)
 - **Everyone who helped with the original C# version**: FeudalNate (PackageIO), nickbabcock (Pfim), oleg-st

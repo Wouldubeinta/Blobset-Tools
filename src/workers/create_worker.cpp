@@ -194,8 +194,25 @@ QList<CreateWorker::ModFile> CreateWorker::collectModFiles(const QStringList& ex
     const QDir modsDir(m_modsDir);
     QList<ModFile> files;
 
-    // Grouped by extension (in the order given), alphabetical inside each group, so every run produces the same layout.
-    for (const QString& extension : extensions) {
+    // The types with special handling first (in the order given), then every other type found in the mods folder
+    // (str, lua, mesh, ...): those replace the blobset files they match (planJobs()).
+    QStringList order = extensions;
+    {
+        QSet<QString> others;
+        QDirIterator it(modsDir.absolutePath(), QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            const QString suffix = QFileInfo(it.next()).suffix().toLower();
+            if (!suffix.isEmpty() && !extensions.contains(suffix))
+                others.insert(suffix);
+        }
+        QStringList sorted(others.cbegin(), others.cend());
+        sorted.sort();
+        order += sorted;
+    }
+
+    // Grouped by extension (in that order), alphabetical inside each group, so every run produces the same layout.
+    for (const QString& extension : std::as_const(order)) {
+        const bool generic = !extensions.contains(extension);
         QStringList found;
         QDirIterator it(modsDir.absolutePath(), {u"*."_s + extension}, QDir::Files | QDir::NoSymLinks,
                         QDirIterator::Subdirectories);
@@ -204,8 +221,18 @@ QList<CreateWorker::ModFile> CreateWorker::collectModFiles(const QStringList& ex
 
         found.sort(Qt::CaseInsensitive);
 
-        for (const QString& path : std::as_const(found))
-            files.append(ModFile{path, modsDir.relativeFilePath(path), extension});
+        for (const QString& path : std::as_const(found)) {
+            const QFileInfo info(path);
+            if (generic && extension == u"xml"_s) {
+                // A TXPK / M3MP's <name>.xml is information for Create, not a game file.
+                const QString base = info.absolutePath() + u'/' + info.completeBaseName();
+                if (QFileInfo::exists(base + u".txpk"_s) || QFileInfo::exists(base + u".m3mp"_s))
+                    continue;
+            }
+            if (info.fileName().compare(u"blobsetmod.json"_s, Qt::CaseInsensitive) == 0)
+                continue;
+            files.append(ModFile{path, modsDir.relativeFilePath(path), extension, generic});
+        }
     }
 
     return files;
@@ -245,13 +272,38 @@ QList<CreateWorker::ModJob> CreateWorker::planJobs(const QStringList& extensions
         return *source;
     };
 
+    QStringList notInBlobset;   // Other file types that don't replace a file of the game (readmes, pictures, ...).
+
     for (const ModFile& file : collectModFiles(extensions)) {
         ModJob job;
         job.absolutePath = file.absolutePath;
         job.relativePath = file.relativePath;
         job.extension = file.extension;
 
-        if (file.extension == u"txpk"_s || file.extension == u"m3mp"_s) {
+        if (file.generic) {
+            // Any other type only replaces an existing file (mapped, or by its name's hash), stored like it.
+            if (m_sourceBlobset.isEmpty() || !QFile::exists(m_sourceBlobset)) {
+                notInBlobset.append(file.relativePath);   // No original header to look it up in.
+                continue;
+            }
+            const auto mapped = mapping.constFind(normalizedKey(file.relativePath));
+            const quint64 hash = mapped != mapping.constEnd()
+                                     ? mapped.value()
+                                     : BlobsetHash::hashForFile(m_version, file.relativePath, m_platform, QString());
+            const BlobsetFile& original = sourceHeader();
+            const auto found = std::find_if(original.entries.cbegin(), original.entries.cend(),
+                                            [&](const BlobsetEntry& e) { return e.folderFileHash32 == hash; });
+            if (found == original.entries.cend()) {
+                notInBlobset.append(file.relativePath);
+                continue;
+            }
+            job.generic = true;
+            job.pathHash = found->folderFileHash32;
+            job.origMainCompressed = found->mainCompressedSize;
+            job.origMainUncompressed = found->mainUnCompressedSize;
+            job.origVramCompressed = found->vramCompressedSize;
+            job.origVramUncompressed = found->vramUnCompressedSize;
+        } else if (file.extension == u"txpk"_s || file.extension == u"m3mp"_s) {
             // These carry their hashes and section sizes in a sidecar xml.
             const QFileInfo info(file.absolutePath);
             const QString xmlPath = info.absolutePath() + u'/' + info.completeBaseName() + u".xml"_s;
@@ -328,6 +380,12 @@ QList<CreateWorker::ModJob> CreateWorker::planJobs(const QStringList& extensions
         claimedBy.insert(job.pathHash, file.relativePath);
         jobs.append(job);
     }
+
+    if (!notInBlobset.isEmpty())
+        emit const_cast<CreateWorker*>(this)->updateConsole(
+            u"Skipped %1 file(s) that don't match a file of the game (only known types can be added as new files): %2%3"_s
+                .arg(notInBlobset.size()).arg(notInBlobset.mid(0, 10).join(u", "_s))
+                .arg(notInBlobset.size() > 10 ? u", ..."_s : QString()));
 
     return jobs;
 }
@@ -513,6 +571,22 @@ CreateWorker::EntryRecord CreateWorker::writeJobV1(PackageStream& out, const Mod
 
         record.mainPart = writeLzma(out, data.left(mainSize), kLzmaChunkSize, m_isBigEndian, m_lzmaV2);
         record.vram = writeLzma(out, data.mid(mainSize, vramSize), kLzmaChunkSize, m_isBigEndian, m_lzmaV2);
+    } else if (job.generic) {
+        // Any other type (str, lua, mesh, ...): the original's main size is the main section (all of it when the
+        // original has no vram), the rest is vram; each raw or compressed like the original's.
+        const QByteArray data = readWholeFile(job.absolutePath);
+        const qint64 mainSize = job.origVramUncompressed == 0 ? data.size() : job.origMainUncompressed;
+        if (data.size() < mainSize)
+            fail(u"%1 is smaller than the main section of the file it replaces (%2 bytes)."_s
+                     .arg(job.relativePath).arg(mainSize));
+        const QByteArray mainData = data.left(mainSize);
+        const QByteArray vramData = data.mid(mainSize);
+        record.mainPart = (job.origMainCompressed == job.origMainUncompressed)
+                          ? writeRaw(out, mainData)
+                          : writeLzma(out, mainData, kLzmaChunkSize, m_isBigEndian, m_lzmaV2);
+        record.vram = (vramData.isEmpty() || job.origVramCompressed == job.origVramUncompressed)
+                      ? writeRaw(out, vramData)
+                      : writeLzma(out, vramData, kLzmaChunkSize, m_isBigEndian, m_lzmaV2);
     } else if (job.extension == u"dat"_s) {
         const QByteArray data = readWholeFile(job.absolutePath);
         const qint64 mainSize = job.origMainUncompressed;

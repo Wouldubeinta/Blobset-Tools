@@ -62,6 +62,12 @@ class BnkToolManager : public QObject {
     Q_PROPERTY(int progress READ progress NOTIFY progressChanged)
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
 
+    // --- Edit (BNKViewer.qml): replace embedded WEMs (with a .wem, or a .wav converted to a PCM WEM), then
+    //     Save Changes writes the rebuilt bank into the mods folder ------------------------------------------
+    Q_PROPERTY(int replacedCount READ replacedCount NOTIFY changesChanged)
+    Q_PROPERTY(bool unsavedChanges READ unsavedChanges NOTIFY changesChanged)
+    Q_PROPERTY(QString modsTarget READ modsTarget NOTIFY changesChanged)
+
 public:
     explicit BnkToolManager(QObject* parent = nullptr);
     ~BnkToolManager() override;
@@ -84,6 +90,20 @@ public:
     bool statusOk() const { return m_statusOk; }
     int progress() const { return m_progress; }
     QString appVersion() const;
+
+    int replacedCount() const { return static_cast<int>(m_replacements.size()); }
+    bool unsavedChanges() const { return m_unsavedChanges; }
+    QString modsTarget() const;
+    // row: in the (filtered) list. A .wav becomes a PCM WEM, a .wem gets the original's hash chunk; both keep
+    // the original's id and header chunks.
+    Q_INVOKABLE bool replaceRow(int row, const QString& pathOrUrl);
+    // Dropped files by name: <id>.wem / <id>.wav. Returns how many were replaced.
+    Q_INVOKABLE int replaceByName(const QStringList& pathsOrUrls);
+    Q_INVOKABLE bool isReplacedEntry(int entry) const { return m_replacements.contains(entry); }
+    Q_INVOKABLE void revertRow(int row);
+    Q_INVOKABLE void discardChanges();
+    // games\<game>\<platform>\mods\<the bank's path>: the rebuilt bank (DATA, DIDX and the HIRC sources).
+    Q_INVOKABLE void saveChanges();
 
     // Opens a .bnk from disk.
     Q_INVOKABLE void loadBnk(const QString& path);
@@ -111,6 +131,8 @@ signals:
     void busyChanged();
     void statusChanged();
     void progressChanged();
+    void changesChanged();
+    void changesSaved(const QString& target);
 
 private:
     void loadFile(const QString& path, const QString& sourceName);
@@ -137,6 +159,12 @@ private:
     int m_currentEntry = -1;
     QVariantList m_entryInfo;
     QHash<int, QVariantList> m_infoCache; // Entry -> probed info, so re-selecting is instant.
+
+    // Edit session: entry -> the replacement WEM's bytes.
+    QHash<int, QByteArray> m_replacements;
+    bool m_unsavedChanges = false;
+    QString m_workspacePath;   // The bank's path in the blobset (opened from the game), else empty.
+    bool replaceEntry(int entry, const QString& file);
 
     QString m_statusText;
     bool m_statusOk = true;

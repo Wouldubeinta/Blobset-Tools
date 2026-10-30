@@ -31,8 +31,8 @@ class AppOrchestrator : public QObject {
 
     // Game location prompt (MainForm.qml opens a FileDialog while this is true).
     Q_PROPERTY(bool gameLocationRequired READ gameLocationRequired NOTIFY gameLocationRequiredChanged)
-    Q_PROPERTY(QString expectedBlobsetName READ expectedBlobsetName NOTIFY gameLocationRequiredChanged)
-    Q_PROPERTY(QString currentGameName READ currentGameName NOTIFY gameLocationRequiredChanged)
+    Q_PROPERTY(QString expectedBlobsetName READ expectedBlobsetName NOTIFY gameInfoChanged)
+    Q_PROPERTY(QString currentGameName READ currentGameName NOTIFY gameInfoChanged)
 
     // True while Extract / Modify / Create / Update File Mapping runs (MainForm.qml disables those buttons).
     Q_PROPERTY(bool workerRunning READ workerRunning NOTIFY workerRunningChanged)
@@ -47,6 +47,9 @@ class AppOrchestrator : public QObject {
     // V4: Modify builds the mods into <game>\BlobsetMods for the Blobset Mod Loader (dinput8.dll) instead of changing
     // the game's files. Saved in Settings.ini (ModLoader).
     Q_PROPERTY(bool modLoaderMode READ modLoaderMode WRITE setModLoaderMode NOTIFY modLoaderModeChanged)
+    // The workspace shows the Mod Loader's build: <game>\BlobsetMods\data's header, the modded files from there and
+    // the others from the game (assetLocation()). Mod Loader on, V4 on PC, built for the game's current header.
+    Q_PROPERTY(bool modLoaderView READ modLoaderView NOTIFY modLoaderViewChanged)
     // Steam games: start the game through Steam after Modify / Create succeeded. Saved in Settings.ini (LoadGame).
     Q_PROPERTY(bool loadGameMode READ loadGameMode WRITE setLoadGameMode NOTIFY loadGameModeChanged)
     // file:/// URL of the selected game's picture (GameSelectionInfo.xml <Image>, from assets/games), empty if none.
@@ -61,6 +64,11 @@ public:
 
     // Thread-safe configuration getters (image provider, asset readers, ...)
     QString gameLocation() const;
+    // Where the workspace reads assets from: the Mod Loader's header (<game>\BlobsetMods\data\<header>) while the
+    // Mod Loader view is on, else the game's header (gameLocation()). Readers take it as their "game location";
+    // BlobsetAssetReader::dataFilePath() falls back to the game's own data folder for files that aren't modded.
+    QString assetLocation() const;
+    bool modLoaderView() const { return m_modLoaderView; }
     int blobsetVersion() const;
     int platform() const;
     int gameId() const;
@@ -87,6 +95,15 @@ public:
     Q_INVOKABLE bool hasModFile(const QString& workspacePath) const;
     // Copies sourcePathOrUrl to modFilePath(workspacePath). The extension has to match. { ok, message, target }
     Q_INVOKABLE QVariantMap replaceAsset(const QString& workspacePath, const QString& sourcePathOrUrl);
+    // Files / folders dropped on MainForm's Files panel. Each file (folders: every file inside, recursively)
+    // replaces the blobset file it matches:
+    //   by its path - the longest tail of "<dropped folder>/<sub folders>/<name>" that a mapped path ends with
+    //                 (the open folder's match wins when there are several);
+    //   by its name - in the open folder, else a name that's unique in the blobset.
+    // A .wav matches the .wem of the same name. One file that matches nothing replaces `fallbackPath` (the file
+    // it was dropped on) when given. { replaced, failed, unmatched: [names], message }
+    Q_INVOKABLE QVariantMap replaceDropped(const QStringList& urls, const QString& currentFolder,
+                                           const QString& fallbackPath = QString());
     // Writes bytes as the replacement (the TXPK / M3MP viewers' rebuilt packs).
     QVariantMap writeModFile(const QString& workspacePath, const QByteArray& data);
     Q_INVOKABLE bool removeModFile(const QString& workspacePath);
@@ -216,6 +233,7 @@ signals:
     void steamUpdateDetected(bool pending, const QString& gameName, const QString& details);
     void workerRunningChanged();
     void modLoaderModeChanged();
+    void modLoaderViewChanged();
     void loadGameModeChanged();
     void gameInfoChanged();
     void gameLocationRequested();   // Raised every time the UI should show the game location dialog.
@@ -258,6 +276,7 @@ private:
     bool m_gameLocationRequired = false;
     bool m_fileMappingMissing = false;
     int m_modFilesRevision = 0;
+    bool m_quietReplace = false;   // replaceDropped(): one summary instead of a line per replaced file.
     bool m_updateMappingAfterLocation = false;
     bool m_recordSteamBuildAfterTask = false;   // The running task is Update File Mapping Data.
     QSet<QString> m_steamNoticesShown;          // Each Steam update popup once per session.   // Update File Mapping waits for the game location dialog.
@@ -272,6 +291,10 @@ private:
     void restoreBackupFilesUnchecked();   // restoreBackupFiles() without the worker / location checks.
     // Settings.ini values, read once (QML reads the properties often).
     bool m_modLoaderMode = false;
+    bool m_modLoaderView = false;   // The loaded workspace reads the Mod Loader's build (assetLocation()).
+    QString m_modLoaderHeaderPath;  // That build's header while the view is on (m_mutex).
+    QString modLoaderHeader(QString* whyNot = nullptr) const;   // The build's header when it can be shown, else empty.
+    void setModLoaderView(bool on);
     bool m_loadGameMode = false;
     QString settingsPath() const;
     bool startWorkerAllowed();      // False (and a console message) while a worker is running.

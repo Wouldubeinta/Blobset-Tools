@@ -2,6 +2,7 @@
 #define BNK_FILE_H
 
 #include <QByteArray>
+#include <QHash>
 #include <QList>
 #include <QString>
 #include <QStringList>
@@ -23,6 +24,16 @@ public:
     };
 
     bool parse(const QByteArray& data, QString* error = nullptr);
+
+    /// The bank `data` (parsed into `bank`) with embedded WEMs replaced (media index -> new WEM bytes):
+    ///   DATA  rebuilt, keeping the bank's alignment (16 bytes in Wwise banks);
+    ///   DIDX  new offsets / sizes (same order and ids);
+    ///   HIRC  every source of a replaced media ([plugin u32][stream type u8][media id u32][media size u32], as in
+    ///         Sound and Music Track objects) gets the new size, and the codec of the new WEM (PCM 0x00010001 /
+    ///         Vorbis 0x00040001) when it changes. hircPatched counts them.
+    /// Every other chunk is copied as is. Empty + error on failure.
+    static QByteArray rebuild(const QByteArray& data, const BnkFile& bank, const QHash<int, QByteArray>& replacements,
+                              int* hircPatched = nullptr, QString* error = nullptr);
 
     bool isBigEndian = false;
     bool truncated = false;     // The file ended in the middle of a chunk.

@@ -1,4 +1,5 @@
 #include "app_orchestrator.h"
+#include "database_manager.h"
 #include <exception>
 
 #include "app_paths.h"
@@ -22,6 +23,7 @@
 #include "package_stream.h"
 #include "txpk_file.h"
 #include "utilities.h"
+#include "wem_file.h"
 #include "xml_models.h"
 
 #include <QBuffer>
@@ -200,8 +202,7 @@ QString assetTypeLabel(const QString& path) {
 QString entryFileName(const AssetInfoRequest& r) {
     if (r.version == static_cast<int>(CoreDefs::BlobsetVersion::V4)
         || r.version == static_cast<int>(CoreDefs::BlobsetVersion::V3)) {
-        return QDir::toNativeSeparators(QDir(QFileInfo(r.gameLocation).absolutePath())
-                                            .filePath(r.entry.folderHashName + u'/' + r.entry.fileHashName));
+        return QDir::toNativeSeparators(BlobsetAssetReader::dataFilePath(r.gameLocation, r.entry));
     }
     QString path = r.gameLocation;
     const qsizetype pos = path.lastIndexOf(u"0.blob"_s);
@@ -530,6 +531,61 @@ QString AppOrchestrator::gameLocation() const {
     return m_gameLocation;
 }
 
+QString AppOrchestrator::assetLocation() const {
+    QMutexLocker locker(&m_mutex);
+    return !m_modLoaderHeaderPath.isEmpty() ? m_modLoaderHeaderPath : m_gameLocation;
+}
+
+/// The Blobset Mod Loader's build of the game's header, <game>\BlobsetMods\data\<header>, when the workspace can
+/// show it: Mod Loader on, a V4 game on PC, a build there, made for the game's current header (blobset.base: the
+/// loader turns the mods off in game when the game was updated since, so the view does the same).
+QString AppOrchestrator::modLoaderHeader(QString* whyNot) const {
+    const auto reason = [whyNot](const QString& text) {
+        if (whyNot)
+            *whyNot = text;
+        return QString();
+    };
+    if (!m_modLoaderMode || blobsetVersion() != static_cast<int>(CoreDefs::BlobsetVersion::V4) || platform() != 0)
+        return reason(QString());
+    const QFileInfo header(gameLocation());
+    if (!header.isFile())
+        return reason(QString());
+    QDir gameRoot = header.absoluteDir();
+    gameRoot.cdUp();
+    const QDir modsRoot(gameRoot.filePath(u"BlobsetMods"_s));
+    const QString built = QDir(modsRoot.filePath(u"data"_s)).filePath(header.fileName());
+    if (!QFileInfo(built).isFile())
+        return reason(u"there's no Mod Loader build in %1 yet (Modify makes one)"_s
+                          .arg(QDir::toNativeSeparators(modsRoot.absolutePath())));
+
+    QFile base(modsRoot.filePath(u"blobset.base"_s));
+    qint64 size = -1, mtime = -1;
+    if (base.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        for (const QByteArray& line : base.readAll().split('\n')) {
+            const QByteArray t = line.trimmed();
+            if (t.startsWith("size="))
+                size = t.mid(5).toLongLong();
+            else if (t.startsWith("mtime="))
+                mtime = t.mid(6).toLongLong();
+        }
+    }
+    if (size != header.size() || mtime != header.lastModified().toUTC().toMSecsSinceEpoch())
+        return reason(u"the Mod Loader build in %1 was made for an older version of the game (run Modify again)"_s
+                          .arg(QDir::toNativeSeparators(modsRoot.absolutePath())));
+    return built;
+}
+
+void AppOrchestrator::setModLoaderView(bool on) {
+    if (!on) {
+        QMutexLocker locker(&m_mutex);
+        m_modLoaderHeaderPath.clear();
+    }
+    if (m_modLoaderView == on)
+        return;
+    m_modLoaderView = on;
+    emit modLoaderViewChanged();
+}
+
 int AppOrchestrator::blobsetVersion() const {
     QMutexLocker locker(&m_mutex);
     return m_blobsetVersion;
@@ -802,7 +858,8 @@ bool AppOrchestrator::hasModFile(const QString& workspacePath) const {
 
 QVariantMap AppOrchestrator::replaceAsset(const QString& workspacePath, const QString& sourcePathOrUrl) {
     const auto result = [this](bool ok, const QString& message, const QString& target = {}) {
-        emit uiConsoleUpdate(message);
+        if (!ok || !m_quietReplace)
+            emit uiConsoleUpdate(message);
         return QVariantMap{{u"ok"_s, ok}, {u"message"_s, message}, {u"target"_s, target}};
     };
     const QString source = sourcePathOrUrl.startsWith(u"file:"_s, Qt::CaseInsensitive) ? QUrl(sourcePathOrUrl).toLocalFile()
@@ -816,6 +873,37 @@ QVariantMap AppOrchestrator::replaceAsset(const QString& workspacePath, const QS
 
     const QString wanted = QFileInfo(name).suffix().toLower();
     const QString given = QFileInfo(source).suffix().toLower();
+
+    // Wwise audio: a .wav becomes a PCM .wem, a .wem gets the original's hash chunk. Both keep the original's id
+    // (the file name) and its extra header chunks, so the game finds them like the original.
+    if (wanted == u"wem"_s && (given == u"wav"_s || given == u"wem"_s)) {
+        QByteArray original;
+        try {
+            BlobsetEntry entry;
+            if (!BlobsetEntryRegistry::findEntry(getHashFromPath(workspacePath), entry))
+                return result(false, u"Replace File: %1 isn't in the loaded blobset."_s.arg(name));
+            original = BlobsetAssetReader::read(entry, assetLocation(), blobsetVersion(), platform());
+        } catch (const std::exception& ex) {
+            return result(false, u"Replace File: could not read the original %1: %2"_s.arg(name, QString::fromUtf8(ex.what())));
+        }
+        QFile file(source);
+        if (!file.open(QIODevice::ReadOnly))
+            return result(false, u"Replace File: could not read %1."_s.arg(QDir::toNativeSeparators(source)));
+        const QByteArray input = file.readAll();
+        QString error;
+        const QByteArray wem = given == u"wav"_s ? WemFile::fromWav(input, original, &error)
+                                                 : WemFile::withOriginalHash(input, original, &error);
+        if (wem.isEmpty())
+            return result(false, u"Replace File: %1: %2"_s.arg(QFileInfo(source).fileName(), error));
+        const QVariantMap written = writeModFile(workspacePath, wem);
+        if (!written.value(u"ok"_s).toBool())
+            return result(false, u"Replace File: "_s + written.value(u"message"_s).toString());
+        return result(true, u"Replaced %1 with %2 (%3%4). Click Modify to put it into the game."_s
+                                .arg(name, QFileInfo(source).fileName(),
+                                     given == u"wav"_s ? u"converted to a PCM WEM: "_s : QString(), WemFile::describe(wem)),
+                      written.value(u"target"_s).toString());
+    }
+
     if (wanted != given)
         return result(false, u"Replace File: %1 needs a .%2 file, not %3."_s
                                  .arg(name, wanted, QFileInfo(source).fileName()));
@@ -851,9 +939,122 @@ QVariantMap AppOrchestrator::replaceAsset(const QString& workspacePath, const QS
     QString message = u"Replaced %1 with %2 (mods\\%3). Click Modify to put it into the game."_s
                           .arg(name, QFileInfo(source).fileName(),
                                QDir::toNativeSeparators(QDir(QDir(platformDirPath()).filePath(u"mods"_s)).relativeFilePath(target)));
-    if (!ModifyWorker::supportedExtensions(blobsetVersion()).contains(wanted))
-        message += u" Note: Modify doesn't put .%1 files into this game, so it won't be used yet."_s.arg(wanted);
     return result(true, message, QDir::toNativeSeparators(target));
+}
+
+QVariantMap AppOrchestrator::replaceDropped(const QStringList& urls, const QString& currentFolderIn,
+                                           const QString& fallbackPath) {
+    const auto toLocal = [](const QString& u) {
+        return u.startsWith(u"file:"_s, Qt::CaseInsensitive) ? QUrl(u).toLocalFile() : u;
+    };
+
+    // 1. The dropped files, each with its relative path: a file is just its name; a folder's files keep the
+    //    folder's own name in front ("ui/textures/x.dds" for a dropped "ui" folder).
+    struct Source { QString file; QString relative; };
+    QList<Source> sources;
+    for (const QString& url : urls) {
+        const QFileInfo info(toLocal(url));
+        if (info.isFile()) {
+            sources.append({info.absoluteFilePath(), info.fileName()});
+        } else if (info.isDir()) {
+            const QDir root(info.absoluteFilePath());
+            QDirIterator it(root.absolutePath(), QDir::Files, QDirIterator::Subdirectories);
+            while (it.hasNext()) {
+                const QString file = it.next();
+                sources.append({file, info.fileName() + u'/' + root.relativeFilePath(file)});
+            }
+        }
+    }
+
+    // 2. The mapped paths, by file name (lower case).
+    QHash<QString, QStringList> byName;
+    {
+        QMutexLocker locker(&m_mutex);
+        byName.reserve(m_pathHashLookup.size());
+        for (auto it = m_pathHashLookup.cbegin(); it != m_pathHashLookup.cend(); ++it)
+            byName[it.key().section(u'/', -1).toLower()].append(it.key());
+    }
+    const QString currentFolder = QString(currentFolderIn).replace(u'\\', u'/').toLower();
+    const auto inCurrentFolder = [&currentFolder](const QString& path) {
+        return path.toLower().section(u'/', 0, -2) == currentFolder;
+    };
+
+    // The blobset path `relative` stands for, or empty (ambiguous: `ambiguous` is set).
+    const auto match = [&](const QString& relative, bool* ambiguous) -> QString {
+        const QStringList parts = relative.toLower().split(u'/', Qt::SkipEmptyParts);
+        if (parts.isEmpty())
+            return {};
+        QStringList names{parts.last()};
+        if (names.first().endsWith(u".wav"_s))
+            names.append(names.first().chopped(4) + u".wem"_s);   // A .wav replaces the .wem of the same name.
+        for (const QString& name : std::as_const(names)) {
+            const QStringList candidates = byName.value(name);
+            if (candidates.isEmpty())
+                continue;
+            // Longest tail of the dropped path first (folders), down to the name alone.
+            for (qsizetype k = parts.size(); k >= 1; --k) {
+                QStringList tail = parts.mid(parts.size() - k);
+                tail.last() = name;
+                const QString suffix = tail.join(u'/');
+                QStringList hits;
+                for (const QString& path : candidates) {
+                    const QString lower = path.toLower();
+                    if (lower == suffix || lower.endsWith(u'/' + suffix))
+                        hits.append(path);
+                }
+                if (hits.size() == 1)
+                    return hits.first();
+                if (hits.size() > 1) {
+                    QStringList here;
+                    for (const QString& path : std::as_const(hits))
+                        if (inCurrentFolder(path))
+                            here.append(path);
+                    if (here.size() == 1)
+                        return here.first();
+                    // A shorter tail only matches more paths, so this can't be settled.
+                    *ambiguous = true;
+                    return {};
+                }
+            }
+        }
+        return {};
+    };
+
+    int replaced = 0, failed = 0;
+    QStringList unmatched, ambiguousNames;
+    m_quietReplace = true;
+    for (const Source& source : std::as_const(sources)) {
+        bool ambiguous = false;
+        QString path = match(source.relative, &ambiguous);
+        if (path.isEmpty() && !ambiguous && sources.size() == 1 && !fallbackPath.isEmpty())
+            path = fallbackPath;   // One file that matches nothing: the file it was dropped on.
+        if (path.isEmpty()) {
+            (ambiguous ? ambiguousNames : unmatched).append(source.relative);
+            continue;
+        }
+        if (replaceAsset(path, source.file).value(u"ok"_s).toBool())
+            ++replaced;
+        else
+            ++failed;
+    }
+    m_quietReplace = false;
+
+    QString message;
+    if (sources.isEmpty())
+        message = u"Replace File: nothing to replace in what was dropped."_s;
+    else
+        message = u"Replace File: %1 of %2 file(s) replaced in the mods folder%3."_s
+                      .arg(replaced).arg(sources.size()).arg(replaced > 0 ? u" - click Modify to put them into the game"_s : QString());
+    const auto listSome = [](const QStringList& names) {
+        return names.mid(0, 8).join(u", "_s) + (names.size() > 8 ? u" and %1 more"_s.arg(names.size() - 8) : QString());
+    };
+    if (!unmatched.isEmpty())
+        message += u"\nNo file in the blobset matches: %1"_s.arg(listSome(unmatched));
+    if (!ambiguousNames.isEmpty())
+        message += u"\nMore than one file matches (open its folder, or drop it onto the file): %1"_s.arg(listSome(ambiguousNames));
+    emit uiConsoleUpdate(message);
+    return {{u"replaced"_s, replaced}, {u"failed"_s, failed}, {u"unmatched"_s, unmatched + ambiguousNames},
+            {u"message"_s, message}};
 }
 
 QVariantMap AppOrchestrator::writeModFile(const QString& workspacePath, const QByteArray& data) {
@@ -988,6 +1189,7 @@ bool AppOrchestrator::selectGameHeadless(int gameId, int platformId, const QStri
     {
         QMutexLocker locker(&m_mutex);
         m_platformId = platformId;
+        m_gameName.clear();   // Until readGameIni(): the new game's folder name, never the previous game's name.
     }
     m_selectionIndex = gameId;
     m_modGameFolderName = modGameFolderName;
@@ -1336,6 +1538,7 @@ void AppOrchestrator::selectGameAndLoad(int gameId, int platformId, const QStrin
     {
         QMutexLocker locker(&m_mutex);
         m_platformId = platformId;
+        m_gameName.clear();   // Until readGameIni(): the new game's folder name, never the previous game's name.
     }
     m_selectionIndex = gameId;
     m_modGameFolderName = modGameFolderName;
@@ -1361,6 +1564,7 @@ void AppOrchestrator::selectGameAndLoad(int gameId, int platformId, const QStrin
 
     if (mappingPath.isEmpty()) {
         // No mapping yet: MainForm still opens (empty) and offers to run Update File Mapping Data.
+        setModLoaderView(false);
         readGameIni(gameInfoIniPath());
         resolveGameLocation();
         BlobsetEntryRegistry::clear();
@@ -1389,7 +1593,22 @@ void AppOrchestrator::startWorkspaceLoad(const QString& mappingPath) {
         emit gameLocationRequested();
     }
 
-    const QString blobsetFile = located ? gameLocation() : QString();
+    // Mod Loader on (V4, PC): the folder and file list and the viewers read the Mod Loader's build in
+    // <game>\BlobsetMods\data (the modded files from there, the others from the game), like the game sees them.
+    QString whyNot;
+    const QString loaderHeader = located ? modLoaderHeader(&whyNot) : QString();
+    {
+        QMutexLocker locker(&m_mutex);
+        m_modLoaderHeaderPath = loaderHeader;
+    }
+    setModLoaderView(!loaderHeader.isEmpty());
+    if (!loaderHeader.isEmpty())
+        emit uiConsoleUpdate(u"Mod Loader view: showing the modded files from %1 (the others from the game)."_s
+                                 .arg(QDir::toNativeSeparators(QFileInfo(loaderHeader).absolutePath())));
+    else if (!whyNot.isEmpty())
+        emit uiConsoleUpdate(u"Mod Loader view: showing the game's own files - %1."_s.arg(whyNot));
+
+    const QString blobsetFile = located ? assetLocation() : QString();
     const int version = blobsetVersion();
     const int iniGameId = gameId();
     const bool bigEndian = m_isBigEndian;
@@ -1460,7 +1679,7 @@ void AppOrchestrator::requestAssetInfo(const QString& hexHash, const QString& wo
     request.hexHash = BlobsetEntryRegistry::normalizeKey(hexHash);
     request.workspacePath = QString(workspacePath).replace(u'/', u'\\');
     request.found = !request.hexHash.isEmpty() && BlobsetEntryRegistry::findEntry(request.hexHash, request.entry);
-    request.gameLocation = gameLocation();
+    request.gameLocation = assetLocation();
     request.version = blobsetVersion();
     request.platform = platform();
     request.gameId = gameId();
@@ -1519,6 +1738,11 @@ void AppOrchestrator::openWorkspaceFileByHash(const QString& hexHash, const QStr
         emit openTxpkViewerByHash(hash);
         break;
     case Viewer::M3mp:
+        // The team / player database (RL26, RLL4, Rugby 25) gets its own editor (it can still open it as an M3MP).
+        if (DatabaseManager::isDatabaseHash(hash)) {
+            emit viewChanged(base + u"DatabaseEditor.qml"_s);
+            break;
+        }
         emit viewChanged(base + u"M3MPViewer.qml"_s);
         emit openM3mpViewerByHash(hash);
         break;
@@ -1610,8 +1834,15 @@ void AppOrchestrator::setModLoaderMode(bool enabled) {
     settings.setValue(u"Settings/ModLoader"_s, enabled);
     emit modLoaderModeChanged();
     emit uiConsoleUpdate(enabled ? u"Mod Loader on: Modify (V4) builds the mods in <game>\\BlobsetMods and leaves the "
-                                   u"game's files alone. Needs dinput8.dll (Blobset Mod Loader) next to the game."_s
-                                 : u"Mod Loader off: Modify (V4) changes the game's files directly (with backups)."_s);
+                                   u"game's files alone, and the workspace shows that build. Needs dinput8.dll (Blobset "
+                                   u"Mod Loader) next to the game."_s
+                                 : u"Mod Loader off: Modify (V4) changes the game's files directly (with backups), and "
+                                   u"the workspace shows the game's own files."_s);
+
+    // V4: the folder and file list switch between the Mod Loader's build and the game's files.
+    if (!m_headless && !m_workerRunning && !m_modGameFolderName.isEmpty()
+        && blobsetVersion() == static_cast<int>(CoreDefs::BlobsetVersion::V4) && platform() == 0)
+        reloadWorkspace();
 }
 
 void AppOrchestrator::setLoadGameMode(bool enabled) {
@@ -1727,20 +1958,6 @@ void AppOrchestrator::updateFileMapping() {
     m_currentFolderFiles.clear();
     emit currentFolderFilesChanged();
 
-    // When the mapping is done, Resolve File Names names what it can of the new / unknown entries; the workspace is
-    // read again after that.
-    m_nextTask = [this]() {
-        emit uiConsoleUpdate(u"File mapping updated: resolving file names..."_s);
-        resolveFileNames();
-        if (m_workerRunning)
-            return;
-        // It didn't start: the mapping update still worked.
-        if (m_headless)
-            emit taskCompleted(true, u"File mapping updated."_s);   // The command line waits for this.
-        else
-            reloadWorkspace();
-    };
-
     runWorker(new FileMappingWorker(gameLocation(), blobsetVersion(), m_isBigEndian, outputMapping, gameId(), platform()),
               &FileMappingWorker::generate_mapping);
 }
@@ -1790,7 +2007,7 @@ void AppOrchestrator::extractBlobset() {
     const QString outputFolder = QDir(appPath()).filePath(u"games/%1/%2/%3"_s
                                                               .arg(m_modGameFolderName, platformFolder(), archiveName()));
 
-    runWorker(new ExtractWorker(gameLocation(), blobsetVersion(), m_isBigEndian, outputFolder, m_modGameFolderName,
+    runWorker(new ExtractWorker(assetLocation(), blobsetVersion(), m_isBigEndian, outputFolder, m_modGameFolderName,
                                 gameId(), platform()),
               &ExtractWorker::extract_blobset, false);   // Extract only reads the game.
 }
@@ -1940,7 +2157,7 @@ void AppOrchestrator::saveAssetAs(const QString& hexHash, const QString& workspa
     }
 
     emit uiStatusUpdate(u"Saving %1..."_s.arg(QFileInfo(outPath).fileName()));
-    const QString location = gameLocation();
+    const QString location = assetLocation();
     const int version = blobsetVersion();
     const int platformId = platform();
     const QString hash = hexHash;

@@ -109,6 +109,28 @@ public:
     // games\<game>\<platform>\mods\<the M3MP's path> + its .xml.
     Q_INVOKABLE void saveChanges();
 
+    // --- For other tools built on an M3MP (RL26 Database Editor) ----------------------------------------------
+    // The loaded M3MP's file at its stored path ('/' separated, any case); empty when there's no such file.
+    QByteArray entryDataByPath(const QString& path) const;
+    // replaceFileAt() by the file's path: Save Changes then puts the file in.
+    bool replaceEntryByPath(const QString& path, const QString& file);
+    // The M3MP's path in the blobset (opened from the game), else empty.
+    QString workspacePath() const { return m_workspacePath; }
+    // True when the M3MP was loaded from the mods folder (an earlier Save Changes).
+    bool loadedFromMods() const { return m_loadedFromMods; }
+
+    // --- Lua scripts (LuaEditor.qml in M3MPViewer.qml) ------------------------------------------------------
+    // The games' scripts are LuaJIT bytecode (src/core/lua_script.h): double click one to decompile it into the
+    // editor; saving compiles it back, puts it in place of the script and rebuilds the M3MP into the mods folder.
+    Q_INVOKABLE bool isLuaAt(int fileIndex) const;
+    // Threaded: luaOpened() with the readable source (your edited text when you saved one), or luaOpenFailed().
+    Q_INVOKABLE void openLuaAt(int fileIndex);
+    // Compiles without saving: {ok, line, error}.
+    Q_INVOKABLE QVariantMap checkLua(int entry, const QString& source) const;
+    // Compiles the source into the script's place (false + luaCompileFailed() when it doesn't compile), then with
+    // rebuild Save Changes writes the M3MP into the mods folder (changesSaved() / processComplete()).
+    Q_INVOKABLE bool saveLua(int entry, const QString& source, bool rebuild = true);
+
     // Opens a standalone .m3mp file from disk.
     Q_INVOKABLE void loadM3mp(const QString& m3mpPath, bool isBigEndian);
 
@@ -156,6 +178,11 @@ signals:
 
     void creatorLog(const QString& message, bool ok);   // One line for the creator's log.
 
+    // Lua scripts: writable is false for bytecode Blobset Tools can't write back (note says why).
+    void luaOpened(int entry, const QString& path, const QString& source, bool writable, const QString& note);
+    void luaOpenFailed(const QString& path, const QString& error);
+    void luaCompileFailed(int line, const QString& error);
+
 private:
     struct Entry {
         qint64 offset = 0;      // Inside m_payload.
@@ -169,8 +196,18 @@ private:
 
     // Edit session: entry index -> replacement file.
     QHash<int, QString> m_replacements;
+
+    // Lua scripts: entry -> the header the script had (bytecode version << 8 | flags; -1 = Lua source), the text you
+    // saved (shown again instead of decompiling your own build), and where the compiled scripts are kept.
+    QHash<int, int> m_luaHeaders;
+    QHash<int, QString> m_luaSources;
+    QString m_luaTemp;
+    QFuture<void> m_luaFuture;
+    QString luaWritableNote(int entry) const;   // Empty when saveLua() can write the script.
     bool m_unsavedChanges = false;
     QString m_workspacePath;        // The M3MP's path in the blobset (opened from the game), else empty.
+    bool m_loadedFromMods = false;
+    int entryByPath(const QString& path) const;
     QString m_editTemp;
     bool m_savingChanges = false;
     int entryForFile(int fileIndex) const { return fileIndex >= 0 && fileIndex < m_folderEntries.size() ? m_folderEntries[fileIndex] : -1; }

@@ -97,7 +97,7 @@ void MeshToolManager::loadMeshFromBlobset(const QString& hexHash, const QString&
     qint64 mainSize = -1;
     try {
         // V4 meshes live in the main section; the older layout (RLL3 / RLL4) keeps its buffers in vram.
-        m_raw = BlobsetAssetReader::read(entry, orchestrator->gameLocation(), orchestrator->blobsetVersion(),
+        m_raw = BlobsetAssetReader::read(entry, orchestrator->assetLocation(), orchestrator->blobsetVersion(),
                                          orchestrator->platform(), &mainSize, true);
     } catch (const std::exception& ex) {
         return finish(false, QString::fromUtf8(ex.what()));
