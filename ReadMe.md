@@ -57,10 +57,16 @@ Manager, Vortex support, a command line, a Mesh Viewer, Xbox 360 textures and mu
 - **Modify** the game with your mods (the originals are backed up first) and **Restore** them any time.
 - **Creators**: TXPK Creator, M3MP Creator and BSB Creator to rebuild packs from extracted files.
 - **Editors**: File Mapping Editor, String Editor (the game's text, one table per language), the Database Editor
-  (teams, players and jerseys of Rugby League 26, Rugby League Live 4, Rugby League Live 3 and Rugby 25) and the
-  Lua editor (the games' LuaJIT scripts, decompiled to edit and compiled back).
+  (teams, players and jerseys of Rugby League 26, Rugby League Live 4, Rugby League Live 3 and Rugby 25), the
+  **Save Editor** and **Career Editor** (Academy and career saves of Rugby League 26, Rugby League Live 4 and Rugby
+  League Live 3), the **Commentary Editor** and **Dialogue Editor** (Rugby League 26's commentary lines and the names
+  it can say) and the Lua editor (the games' LuaJIT scripts, decompiled to edit and compiled back).
+- **Raw Databases** in the Database, Save and Career Editors: every player, team, roster, lineup, ... as a table to
+  edit, with CSV export / import (the C# editors' CSV files import too).
 - **Replace files** by drag and drop (files, whole folders, a `.wav` for a sound), and edit inside TXPK, M3MP and BNK
   files: the changes go into the mods folder.
+- **New sounds from WAVs** (Rugby League 26): new WEMs with a new id, encoded as Wwise Vorbis like the game's own
+  sounds by the built-in encoder (no Wwise needed), and new commentary lines that play them.
 - **Mod Manager**: install mods from .zip / .7z / .rar or folders, enable / disable them, set the load order, see
   conflicts, then Build.
 - **Blobset Mod Loader** support for the newer (V4) games: mods go into `<game>\BlobsetMods` and the game's files stay
@@ -233,9 +239,22 @@ to put it into the game. Right-click > **Remove Replacement** takes it out of th
 needs the same file type (a `.dds` for a `.dds`, ...).
 
 **Sounds (V4 games)**: a `.wav` can replace a `.wem` - drop it onto the WEM, or drop `<id>.wav` onto the Files panel.
-It's converted to a PCM WEM that keeps the original's id and header (its `hash` chunk), so the game finds it like the
-original. In the **BNK viewer** you can do the same for the WEMs inside a sound bank, then **Save Changes** rebuilds the
-bank into the mods folder.
+It's converted to a WEM that keeps the original's id and header (its `hash` chunk), so the game finds it like the
+original. When the original is Wwise Vorbis (all of Rugby League 26's commentary) the WAV is encoded as Vorbis exactly
+like the game's own sounds (mono / stereo, 44100 Hz) by the built-in encoder, so no Wwise install is needed; other
+sounds become PCM. A `.wem` you drop is used as it is. In the **BNK viewer** you can do the same for the WEMs inside a
+sound bank, then **Save Changes** rebuilds the bank into the mods folder.
+
+**New sounds (Rugby League 26)**: drop `.wav` files into a sound folder where no sound has their name:
+
+- In `sound\commentary\<speaker>` (or `sound\referee\<speaker>`), **New Line From WAV** opens in the Commentary
+  Editor: pick the sound's name and the category (or a new one), and it makes the WEM and a commentary line that plays
+  it, with the path hash the game looks for. The game picks it up with no sound bank changes. For a new commentary
+  name, add the name in the Dialogue Editor too, and untick "whole sentence" for name lines.
+- In any other sound folder each WAV becomes a standalone WEM with a new id (one no sound of the game uses), a path
+  hash and a `hash` chunk, which you can edit before it's made.
+
+New files show straight away in the folders and files with a **MOD** badge; **Modify** puts them into the game.
 
 **Inside a TXPK or M3MP**: open it (double-click), then drag textures / files onto the ones they replace, or
 right-click > **Replace**. Replaced files show a **MOD** badge and the preview shows the new texture. Click
@@ -329,6 +348,7 @@ Database Editor reads it.
   ratings (OVR) are worked out the same way as the original RL26 Database Editor.
 - Search and filter teams and players (by name, id, gender, position or a team's squad), and export both lists
   as CSV.
+- **Raw Databases**: the database as tables (see [Raw Databases](#raw-databases)).
 - **Save to Mods** writes `defaultdata_clubs` and `defaultdata_players` back into the M3MP in the mods folder; click
   **Modify** to put it into the game. Next time the editor opens your edited copy.
 
@@ -340,6 +360,65 @@ RLL3's logo, supporters, countries, manufacturer and licensed jersey, and RLL4's
 stadiums, countries, manufacturer and licensed jersey are picked by name from Wouldy's lists.
 
 Based on Wouldy's RL26 and RLL3 Database Editors (C#).
+
+### Save Editor
+
+**Tools > Save Editor** opens the game's Academy save, the custom teams and players made in the game:
+
+| Game | Save |
+|---|---|
+| Rugby League 26 | `Saved Games\Rugby League 26\Profile\AcademyData000.SAV` |
+| Rugby League Live 4 | `Documents\My Games\Rugby League Live 4\Profile\AcademyData000.SAV` |
+| Rugby League Live 3 | `Documents\My Games\Rugby League Live 3\FED000.SAV` |
+
+- **Teams**: names, colours, logo (Rugby League 26: from `save_editor\logos.txt` and the game's blobset, or the
+  game's own vector logos from `Decals\DecalData.SAV`), supporters, commentary, stadiums (custom stadium names from
+  `Levels\LevelData.SAV`), jerseys, roster and lineups / roles (what each game has).
+- **Players**: details, ratings, appearance and stats; add players from the game's database or the save's Academy
+  players.
+- Add and delete teams and players, save them as `.tem` / `.ply` files, and a **Raw** tab for each record's bytes.
+- **Save** writes the save back (encoded and checksummed the way the game wants); the file you opened is backed up
+  first.
+
+Based on Wouldy's RLL3 and RLL4 Save Editors (C#).
+
+### Career Editor
+
+**Tools > Career Editor** opens a career save (`Career000\CareerData.SAV` in Rugby League 26 / Rugby League Live 4,
+`CAR000.SAV` in Rugby League Live 3): every team and player of the career, plus its **Settings**, **Team / Player
+Selection**, **Player Status** (injuries, suspensions, Origin camps), **Contracts**, **Retirements**, **Ladder** and
+**Fixtures**.
+
+Based on Wouldy's RLL3 and RLL4 Career Save Editors (C#).
+
+### Raw Databases
+
+The **Raw Databases** button in the Database, Save and Career Editors shows the data as tables, like the C#
+editors' Raw Database windows: players, player skills, teams, team players, lineups, Nines lineups, leagues,
+player status, retirements, referees, feeder clubs and match stats, depending on the game and file.
+
+- Double-click a cell (or just start typing) to edit it; changed cells are marked. **Save Changes** (Ctrl+S) writes
+  the changed cells back, then save the file (or **Save to Mods**) as usual. A value that doesn't fit is reported with
+  its row and column and isn't written.
+- **Export CSV** / **Import CSV**: the grid as a CSV file (opens in Excel). Columns are matched by name, so CSV files
+  exported by the C# editors import too; columns the file doesn't have keep what the grid had.
+- **Find** (Ctrl+F) finds a row with the text in any cell. Rugby League Live 4 Save has **Repair IDs** for the team
+  lists (custom players' ids become the ids of the game players they replace).
+
+### Commentary Editor
+
+Rugby League 26: **Tools > Commentary Editor** (or double click `sound\lines.commentary.cmtry` /
+`sound\lines.referee.dat`) edits the commentators' and referees' lines: each speaker's categories and
+sub-categories, and every line's sounds, parts, subtitle text, pronoun and "whole sentence" flag. Add, copy, move and
+remove lines and categories, search them, and make new lines from WAVs (**New Line From WAV**). **Save** writes the
+file into the mods folder; click **Modify**.
+
+### Dialogue Editor
+
+Rugby League 26 and Rugby 25: **Tools > Dialogue Editor** (or double click `sound\dialogue.mempack.m3mp`) edits the
+names the commentary can say: player surnames, team locations and team mascots. A player's or team's commentary
+name in the database is one of these names. Add, remove and edit names (new names are kept in alphabetical order),
+and export / import a list. **Save** writes the M3MP into the mods folder; click **Modify**.
 
 ---
 
@@ -355,7 +434,8 @@ Based on Wouldy's RL26 and RLL3 Database Editors (C#).
   or removed since the last build are taken out again.
 
 Mod authors can add a `blobsetmod.json` (name, author, version, description, url, image) and a `preview.png`
-picture to the mod's root folder. Use **Set Image...** to give any installed mod a picture.
+picture to the mod's root folder. The selected mod's picture shows large above its details; click it (or use
+**Set Image...**) to give any installed mod a picture.
 See [docs/MOD_MANAGER.md](docs/MOD_MANAGER.md) for the details.
 
 ### Vortex Mod Manager
@@ -409,8 +489,8 @@ Requirements:
 
 - **Qt 6.11** (MinGW 64-bit) with Qt Quick, Qt Quick 3D, Qt Multimedia, Qt Concurrent and Qt Network
 - **CMake 3.21+** (comes with Qt Creator)
-- The third-party libraries in `lib` / `include` (FFmpeg, vgmstream, DirectXTex, zstd, liblzma, Ogg / Vorbis / Opus,
-  ATRAC9, CELT, mpg123)
+- The third-party libraries in `lib` / `include` (FFmpeg, vgmstream, DirectXTex, zstd, liblzma, Ogg / Vorbis /
+  Vorbisenc / Opus, ATRAC9, CELT, mpg123)
 - LuaJIT 2.1 as `lib/libluajit.a` + `include/luajit`: put `tools/luajit/CMakeLists.txt` into a LuaJIT 2.1 folder, open
   it in Qt Creator with the same MinGW 64-bit kit and build Release; it copies the library and headers here (see
   `tools/luajit/README.txt`). The LuaJIT decompiler is in `src/thirdparty/ljd`.
@@ -447,6 +527,7 @@ The Vortex extensions are generated with `python tools/make_vortex_extensions.py
 - **Facebook**: [Zstandard](https://github.com/facebook/zstd)
 - **Lasse Collin and the XZ Utils team**: [liblzma](https://tukaani.org/xz/)
 - **Xiph.Org**: [Ogg, Vorbis and Opus](https://xiph.org/)
+- **hcs64**: For the Wwise Vorbis codebooks and format reference - [ww2ogg](https://github.com/hcs64/ww2ogg)
 - **Thealexbarney**: [LibAtrac9](https://github.com/Thealexbarney/LibAtrac9)
 - **Mike Pall**: [LuaJIT](https://luajit.org/)
 - **marsinator358**: For the Lua script decompiler - [LuaJIT Decompiler v2](https://github.com/marsinator358/luajit-decompiler-v2)

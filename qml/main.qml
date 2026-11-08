@@ -276,7 +276,9 @@ ApplicationWindow {
                 color: BtDarkStyle.textDim
                 font.family: "Consolas"
                 font.pixelSize: 12
-                text: viewLoader.source + "\nIf it says a module \"is not installed\", rebuild so windeployqt deploys it next to the exe."
+                // The view's QML errors (Loader doesn't keep them): made again only while this shows.
+                text: viewLoader.source + "\n" + (parent.parent.visible ? Qt.createComponent(viewLoader.source).errorString() : "")
+                      + "\nIf it says a module \"is not installed\", rebuild so windeployqt deploys it next to the exe."
             }
             Button {
                 BtToolTip { text: "Return to the main workspace" }

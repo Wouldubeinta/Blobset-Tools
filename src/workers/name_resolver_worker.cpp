@@ -1,6 +1,7 @@
 #include "name_resolver_worker.h"
 
 #include "blobset_asset_reader.h"
+#include "commentary_editor_manager.h"
 #include "blobset_file.h"
 #include "core_defs.h"
 #include "file_mapping_worker.h"
@@ -14,6 +15,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QSaveFile>
+#include <QtEndian>
 
 #include <algorithm>
 #include <exception>
@@ -278,6 +280,111 @@ void NameResolverWorker::harvestAssets(const QHash<quint64, QString>& mappedPath
                            .arg(failures ? u" (%1 couldn't be read)"_s.arg(failures) : QString()));
 }
 
+namespace {
+
+/// The media ids a Wwise sound bank plays: its embedded media (DIDX) and its sound objects' sources (HIRC type 2:
+/// u32 id, u32 plugin, u8 stream type, u32 source id - the layout of the banks RL26 ships, version 150).
+QList<quint32> bankMediaIds(const QByteArray& bank) {
+    QList<quint32> ids;
+    const auto u32 = [&bank](qsizetype at) {
+        return qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(bank.constData()) + at);
+    };
+    qsizetype p = 0;
+    while (p + 8 <= bank.size()) {
+        const QByteArray tag = bank.mid(p, 4);
+        const qsizetype size = u32(p + 4);
+        const qsizetype body = p + 8;
+        if (size < 0 || body + size > bank.size())
+            break;
+        if (tag == "DIDX") {
+            for (qsizetype i = 0; i + 12 <= size; i += 12)
+                ids << u32(body + i);
+        } else if (tag == "HIRC" && size >= 4) {
+            const quint32 count = u32(body);
+            qsizetype q = body + 4;
+            for (quint32 i = 0; i < count && q + 5 <= body + size; ++i) {
+                const quint8 type = static_cast<quint8>(bank.at(q));
+                const qsizetype objectSize = u32(q + 1);
+                if (type == 2 && objectSize >= 13 && q + 5 + 13 <= bank.size())
+                    ids << u32(q + 5 + 9);
+                q += 5 + objectSize;
+            }
+        }
+        p = body + size;
+    }
+    return ids;
+}
+
+quint64 fnv1a64Raw(const QString& text) {
+    return BlobsetHash::fnv1a64(BlobsetHash::normalise(text.toStdString()));
+}
+
+} // namespace
+
+void NameResolverWorker::harvestSound(const QHash<quint64, QString>& mappedPaths, QHash<quint64, QString>& direct) {
+    if (m_version != static_cast<int>(CoreDefs::BlobsetVersion::V4))
+        return;
+
+    // The sound data files' own names (their types are spelt out, so they pass as explicit pairs).
+    for (const char* name : {"sound/lines.commentary", "sound/lines.referee", "sound/categoryinfo.commentary",
+                             "sound/categoryinfo.referee", "sound/dialogue.mempack", "sound/init.bnk", "sound/crowd.bnk"})
+        addString(QString::fromLatin1(name));
+
+    BlobsetFile blobset;
+    {
+        QFile headerFile(m_blobsetFile);
+        if (!headerFile.open(QIODevice::ReadOnly))
+            return;
+        QDataStream in(&headerFile);
+        if (!blobset.read(in, static_cast<CoreDefs::BlobsetVersion>(m_version), m_isBigEndian, m_gameId))
+            return;
+    }
+    QHash<quint64, const BlobsetEntry*> byHash;
+    for (const BlobsetEntry& entry : std::as_const(blobset.entries))
+        byHash.insert(entry.folderFileHash64, &entry);
+    const auto read = [&](const BlobsetEntry* entry) -> QByteArray {
+        try {
+            return BlobsetAssetReader::read(*entry, m_blobsetFile, m_version, m_platform, nullptr, false);
+        } catch (const std::exception&) {
+            return {};
+        }
+    };
+
+    // Sound banks: their media are "sound/<media id>.wem".
+    emit updateStatus(u"Reading the sound banks..."_s);
+    int banks = 0, mediaIds = 0;
+    for (auto it = mappedPaths.cbegin(); it != mappedPaths.cend(); ++it) {
+        if (!it.value().endsWith(u".bnk"_s, Qt::CaseInsensitive))
+            continue;
+        const auto entry = byHash.constFind(it.key());
+        if (entry == byHash.constEnd())
+            continue;
+        const QList<quint32> ids = bankMediaIds(read(entry.value()));
+        for (const quint32 id : ids)
+            addString(u"sound/%1.wem"_s.arg(id));
+        mediaIds += int(ids.size());
+        ++banks;
+    }
+
+    // Commentary / referee lines: "sound/commentary/id1_andrewvoss/id1_try_27" -> sound\commentary\...\id1_try_27.wem
+    int sounds = 0;
+    for (const char* type : {"commentary", "referee"}) {
+        const auto entry = byHash.constFind(BlobsetHash::hashV4(u"sound/lines"_s, QString::fromLatin1(type)));
+        if (entry == byHash.constEnd())
+            continue;
+        const QStringList names = CommentaryEditorManager::soundNames(read(entry.value()));
+        for (const QString& name : names) {
+            QString path = name;
+            path.replace(u'/', u'\\');
+            direct.insert(fnv1a64Raw(name), path + u".wem"_s);
+        }
+        sounds += int(names.size());
+    }
+    if (banks > 0 || sounds > 0)
+        emit updateConsole(u"Sound: %1 media id(s) from %2 sound bank(s), %3 commentary / referee sound(s)."_s
+                               .arg(mediaIds).arg(banks).arg(sounds));
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Resolving
 // ---------------------------------------------------------------------------------------------------------------
@@ -316,6 +423,8 @@ void NameResolverWorker::run() {
     harvestUserNames();
     reportProgress(10);
     harvestAssets(mappedPaths, allPaths);
+    QHash<quint64, QString> direct;   // Hash -> mapped path, for names hashed without a type.
+    harvestSound(mappedPaths, direct);
     emit updateConsole(u"Collected %1 candidate strings."_s.arg(m_strings.size()));
 
     // Candidate bases (path without type / extension) plus every folder above them; explicit "<base>.<type>" pairs.
@@ -385,11 +494,34 @@ void NameResolverWorker::run() {
                                 .arg(done).arg(bases.size()).arg(hits.size()));
     }
 
-    reportProgress(95, u"Renaming %1 matched file(s)..."_s.arg(hits.size()));
+    // Whole names (no type): only for files the mapping already calls the same kind.
+    QHash<quint64, QString> directHits;
+    for (auto it = direct.cbegin(); it != direct.cend(); ++it) {
+        const auto target = unnamed.constFind(it.key());
+        if (target == unnamed.constEnd() || hits.contains(it.key()))
+            continue;
+        if (extensionOf(entries[size_t(target.value())].path) != extensionOf(it.value())) {
+            ++rejected;
+            continue;
+        }
+        directHits.insert(it.key(), it.value());
+    }
+
+    reportProgress(95, u"Renaming %1 matched file(s)..."_s.arg(hits.size() + directHits.size()));
 
     // Rename.
     QStringList report;
     int renamed = 0;
+    for (auto it = directHits.cbegin(); it != directHits.cend(); ++it) {
+        auto& entry = entries[size_t(unnamed.value(it.key()))];
+        const QString& path = it.value();
+        if (!FileMappingWorker::validatePath(path).isEmpty() || takenPaths.contains(path.toLower()))
+            continue;
+        report.append(u"%1  %2  ->  %3"_s.arg(BlobsetHash::toHex(it.key(), 16), entry.path, path));
+        takenPaths.insert(path.toLower());
+        entry.path = path;
+        ++renamed;
+    }
     for (auto it = hits.cbegin(); it != hits.cend(); ++it) {
         auto& entry = entries[size_t(unnamed.value(it.key()))];
         const QString extension = extensionOf(entry.path);

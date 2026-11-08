@@ -74,6 +74,13 @@ Item {
     function gameChoices(name) { return db.game === "" ? [] : db.choices(name) }
     readonly property bool isLeague: db.game !== "r25"
 
+    // The commentary name lists (from the game's sound M3MP). db.commentaryNames() is a call, not a property: read the
+    // lists again whenever a database loads, or a drop down made before the load stays empty (and hidden).
+    readonly property var commentary: db.loaded ? {
+        surnames: db.commentaryNames("surnames"), location: db.commentaryNames("location"),
+        mascot: db.commentaryNames("mascot"), teams: db.commentaryNames("teams")
+    } : ({ surnames: [], location: [], mascot: [], teams: [] })
+
     function tv(field) { const v = teamData[field]; return v === undefined ? "" : v }
     function pv(field) { const v = playerData[field]; return v === undefined ? "" : v }
     function tn(field) { const v = teamData[field]; return v === undefined ? 0 : v }
@@ -178,9 +185,10 @@ Item {
         appOrchestrator.openM3mpViewerByHash(db.databaseHash.toLowerCase())
     }
 
-    Shortcut { sequences: [StandardKey.Save]; enabled: db.loaded && !db.busy; onActivated: db.save() }
+    Shortcut { sequences: [StandardKey.Save]; enabled: db.loaded && !db.busy && !rawView.visible; onActivated: db.save() }
     Shortcut {
         sequences: [StandardKey.Find]
+        enabled: !rawView.visible
         onActivated: {
             const field = listTabs.currentIndex === 0 ? teamSearch : playerSearch
             field.forceActiveFocus()
@@ -847,6 +855,13 @@ Item {
                     Layout.preferredHeight: 32
                 }
                 HeaderButton {
+                    text: "Raw Databases"
+                    tip: "The database as tables (players, skills, match stats, teams, squads, lineups, feeder clubs): edit the values in place and export / import them as CSV, like the C# editors' Raw Databases"
+                    iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/editors/raw_database.png"
+                    enabled: db.loaded && !db.busy
+                    onClicked: rawView.open()
+                }
+                HeaderButton {
                     id: moreButton
                     text: "Database ▾"
                     tip: "Reload, export the lists as CSV, open the M3MP"
@@ -1275,7 +1290,7 @@ Item {
                                 ComboEdit {
                                     visible: editorRoot.hasT("commentaryTeamLocationHash") && items.length > 0
                                     label: "Commentary Location"
-                                    items: db.commentaryNames("location")
+                                    items: editorRoot.commentary.location
                                     index: db.commentaryIndex("location", editorRoot.tn("commentaryTeamLocationHash"))
                                     unknownText: "0x" + editorRoot.tn("commentaryTeamLocationHash").toString(16).toUpperCase()
                                     onCommit: (i) => editorRoot.setT("commentaryTeamLocationHash", db.commentaryHash("location", i))
@@ -1283,7 +1298,7 @@ Item {
                                 ComboEdit {
                                     visible: editorRoot.hasT("commentaryTeamMascotHash") && items.length > 0
                                     label: "Commentary Mascot"
-                                    items: db.commentaryNames("mascot")
+                                    items: editorRoot.commentary.mascot
                                     index: db.commentaryIndex("mascot", editorRoot.tn("commentaryTeamMascotHash"))
                                     unknownText: "0x" + editorRoot.tn("commentaryTeamMascotHash").toString(16).toUpperCase()
                                     onCommit: (i) => editorRoot.setT("commentaryTeamMascotHash", db.commentaryHash("mascot", i))
@@ -1292,23 +1307,23 @@ Item {
                                 ComboEdit {
                                     visible: editorRoot.typeT("commentary") === "string" && items.length > 0
                                     label: "Commentary"
-                                    items: db.loaded ? db.commentaryNames("teams") : []
+                                    items: editorRoot.commentary.teams
                                     index: db.commentaryIndexOf("teams", editorRoot.tv("commentary"))
                                     unknownText: editorRoot.tv("commentary")
                                     onCommit: (i) => editorRoot.setT("commentary", db.commentaryValue("teams", i))
                                 }
-                                TextFieldEdit { visible: editorRoot.typeT("commentary") === "string" && db.commentaryNames("teams").length === 0; label: "Commentary"; value: editorRoot.tv("commentary"); onCommit: (t) => editorRoot.setT("commentary", t) }
+                                TextFieldEdit { visible: editorRoot.typeT("commentary") === "string" && editorRoot.commentary.teams.length === 0; label: "Commentary"; value: editorRoot.tv("commentary"); onCommit: (t) => editorRoot.setT("commentary", t) }
                                 ComboEdit { visible: editorRoot.typeT("commentary") === "int" && editorRoot.isRll4; label: "Commentary"; items: editorRoot.gameList("commentaryTeams"); index: editorRoot.tn("commentary"); unknownText: "Commentary " + editorRoot.tn("commentary"); onCommit: (i) => editorRoot.setT("commentary", i) }
                                 NumberEdit { visible: editorRoot.typeT("commentary") === "int" && !editorRoot.isRll4; label: "Commentary"; value: editorRoot.tn("commentary"); to: 99999; onCommit: (v) => editorRoot.setT("commentary", v) }
                                 ComboEdit {
                                     visible: editorRoot.hasT("commentaryTeamHash") && items.length > 0
                                     label: "Commentary"
-                                    items: db.loaded ? db.commentaryNames("teams") : []
+                                    items: editorRoot.commentary.teams
                                     index: db.commentaryIndex("teams", editorRoot.tn("commentaryTeamHash"))
                                     unknownText: "0x" + editorRoot.tn("commentaryTeamHash").toString(16).toUpperCase()
                                     onCommit: (i) => editorRoot.setT("commentaryTeamHash", db.commentaryHash("teams", i))
                                 }
-                                BigNumberEdit { visible: editorRoot.hasT("commentaryTeamHash") && db.commentaryNames("teams").length === 0; label: "Commentary Hash"; value: editorRoot.tn("commentaryTeamHash"); onCommit: (v) => editorRoot.setT("commentaryTeamHash", v) }
+                                BigNumberEdit { visible: editorRoot.hasT("commentaryTeamHash") && editorRoot.commentary.teams.length === 0; label: "Commentary Hash"; value: editorRoot.tn("commentaryTeamHash"); onCommit: (v) => editorRoot.setT("commentaryTeamHash", v) }
                                 NumberEdit { visible: editorRoot.hasT("colourSet"); label: "Colour Set"; value: editorRoot.tn("colourSet"); to: 255; onCommit: (v) => editorRoot.setT("colourSet", v) }
                                 NumberEdit { visible: editorRoot.hasT("formation"); label: "Formation"; value: editorRoot.tn("formation"); to: 65535; onCommit: (v) => editorRoot.setT("formation", v) }
                                 NumberEdit { visible: editorRoot.hasT("defaultLineupCategory"); label: "Default Lineup Category"; value: editorRoot.tn("defaultLineupCategory"); to: 255; onCommit: (v) => editorRoot.setT("defaultLineupCategory", v) }
@@ -2023,36 +2038,39 @@ Item {
                                     ComboEdit {
                                         visible: editorRoot.hasP("commentaryNameHash") && items.length > 0
                                         label: "Commentary Name"
-                                        items: db.commentaryNames("surnames")
+                                        items: editorRoot.commentary.surnames
                                         index: db.commentaryIndex("surnames", editorRoot.pn("commentaryNameHash"))
                                         unknownText: "0x" + editorRoot.pn("commentaryNameHash").toString(16).toUpperCase()
                                         onCommit: (i) => editorRoot.setP("commentaryNameHash", db.commentaryHash("surnames", i))
                                     }
-                                    // RLL3: numbers (0 = the game picks it); the name shown is that entry of the sound M3MP's list.
+                                    // RLL3: an entry of the sound M3MP's surname list, by number. A drop down of the names; a number
+                                    // box when the list isn't there.
                                     Repeater {
                                         model: [["commentarySurname", "Commentary Surname"], ["commentaryFullName", "Commentary Full Name"]]
-                                        RowLayout {
+                                        ColumnLayout {
                                             id: commentaryRow
                                             required property var modelData
                                             visible: editorRoot.hasP(modelData[0])
                                             Layout.fillWidth: true
+                                            spacing: 0
+                                            ComboEdit {
+                                                visible: editorRoot.commentary.surnames.length > 0
+                                                label: commentaryRow.modelData[1]
+                                                items: editorRoot.commentary.surnames
+                                                index: editorRoot.pn(commentaryRow.modelData[0]) < items.length ? editorRoot.pn(commentaryRow.modelData[0]) : -1
+                                                unknownText: "Number " + editorRoot.pn(commentaryRow.modelData[0])
+                                                onCommit: (i) => editorRoot.setP(commentaryRow.modelData[0], i)
+                                            }
                                             NumberEdit {
-                                                Layout.fillWidth: false
+                                                visible: editorRoot.commentary.surnames.length === 0
                                                 label: commentaryRow.modelData[1]
                                                 value: editorRoot.pn(commentaryRow.modelData[0])
                                                 to: 65535
                                                 onCommit: (v) => editorRoot.setP(commentaryRow.modelData[0], v)
                                             }
-                                            Text {
-                                                text: db.commentaryNames("surnames")[editorRoot.pn(commentaryRow.modelData[0])] || ""
-                                                color: BtDarkStyle.textDim
-                                                font.pixelSize: 12
-                                                Layout.fillWidth: true
-                                                elide: Text.ElideRight
-                                            }
                                         }
                                     }
-                                    BigNumberEdit { visible: editorRoot.hasP("commentaryNameHash") && db.commentaryNames("surnames").length === 0; label: "Commentary Hash"; value: editorRoot.pn("commentaryNameHash"); onCommit: (v) => editorRoot.setP("commentaryNameHash", v) }
+                                    BigNumberEdit { visible: editorRoot.hasP("commentaryNameHash") && editorRoot.commentary.surnames.length === 0; label: "Commentary Hash"; value: editorRoot.pn("commentaryNameHash"); onCommit: (v) => editorRoot.setP("commentaryNameHash", v) }
                                     NumberEdit { visible: editorRoot.hasP("id"); label: "Player ID"; value: editorRoot.pn("id"); to: 999999; onCommit: (v) => editorRoot.setP("id", v) }
                                     Flow {
                                         Layout.fillWidth: true
@@ -2773,5 +2791,13 @@ Item {
                 }
             }
         }
+    }
+
+    // The C# editors' Raw Databases (over the whole editor while open).
+    RawDatabaseView {
+        id: rawView
+        anchors.fill: parent
+        manager: db
+        filePrefix: db.gameName
     }
 }

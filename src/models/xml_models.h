@@ -34,13 +34,6 @@ struct ExtractFileEntry {
 struct ModifyFileEntry {
     QString filePath;
     quint32 bufferSize = 0;
-    quint8 ddsType = 0;
-    quint8 ddsMipMaps = 0;
-    quint32 unknown1 = 0;
-    quint16 unknown2 = 0;
-    quint16 ddsWidth = 0;
-    quint16 ddsHeight = 0;
-    quint16 ddsImageType = 0;
 };
 
 // Also the creator list the TXPK / M3MP viewers write on Extract All (TXPK_List.xml / M3MP_List.xml), which the

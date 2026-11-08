@@ -96,6 +96,45 @@ void TreeModel::buildTree(const QList<QString>& filePaths) {
     endResetModel();
 }
 
+bool TreeModel::addFile(const QString& filePath) {
+    const QStringList parts = QString(filePath).replace(u'\\', u'/').split(u'/', Qt::SkipEmptyParts);
+    if (parts.isEmpty())
+        return false;
+    TreeNode* folder = m_rootNode.get();
+    QModelIndex folderIndex;
+    for (qsizetype i = 0; i + 1 < parts.size(); ++i) {
+        const QString& part = parts.at(i);
+        const auto it = std::find_if(folder->folders.cbegin(), folder->folders.cend(),
+                                     [&part](const TreeNode* f) { return f->name == part; });
+        if (it != folder->folders.cend()) {
+            folder = *it;
+        } else {
+            const int row = static_cast<int>(folder->folders.size());
+            beginInsertRows(folderIndex, row, row);
+            auto node = std::make_unique<TreeNode>();
+            node->name = part;
+            node->isFolder = true;
+            node->parent = folder;
+            node->folderRow = row;
+            TreeNode* raw = node.get();
+            folder->folders.push_back(raw);
+            folder->children.push_back(std::move(node));
+            endInsertRows();
+            folder = raw;
+        }
+        folderIndex = createIndex(folder->folderRow, 0, folder);
+    }
+    const QString& name = parts.last();
+    for (const auto& child : folder->children)
+        if (!child->isFolder && child->name.compare(name, Qt::CaseInsensitive) == 0)
+            return false;
+    auto file = std::make_unique<TreeNode>();
+    file->name = name;
+    file->parent = folder;
+    folder->children.push_back(std::move(file));   // Files aren't rows of the model: no insert signal.
+    return true;
+}
+
 QString TreeModel::getPathFromIndex(const QModelIndex &index) const {
     if (!index.isValid()) return QString();
 

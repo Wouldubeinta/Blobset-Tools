@@ -206,9 +206,20 @@ inline quint64 hashForAsset(int version, const AssetKey& key, int platform, cons
     }
 }
 
+/// V4 (Rugby League 26) commentary / referee sounds: the game loads them by "sound/" + the speaker's folder +
+/// the sound's name, and hashes that as it is, with no type: "sound/commentary/id1_andrewvoss/id1_try_27".
+/// `key` from assetKeyFromFile().
+inline bool isRawSoundKey(const AssetKey& key) {
+    return key.type == QLatin1String("wem")
+           && (key.path.startsWith(QLatin1String("sound/commentary/")) || key.path.startsWith(QLatin1String("sound/referee/")));
+}
+
 /// The blobset hash of a mod / mapped file name (see assetKeyFromFile()).
 inline quint64 hashForFile(int version, const QString& relativePath, int platform, const QString& gameKey) {
-    return hashForAsset(version, assetKeyFromFile(relativePath), platform, gameKey);
+    const AssetKey key = assetKeyFromFile(relativePath);
+    if (version == 3 && isRawSoundKey(key))
+        return fnv1a64(normalise(key.path.toStdString()));
+    return hashForAsset(version, key, platform, gameKey);
 }
 #endif
 

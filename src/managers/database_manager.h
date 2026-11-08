@@ -2,6 +2,7 @@
 #define DATABASE_MANAGER_H
 
 #include "bigant_database.h"
+#include "raw_table_model.h"
 
 #include <QHash>
 #include <QObject>
@@ -173,6 +174,15 @@ public:
     Q_INVOKABLE QString logoUrl(const QString& logo) const;
     Q_INVOKABLE QString prettyLabel(const QString& key) const;
 
+    // --- Raw Databases (the C# editors' Raw ... windows) -------------------------------------------------------
+    // [{id, title, repair}]: the tables this database has (from its lists).
+    Q_INVOKABLE QVariantList rawTables() const;
+    // Fills `model` with table `id`: a row per team / player, a column per field.
+    Q_INVOKABLE bool fillRawTable(const QString& id, RawTableModel* model) const;
+    // Writes `model`'s changed cells back (flags set like any edit); refills it. "" or the errors.
+    Q_INVOKABLE QString applyRawTable(RawTableModel* model);
+    Q_INVOKABLE int repairRawIds(RawTableModel* model) const;
+
 signals:
     void loadedChanged();
     void busyChanged();
@@ -228,6 +238,9 @@ private:
     QStringList lineupKeys(const QString& list) const;   // A match list's players in the game's numbering.
     QString ratingField(const QString& csharpName) const { return m_ratingFields.value(csharpName); }
     int age(int player) const;
+    QList<RawColumn> rawColumnsFor(const QString& id, bool* teams) const;
+    QString rawGet(bool teams, int index, const QString& key) const;
+    bool rawSet(bool teams, int index, const QString& key, const QString& text, QString* error);
 };
 
 #endif // DATABASE_MANAGER_H

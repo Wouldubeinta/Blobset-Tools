@@ -538,4 +538,53 @@ const QList<QList<RatingTerm>>& ratingTerms() {
     return list;
 }
 
+// A team's emblem in the Academy save: the u32 is the logo's position (0 = nrl_broncos) in this list. The Save
+// Editor reads the list from games/Rugby League 26/pc/save_editor/logos.txt (one name per line, so logos added to
+// the blobset can be added); this is the list it starts that file with.
+const QStringList& clubIcons() {
+    static const QStringList list = {
+        u"nrl_broncos"_s, u"nrl_bulldogs"_s, u"nrl_cowboys"_s, u"nrl_dragons"_s, u"nrl_eels"_s, u"nrl_knights"_s,
+        u"nrl_panthers"_s, u"nrl_rabbitohs"_s, u"nrl_raiders"_s, u"nrl_roosters"_s, u"nrl_seaeagles"_s, u"nrl_sharks"_s,
+        u"nrl_storm"_s, u"nrl_tigers"_s, u"nrl_titans"_s, u"nrl_warriors"_s, u"nrl_dolphins"_s, u"sl_castleford"_s,
+        u"sl_catalans"_s, u"sl_huddersfield"_s, u"sl_hullfc"_s, u"sl_hullkr"_s, u"sl_leeds"_s, u"sl_leigh"_s,
+        u"sl_salford"_s, u"sl_sthelens"_s, u"sl_wakefield"_s, u"sl_warrington"_s, u"sl_widnes"_s, u"sl_wigan"_s,
+        u"nsw_blackhawks"_s, u"nsw_mounties"_s, u"nsw_seaeagles"_s, u"nsw_magpies"_s, u"qld_bears"_s, u"qld_blackhawks"_s,
+        u"qld_capras"_s, u"qld_cutters"_s, u"qld_devils"_s, u"qld_dolphins"_s, u"qld_falcons"_s, u"qld_gullsmanly"_s,
+        u"qld_hunters"_s, u"qld_jets"_s, u"qld_magpies"_s, u"qld_pride"_s, u"qld_seagulls"_s, u"qld_tigers"_s,
+        u"qld_tigers"_s, u"qld_clydesdales"_s, u"king_broncos"_s, u"king_bulldogs"_s, u"king_bulls"_s, u"king_centurions"_s,
+        u"king_eagles"_s, u"king_feather"_s, u"king_halifax"_s, u"king_hullkingston"_s, u"king_hornets"_s, u"king_oldham"_s,
+        u"king_olympique"_s, u"king_lions"_s, u"king_rams"_s, u"king1_vikings"_s, u"king1_allgolds"_s, u"king1_bears"_s,
+        u"king1_cougers"_s, u"king1_crusaders"_s, u"king1_doncaster"_s, u"king1_hawks"_s, u"king1_ironmen"_s, u"king1_knights"_s,
+        u"king1_oxford"_s, u"king1_raiders"_s, u"king1_skolars"_s, u"king1_stags"_s, u"king1_thunder"_s, u"king1_whitehaven"_s,
+        u"king1_workington"_s, u"king1_hurricanes"_s, u"rep_australia"_s, u"rep_nz"_s, u"rep_england"_s, u"rep_belguim"_s,
+        u"rep_canada"_s, u"rep_cookislands"_s, u"rep_czechrep"_s, u"rep_denmark"_s, u"rep_fiji"_s, u"rep_france"_s,
+        u"rep_germany"_s, u"rep_greece"_s, u"rep_holland"_s, u"rep_hungary"_s, u"rep_ireland"_s, u"rep_italy"_s,
+        u"rep_jamaica"_s, u"rep_latvia"_s, u"rep_lebanon"_s, u"rep_malta"_s, u"rep_morocco"_s, u"rep_norway"_s,
+        u"rep_png"_s, u"rep_samoa"_s, u"rep_scotland"_s, u"rep_serbia"_s, u"rep_southafrica"_s, u"rep_spain"_s,
+        u"rep_sweden"_s, u"rep_tonga"_s, u"rep_ukraine"_s, u"rep_usa"_s, u"rep_wales"_s, u"rep_nsw"_s,
+        u"rep_qld"_s, u"soow_nsw"_s, u"soow_qld"_s, u"rep_allstars"_s, u"rep_indigenous"_s, u"rep_city"_s,
+        u"rep_country"_s, u"maori"_s, u"rep_bigant_male"_s, u"rep_bigant_female"_s, u"custom"_s, u"cus_01"_s,
+        u"cus_02"_s, u"cus_03"_s, u"cus_04"_s, u"cus_05"_s, u"cus_06"_s, u"cus_07"_s,
+        u"cus_08"_s, u"cus_09"_s, u"cus_10"_s, u"cus_11"_s, u"cus_12"_s, u"cus_13"_s,
+        u"cus_14"_s, u"cus_15"_s, u"cus_16"_s, u"cus_17"_s, u"cus_18"_s, u"cus_19"_s,
+        u"cus_20"_s, u"cus_21"_s, u"cus_22"_s, u"cus_23"_s, u"cus_24"_s, u"cus_25"_s,
+        u"cus_26"_s, u"cus_27"_s, u"cus_28"_s, u"cus_29"_s, u"cus_30"_s, u"cus_31"_s,
+        u"cus_32"_s, u"cus_33"_s, u"cus_34"_s, u"cus_35"_s, u"cus_36"_s, u"cus_37"_s,
+        u"cus_38"_s, u"cus_39"_s, u"cus_40"_s, u"cus_41"_s, u"cus_42"_s, u"cus_43"_s,
+        u"cus_44"_s, u"cus_45"_s, u"cus_46"_s, u"cus_47"_s, u"cus_48"_s, u"cus_49"_s,
+        u"cus_50"_s, u"cus_51"_s, u"cus_52"_s, u"cus_53"_s, u"cus_54"_s, u"cus_55"_s,
+        u"cus_56"_s, u"cus_57"_s, u"cus_58"_s, u"cus_59"_s, u"cus_60"_s, u"cus_61"_s,
+        u"cus_62"_s, u"cus_63"_s, u"cus_64"_s, u"cus_65"_s, u"cus_66"_s, u"cus_67"_s,
+        u"cus_68"_s, u"cus_69"_s, u"cus_70"_s, u"cus_71"_s, u"cus_72"_s, u"cus_73"_s,
+        u"cus_74"_s, u"cus_75"_s, u"cus_76"_s, u"cus_77"_s, u"cus_78"_s, u"cus_79"_s,
+        u"cus_80"_s, u"cus_81"_s, u"cus_82"_s, u"cus_83"_s, u"cus_84"_s, u"cus_85"_s,
+        u"cus_86"_s, u"cus_87"_s, u"cus_88"_s, u"cus_89"_s, u"cus_90"_s, u"cus_91"_s,
+        u"cus_92"_s, u"cus_93"_s, u"cus_94"_s, u"cus_95"_s, u"cus_96"_s, u"cus_97"_s,
+        u"cus_98"_s, u"cus_99"_s, u"cus_100"_s, u"cus_101"_s, u"cus_102"_s, u"cus_103"_s,
+        u"cus_104"_s, u"cus_105"_s, u"cus_106"_s, u"cus_107"_s, u"cus_108"_s, u"cus_109"_s,
+        u"cus_110"_s, u"cus_111"_s, u"cus_112"_s, u"cus_113"_s, u"cus_114"_s, u"cus_115"_s,
+        u"cus_116"_s, u"cus_117"_s, u"cus_118"_s};
+    return list;
+}
+
 } // namespace Rl26Lists

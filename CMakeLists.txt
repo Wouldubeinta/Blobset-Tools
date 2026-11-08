@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(Blobset-Tools VERSION 2.1.10.63 LANGUAGES CXX)
+project(Blobset-Tools VERSION 2.1.10.70 LANGUAGES CXX)
 
 if(WIN32)
     enable_language(RC) #
@@ -68,6 +68,12 @@ qt_add_executable(Blobset-Tools
     src/core/mini_txpk_file.cpp
     src/core/m3mp_file.h
     src/core/m3mp_file.cpp
+    src/core/rl26_save.h
+    src/core/rl26_save.cpp
+    src/core/rl26_appearance.h
+    src/core/rl26_appearance.cpp
+    src/core/rl26_kit.h
+    src/core/rl26_kit.cpp
     src/core/mesh_file.h
     src/core/mesh_file.cpp
     src/core/txpk_file.h
@@ -90,10 +96,21 @@ qt_add_executable(Blobset-Tools
     src/core/pa_serial_names.cpp
     src/core/rl26_lists.h
     src/core/rl26_lists.cpp
+    src/core/rl26_user_content.h
+    src/core/rl26_user_content.cpp
+    src/core/wwise_vorbis.h
+    src/core/wwise_vorbis.cpp
+    src/core/wwise_vorbis_codebooks.inc
+    src/core/raw_table_model.h
+    src/core/raw_table_model.cpp
     src/core/rll3_lists.h
     src/core/rll3_lists.cpp
     src/core/rll4_lists.h
     src/core/rll4_lists.cpp
+    src/core/rll4_save_lists.h
+    src/core/rll4_save_lists.cpp
+    src/core/rll3_save_lists.h
+    src/core/rll3_save_lists.cpp
 
     # Lua scripts: LuaJIT bytecode <-> Lua (M3MP viewer's LuaEditor.qml)
     src/core/lua_script.h
@@ -169,6 +186,28 @@ qt_add_executable(Blobset-Tools
     src/managers/mod_manager.cpp
     src/managers/database_manager.h
     src/managers/database_manager.cpp
+    src/managers/save_editor_manager.h
+    src/managers/save_editor_manager.cpp
+    src/managers/rll4_save_editor_manager.h
+    src/managers/rll4_save_editor_manager.cpp
+    src/managers/rll4_save_fields.inc
+    src/managers/rll3_save_editor_manager.h
+    src/managers/rll3_save_editor_manager.cpp
+    src/managers/rll3_save_fields.inc
+    src/managers/rll4_career_editor_manager.h
+    src/managers/rll4_career_editor_manager.cpp
+    src/managers/rl26_career_editor_manager.h
+    src/managers/rl26_career_editor_manager.cpp
+    src/managers/rl26_career_names.inc
+    src/managers/commentary_editor_manager.h
+    src/managers/commentary_editor_manager.cpp
+    src/managers/dialogue_editor_manager.h
+    src/managers/dialogue_editor_manager.cpp
+    src/managers/rll4_career_fields.inc
+    src/managers/rll3_career_editor_manager.h
+    src/managers/rll3_career_editor_manager.cpp
+    src/managers/rll3_career_fields.inc
+    src/managers/career_match_stats.h
     src/managers/txpk_tool_manager.h
     src/managers/txpk_tool_manager.cpp
     
@@ -209,21 +248,57 @@ qt_add_qml_module(Blobset-Tools
     RESOURCES
         assets/blobset_tools.ico
         assets/blobset_tools.png
+        assets/rll4_save/OriginalPlayers.bin
+        assets/rll4_save/NewMaleTeam.tem
+        assets/rll4_save/NewFemaleTeam.tem
+        assets/rll4_save/Demo_NewTeam.tem
+        assets/rll4_save/NewMalePlayer.ply
+        assets/rll4_save/NewFemalePlayer.ply
+        assets/rll4_save/Demo_NewPlayer.ply
+        assets/rll3_save/OriginalPlayers.bin
+        assets/rll3_save/NewTeam.tem
+        assets/rll3_save/NewPlayer.ply
         assets/blackorchid.png
+        assets/editors/available.png
+        assets/editors/blue_arrow.png
+        assets/editors/career_settings.png
+        assets/editors/comp_ladder.png
+        assets/editors/female.png
+        assets/editors/good.png
+        assets/editors/green_arrow.png
+        assets/editors/injured.png
+        assets/editors/light_blue_arrow.png
+        assets/editors/male.png
+        assets/editors/nsw_camp.png
+        assets/editors/orange_arrow.png
+        assets/editors/player_contracts.png
+        assets/editors/player_selection.png
+        assets/editors/player_status.png
+        assets/editors/plus_minus.png
+        assets/editors/qld_camp.png
+        assets/editors/raw_database.png
+        assets/editors/red_arrow.png
+        assets/editors/retired.png
+        assets/editors/suspended.png
+        assets/editors/team_scores.png
+        assets/editors/team_selection.png
         assets/ext/alpha_32.png
         assets/ext/alpha_checked_32.png
         assets/ext/bank_32.png
         assets/ext/bmf_32.png
         assets/ext/bnk_32.png
         assets/ext/bsb_32.png
+        assets/ext/career_editor_32.png
         assets/ext/check_updates_32.png
         assets/ext/close_32.png
         assets/ext/col_32.png
+        assets/ext/commentary_editor_32.png
         assets/ext/compression_32.png
         assets/ext/create_32.png
         assets/ext/database_editor_32.png
         assets/ext/dat_32.png
         assets/ext/dds_32.png
+        assets/ext/dialogue_editor_32.png
         assets/ext/extract_32.png
         assets/ext/fev1_32.png
         assets/ext/file_32.png
@@ -251,6 +326,7 @@ qt_add_qml_module(Blobset-Tools
         assets/ext/reset_32.png
         assets/ext/restore_backup_32.png
         assets/ext/save_32.png
+        assets/ext/save_editor_32.png
         assets/ext/skip_32.png
         assets/ext/steam_32.png
         assets/ext/txpk_32.png
@@ -277,7 +353,12 @@ qt_add_qml_module(Blobset-Tools
         qml/subview_viewers/FMODViewer.qml
         qml/subview_viewers/HexViewer.qml
         qml/subview_viewers/StringEditor.qml
+        qml/subview_viewers/CommentaryEditor.qml
+        qml/subview_viewers/DialogueEditor.qml
         qml/subview_viewers/DatabaseEditor.qml
+        qml/subview_viewers/SaveEditor.qml
+        qml/subview_viewers/CareerEditor.qml
+        qml/subview_viewers/RawDatabaseView.qml
         qml/subview_viewers/M3MPViewer.qml
         qml/subview_viewers/LuaEditor.qml
         qml/subview_viewers/M3MPCreator.qml
@@ -347,6 +428,7 @@ target_link_libraries(Blobset-Tools PRIVATE
     "${BT_LIB_DIR}/libmpg123-0.lib"
     vorbis
     vorbisfile
+    "${BT_LIB_DIR}/libvorbisenc.lib"
     avcodec
     avformat
     avutil

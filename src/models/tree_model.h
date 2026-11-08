@@ -40,6 +40,9 @@ public:
     // Replaces the tree with the folders / files of `filePaths` ('/' or '\\' separated).
     void buildTree(const QList<QString>& filePaths);
 
+    // Adds one file (and any folders it needs) without resetting the tree. False when it's already there.
+    bool addFile(const QString& filePath);
+
     Q_INVOKABLE void clear();
     Q_INVOKABLE QString getPathFromIndex(const QModelIndex &index) const;
     Q_INVOKABLE QModelIndex indexFromPath(const QString& path) const;

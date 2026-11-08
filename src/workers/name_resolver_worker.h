@@ -26,6 +26,8 @@
 /// a numbered mapping entry with that hash gets renamed. Guessed types are only accepted when they fit what the
 /// file is (a "model" has to be a .mesh / .mdl, ...), which keeps chance collisions of the 32 bit hashes out.
 ///
+/// V4 sound (RL26): the .wem files are named from the sound banks' media ids and the commentary lines files.
+///
 /// The mapping is rewritten in place (atomically); resolved_names.txt next to it lists what was renamed.
 class NameResolverWorker : public QObject {
     Q_OBJECT
@@ -73,6 +75,10 @@ private:
     void harvestExecutables();
     void harvestUserNames();
     void harvestAssets(const QHash<quint64, QString>& unnamedPaths, const QStringList& allPaths);
+    // V4 Wwise games (RL26): the media ids in the sound banks ("sound/<id>.wem") and the commentary / referee
+    // lines' sounds, which the game loads as "sound/<folder><name>" - hashed without a type, so they come back as
+    // hash -> mapped path in `direct`.
+    void harvestSound(const QHash<quint64, QString>& mappedPaths, QHash<quint64, QString>& direct);
     void addStrings(const QByteArray& data);
     void addString(QString s);
 };

@@ -1,5 +1,7 @@
 #include "app_orchestrator.h"
 #include "database_manager.h"
+#include "commentary_editor_manager.h"
+#include "dialogue_editor_manager.h"
 #include <exception>
 
 #include "app_paths.h"
@@ -37,6 +39,7 @@
 #include <QFileInfo>
 #include <QLocale>
 #include <QPointer>
+#include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QSet>
@@ -1021,11 +1024,20 @@ QVariantMap AppOrchestrator::replaceDropped(const QStringList& urls, const QStri
     };
 
     int replaced = 0, failed = 0;
-    QStringList unmatched, ambiguousNames;
+    QStringList unmatched, ambiguousNames, newWavs;
+    // In a V4 sound folder a WAV that matches nothing (and wasn't dropped onto a file) is a new sound.
+    const bool soundFolder = !soundFolderInfo(currentFolder).value(u"kind"_s).toString().isEmpty();
     m_quietReplace = true;
     for (const Source& source : std::as_const(sources)) {
         bool ambiguous = false;
         QString path = match(source.relative, &ambiguous);
+        // A WAV whose name matches no sound of a sound folder is a new sound, wherever it was dropped (to replace a
+        // sound with a WAV of another name, use the file's right click Replace File).
+        if (path.isEmpty() && !ambiguous && soundFolder
+            && (source.file.endsWith(u".wav"_s, Qt::CaseInsensitive) || source.file.endsWith(u".wem"_s, Qt::CaseInsensitive))) {
+            newWavs.append(source.file);
+            continue;
+        }
         if (path.isEmpty() && !ambiguous && sources.size() == 1 && !fallbackPath.isEmpty())
             path = fallbackPath;   // One file that matches nothing: the file it was dropped on.
         if (path.isEmpty()) {
@@ -1042,6 +1054,8 @@ QVariantMap AppOrchestrator::replaceDropped(const QStringList& urls, const QStri
     QString message;
     if (sources.isEmpty())
         message = u"Replace File: nothing to replace in what was dropped."_s;
+    else if (newWavs.size() == sources.size())
+        message = u"%1 new WAV(s) for %2: making new sounds."_s.arg(newWavs.size()).arg(currentFolderIn);
     else
         message = u"Replace File: %1 of %2 file(s) replaced in the mods folder%3."_s
                       .arg(replaced).arg(sources.size()).arg(replaced > 0 ? u" - click Modify to put them into the game"_s : QString());
@@ -1052,9 +1066,201 @@ QVariantMap AppOrchestrator::replaceDropped(const QStringList& urls, const QStri
         message += u"\nNo file in the blobset matches: %1"_s.arg(listSome(unmatched));
     if (!ambiguousNames.isEmpty())
         message += u"\nMore than one file matches (open its folder, or drop it onto the file): %1"_s.arg(listSome(ambiguousNames));
+    if (!newWavs.isEmpty() && newWavs.size() != sources.size())
+        message += u"\n%1 new WAV(s): making new sounds."_s.arg(newWavs.size());
     emit uiConsoleUpdate(message);
     return {{u"replaced"_s, replaced}, {u"failed"_s, failed}, {u"unmatched"_s, unmatched + ambiguousNames},
-            {u"message"_s, message}};
+            {u"newWavs"_s, newWavs}, {u"message"_s, message}};
+}
+
+// ---- New WEMs ----------------------------------------------------------------------------------------------------
+
+void AppOrchestrator::registerNewAsset(const QString& workspacePathIn, quint64 pathHash) {
+    const QString path = QString(workspacePathIn).replace(u'\\', u'/');
+    {
+        QMutexLocker locker(&m_mutex);
+        m_pathHashLookup.insert(path, pathHash);
+    }
+    // The file mapping (the data folder's copy), so the file keeps its name after a restart.
+    const QString mappingPath = writableMappingFilePath();
+    if (!mappingPath.isEmpty()) {
+        try {
+            std::vector<FileMappingWorker::MappingEntry> entries = FileMappingWorker::readMappingFile(mappingPath);
+            const QString stored = QString(path).replace(u'/', u'\\');
+            const bool known = std::any_of(entries.cbegin(), entries.cend(), [&](const FileMappingWorker::MappingEntry& e) {
+                return e.hash == pathHash || e.path.compare(stored, Qt::CaseInsensitive) == 0;
+            });
+            if (!known) {
+                FileMappingWorker::MappingEntry entry;
+                entry.path = stored;
+                entry.hash = pathHash;
+                entries.push_back(entry);
+                FileMappingWorker::sortEntries(entries);
+                FileMappingWorker::writeMappingFile(mappingPath, entries);
+            }
+        } catch (const std::exception& ex) {
+            emit uiConsoleUpdate(u"Could not add %1 to the file mapping: %2"_s.arg(path, QString::fromUtf8(ex.what())));
+        }
+    }
+    // The tree and the open folder's list.
+    m_treeModel->addFile(path);
+    const QString folder = path.section(u'/', 0, -2);
+    if (!m_currentFolderPath.isEmpty() && folder.compare(m_currentFolderPath, Qt::CaseInsensitive) == 0)
+        selectFolderIndex(m_treeModel->indexFromPath(m_currentFolderPath));
+}
+
+QVariantMap AppOrchestrator::soundFolderInfo(const QString& folderIn) const {
+    QString folder = QString(folderIn).replace(u'\\', u'/').toLower();
+    while (folder.endsWith(u'/'))
+        folder.chop(1);
+    if (blobsetVersion() != static_cast<int>(CoreDefs::BlobsetVersion::V4)
+        || (folder != u"sound"_s && !folder.startsWith(u"sound/"_s)))
+        return {{u"kind"_s, QString()}};
+    const QStringList parts = folder.split(u'/');
+    if (parts.size() >= 3 && (parts.at(1) == u"commentary"_s || parts.at(1) == u"referee"_s)) {
+        const bool referee = parts.at(1) == u"referee"_s;
+        return {{u"kind"_s, u"commentary"_s}, {u"speakerFolder"_s, parts.mid(1, 2).join(u'/') + u'/'},
+                {u"linesHash"_s, referee ? u"01d4046906cce436"_s : u"99b3b6554a5750d3"_s},
+                {u"linesPath"_s, referee ? u"sound\\lines.referee.dat"_s : u"sound\\lines.commentary.cmtry"_s}};
+    }
+    return {{u"kind"_s, u"standalone"_s}};
+}
+
+void AppOrchestrator::newCommentaryLinesFromWavs(const QStringList& wavPaths, const QString& folder) {
+    const QVariantMap info = soundFolderInfo(folder);
+    if (info.value(u"kind"_s).toString() != u"commentary"_s || wavPaths.isEmpty())
+        return;
+    BlobsetEntry entry;
+    if (!BlobsetEntryRegistry::findEntry(info.value(u"linesHash"_s).toString(), entry)) {
+        emit uiConsoleUpdate(u"New commentary line: %1 isn't in the loaded blobset."_s.arg(info.value(u"linesPath"_s).toString()));
+        return;
+    }
+    m_pendingCommentaryWavs = {{u"wavs"_s, wavPaths}, {u"folder"_s, info.value(u"speakerFolder"_s)}};
+    emit viewChanged(u"qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/CommentaryEditor.qml"_s);
+    emit openCommentaryEditorByHash(info.value(u"linesHash"_s).toString(), info.value(u"linesPath"_s).toString());
+}
+
+QVariantMap AppOrchestrator::takePendingCommentaryWavs() {
+    return std::exchange(m_pendingCommentaryWavs, {});
+}
+
+QString AppOrchestrator::newAssetPathHash(const QString& workspacePath) const {
+    const quint64 hash = BlobsetHash::hashForFile(blobsetVersion(), QString(workspacePath).replace(u'\\', u'/'), platform(),
+                                                  BlobsetHash::gameKeyFor(currentGameName()));
+    return u"0x"_s + QString::number(hash, 16).toUpper().rightJustified(16, u'0');
+}
+
+QString AppOrchestrator::newWemId(const QString& folderIn, const QStringList& taken) const {
+    QString folder = QString(folderIn).replace(u'\\', u'/');
+    while (folder.endsWith(u'/'))
+        folder.chop(1);
+    // The ids the sounds already use (the mapped "<id>.wem" names anywhere, so the banks' media too).
+    QSet<quint32> used;
+    for (const QString& t : taken)
+        used.insert(t.toUInt());
+    {
+        QMutexLocker locker(&m_mutex);
+        for (auto it = m_pathHashLookup.cbegin(); it != m_pathHashLookup.cend(); ++it) {
+            const QString name = it.key().section(u'/', -1);
+            if (name.endsWith(u".wem"_s, Qt::CaseInsensitive)) {
+                bool ok = false;
+                const quint32 id = name.chopped(4).toUInt(&ok);
+                if (ok)
+                    used.insert(id);
+            }
+        }
+    }
+    for (int attempt = 0; attempt < 100000; ++attempt) {
+        // Wwise's ids are 32 bit hashes: a random one in the same range as the game's.
+        const quint32 id = 100000000u + QRandomGenerator::global()->bounded(4000000000u);
+        if (used.contains(id))
+            continue;
+        const QString path = folder + u'/' + QString::number(id) + u".wem"_s;
+        BlobsetEntry entry;
+        if (BlobsetEntryRegistry::findEntry(BlobsetEntryRegistry::normalizeKey(newAssetPathHash(path).mid(2)), entry)
+            || hasModFile(path))
+            continue;
+        return QString::number(id);
+    }
+    return {};
+}
+
+QString AppOrchestrator::defaultWemHash(const QString& wavPathOrUrl) const {
+    const QString path = wavPathOrUrl.startsWith(u"file:"_s, Qt::CaseInsensitive) ? QUrl(wavPathOrUrl).toLocalFile() : wavPathOrUrl;
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    const QByteArray bytes = file.readAll();
+    // A WEM keeps its own hash chunk unless one is typed.
+    if (path.endsWith(u".wem"_s, Qt::CaseInsensitive))
+        return QString::fromLatin1(WemFile::hashOf(bytes).toHex());
+    return QString::fromLatin1(WemFile::defaultHash(bytes).toHex());
+}
+
+QVariantMap AppOrchestrator::createWemFromWav(const QString& wavPathOrUrl, const QString& workspacePathIn, const QString& wemHash) {
+    const QString workspacePath = QString(workspacePathIn).replace(u'\\', u'/');
+    const QString name = workspacePath.section(u'/', -1);
+    const auto result = [this](bool ok, const QString& message, const QVariantMap& extra = {}) {
+        emit uiConsoleUpdate(message);
+        QVariantMap out = extra;
+        out.insert(u"ok"_s, ok);
+        out.insert(u"message"_s, message);
+        return out;
+    };
+    if (modFilePath(workspacePath).isEmpty())
+        return result(false, u"New WEM: load a game first."_s);
+    if (!name.endsWith(u".wem"_s, Qt::CaseInsensitive))
+        return result(false, u"New WEM: %1 isn't a .wem name."_s.arg(name));
+    const QString pathHash = newAssetPathHash(workspacePath);
+    BlobsetEntry existing;
+    if (BlobsetEntryRegistry::findEntry(BlobsetEntryRegistry::normalizeKey(pathHash.mid(2)), existing))
+        return result(false, u"New WEM: the game already has %1 (drop the WAV onto it to replace it)."_s.arg(workspacePath));
+    QByteArray hash;
+    const QString hashText = QString(wemHash).remove(u' ').remove(u"0x"_s, Qt::CaseInsensitive);
+    if (!hashText.isEmpty()) {
+        static const QRegularExpression hex(u"^[0-9a-fA-F]{32}$"_s);
+        if (!hex.match(hashText).hasMatch())
+            return result(false, u"New WEM %1: the hash is 32 hex digits (16 bytes)."_s.arg(name));
+        hash = QByteArray::fromHex(hashText.toLatin1());
+    }
+    const QString source = wavPathOrUrl.startsWith(u"file:"_s, Qt::CaseInsensitive) ? QUrl(wavPathOrUrl).toLocalFile() : wavPathOrUrl;
+    QFile file(source);
+    if (!file.open(QIODevice::ReadOnly))
+        return result(false, u"New WEM: could not read %1."_s.arg(QDir::toNativeSeparators(source)));
+    const QByteArray wav = file.readAll();
+
+    // The extra chunks of a WEM of the game's in the same folder (else just the hash chunk).
+    QByteArray templateWem;
+    QString sibling;
+    {
+        QMutexLocker locker(&m_mutex);
+        const QString folder = workspacePath.section(u'/', 0, -2).toLower();
+        for (auto it = m_pathHashLookup.cbegin(); it != m_pathHashLookup.cend(); ++it)
+            if (it.key().endsWith(u".wem"_s, Qt::CaseInsensitive) && it.key().section(u'/', 0, -2).toLower() == folder) {
+                sibling = BlobsetEntryRegistry::makeKey(it.value());
+                break;
+            }
+    }
+    BlobsetEntry entry;
+    if (!sibling.isEmpty() && BlobsetEntryRegistry::findEntry(sibling, entry)) {
+        try {
+            templateWem = BlobsetAssetReader::read(entry, assetLocation(), blobsetVersion(), platform());
+        } catch (const std::exception&) {
+            templateWem.clear();
+        }
+    }
+    QString error;
+    const QByteArray wem = WemFile::newFromFile(wav, source.endsWith(u".wem"_s, Qt::CaseInsensitive), templateWem, hash, &error);
+    if (wem.isEmpty())
+        return result(false, u"New WEM %1: %2"_s.arg(QFileInfo(source).fileName(), error));
+    const QVariantMap written = writeModFile(workspacePath, wem);
+    if (!written.value(u"ok"_s).toBool())
+        return result(false, u"New WEM: "_s + written.value(u"message"_s).toString());
+    registerNewAsset(workspacePath, pathHash.mid(2).toULongLong(nullptr, 16));
+    return result(true, u"New WEM %1 from %2 (%3, path hash %4, hash chunk %5). Click Modify to add it to the game."_s
+                            .arg(QDir::toNativeSeparators(workspacePath), QFileInfo(source).fileName(), WemFile::describe(wem),
+                                 pathHash, QString::fromLatin1(WemFile::hashOf(wem).toHex())),
+                  {{u"target"_s, written.value(u"target"_s)}, {u"pathHash"_s, pathHash}});
 }
 
 QVariantMap AppOrchestrator::writeModFile(const QString& workspacePath, const QByteArray& data) {
@@ -1659,6 +1865,7 @@ void AppOrchestrator::startWorkspaceLoad(const QString& mappingPath) {
 void AppOrchestrator::selectFolderIndex(const QModelIndex& index) {
     m_currentFolderFiles.clear();
     qsizetype longestCharCount = 0;
+    m_currentFolderPath = index.isValid() ? m_treeModel->getPathFromIndex(index).replace(u'\\', u'/') : QString();
 
     const TreeNode* node = index.isValid() ? static_cast<TreeNode*>(index.internalPointer()) : m_treeModel->rootNode();
     if (node && node->isFolder) {
@@ -1704,7 +1911,7 @@ void AppOrchestrator::requestAssetInfo(const QString& hexHash, const QString& wo
 void AppOrchestrator::openWorkspaceFileByHash(const QString& hexHash, const QString& fileExtension,
                                               const QString& displayName)
 {
-    enum class Viewer { Dds, Txpk, M3mp, Mesh, Bnk, Fmod, Str, Bsb, Hex };
+    enum class Viewer { Dds, Txpk, M3mp, Mesh, Bnk, Fmod, Str, Bsb, Commentary, Dialogue, Hex };
 
     static const QHash<QString, Viewer> viewers = {
                                                     { u"dds"_s,  Viewer::Dds  },
@@ -1716,6 +1923,7 @@ void AppOrchestrator::openWorkspaceFileByHash(const QString& hexHash, const QStr
                                                     { u"fsb"_s,  Viewer::Fmod },
                                                     { u"str"_s,  Viewer::Str  },
                                                     { u"bsb"_s,  Viewer::Bsb  },
+                                                    { u"cmtry"_s, Viewer::Commentary },
                                                     { u"dat"_s,  Viewer::Hex  },
                                                     };
 
@@ -1724,7 +1932,13 @@ void AppOrchestrator::openWorkspaceFileByHash(const QString& hexHash, const QStr
     const QString base = u"qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/"_s;
 
     const auto found = viewers.constFind(ext);
-    const Viewer viewer = found != viewers.constEnd() ? found.value() : Viewer::Hex;
+    Viewer viewer = found != viewers.constEnd() ? found.value() : Viewer::Hex;
+    // RL26's commentary files (sound\lines.referee.dat is one too, despite its extension).
+    if (CommentaryEditorManager::isCommentaryHash(hash))
+        viewer = Viewer::Commentary;
+    // RL26 / Rugby 25's sound\dialogue.mempack.m3mp: the commentary's name lists.
+    else if (DialogueEditorManager::isDialogueHash(hash))
+        viewer = Viewer::Dialogue;
     const QString name = displayName.isEmpty() ? u"0x"_s + hash.toUpper() : displayName;
 
     // The view is loaded synchronously by main.qml, so its Connections exist before the open signal is raised.
@@ -1765,6 +1979,13 @@ void AppOrchestrator::openWorkspaceFileByHash(const QString& hexHash, const QStr
     case Viewer::Str:
         emit viewChanged(base + u"StringEditor.qml"_s);
         emit openStringEditorByHash(hash, name);
+        break;
+    case Viewer::Commentary:
+        emit viewChanged(base + u"CommentaryEditor.qml"_s);
+        emit openCommentaryEditorByHash(hash, name);
+        break;
+    case Viewer::Dialogue:
+        emit viewChanged(base + u"DialogueEditor.qml"_s);   // It loads the M3MP itself.
         break;
     case Viewer::Hex: {
         if (found == viewers.constEnd())

@@ -661,12 +661,6 @@ Item {
                         radius: 4
                         clip: true
 
-                        Image {
-                            anchors.fill: parent
-                            fillMode: Image.Tile
-                            source: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/grid_dark.bmp"
-                        }
-
                         // Image canvas: the mouse wheel zooms around the cursor, dragging pans once the texture is bigger than the view.
                         Flickable {
                             id: previewFlick

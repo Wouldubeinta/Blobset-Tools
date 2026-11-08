@@ -522,21 +522,60 @@ Item {
                     spacing: 8
                     visible: managerRoot.selectedMod !== null
 
-                    // The mod's picture: blobsetmod.json "image", or preview.png / image.png ... in its folder.
+                    // The mod's picture: blobsetmod.json "image", or preview.png / image.png ... in its folder. Large:
+                    // 16:9 of the panel's width, up to near half its height. No picture: a placeholder to set one.
                     Rectangle {
+                        id: modPicture
+                        readonly property bool hasImage: managerRoot.selectedMod !== null && (managerRoot.selectedMod.image || "") !== ""
+                        readonly property bool canSet: managerRoot.selectedMod !== null && !managerRoot.selectedMod.builtIn
                         Layout.fillWidth: true
-                        Layout.preferredHeight: managerRoot.selectedMod && managerRoot.selectedMod.image ? 180 : 0
-                        visible: Layout.preferredHeight > 0
+                        Layout.preferredHeight: Math.max(hasImage ? 200 : 120,
+                                                         Math.min(width * 9 / 16, parent.height * (hasImage ? 0.45 : 0.25)))
                         color: BtDarkStyle.bgDark
-                        border.color: BtDarkStyle.borderDark
+                        border.color: pictureArea.containsMouse && canSet ? BtDarkStyle.accentColor : BtDarkStyle.borderDark
                         radius: 4
+                        clip: true
+
                         Image {
+                            id: modPictureImage
                             anchors.fill: parent
-                            anchors.margins: 4
-                            source: managerRoot.selectedMod ? (managerRoot.selectedMod.image || "") : ""
+                            anchors.margins: 6
+                            source: modPicture.hasImage ? managerRoot.selectedMod.image : ""
                             fillMode: Image.PreserveAspectFit
                             asynchronous: true
-                            sourceSize.height: 360
+                            smooth: true
+                            mipmap: true
+                            sourceSize.width: 1280
+                        }
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 4
+                            visible: !modPicture.hasImage || modPictureImage.status === Image.Error
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: modPictureImage.status === Image.Error ? "The image couldn't be read" : "No image"
+                                color: BtDarkStyle.textDim
+                                font.pixelSize: 14
+                            }
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                visible: modPicture.canSet
+                                text: "Click to set one (.png / .jpg)"
+                                color: BtDarkStyle.textDim
+                                font.pixelSize: 11
+                            }
+                        }
+                        MouseArea {
+                            id: pictureArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            enabled: modPicture.canSet
+                            cursorShape: modPicture.canSet ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            onClicked: imageDialog.open()
+                        }
+                        BtToolTip {
+                            parent: pictureArea
+                            text: modPicture.canSet ? (modPicture.hasImage ? "Click to change the mod's image" : "Click to set the mod's image") : ""
                         }
                     }
 

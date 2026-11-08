@@ -1,5 +1,8 @@
 #include "wem_file.h"
 
+#include "wwise_vorbis.h"
+
+#include <QCryptographicHash>
 #include <QtEndian>
 
 #include <algorithm>
@@ -228,6 +231,29 @@ QByteArray fromWav(const QByteArray& wav, const QByteArray& originalWem, QString
     else
         layout = speakerMask(channels);
 
+    // The original's extra chunks (hash, akd, JUNK, ...), in their order. Left out: the format / audio itself and
+    // what points into the old audio (Vorbis setup / seek table, loop and cue points, markers).
+    static const QList<QByteArray> dropped = {"fmt ", "data", "vorb", "seek", "smpl", "cue ", "LIST", "fact"};
+
+    // A Vorbis original: Vorbis again, the game's way (Rugby League 26's commentary only plays Vorbis): mono when the
+    // original is, else stereo, 44100 Hz (wwise_vorbis.h).
+    if (wemFmt.size >= 2 && u16(originalWem, wemFmt.body) == kFormatVorbis) {
+        const int target = wemChannels == 1 ? 1 : 2;
+        const quint32 vorbisLayout = (target == wemChannels && originalLayout != 0)
+                                         ? originalLayout
+                                         : (speakerMask(target) << 12) | (1u << 8) | static_cast<quint32>(target);
+        WwiseVorbis::Stream stream;
+        if (!WwiseVorbis::encode(pcm, channels, sampleRate, target, vorbisLayout, &stream, &why))
+            return fail(why);
+        QByteArray body;
+        appendChunk(body, "fmt ", stream.fmt);
+        for (const Chunk& c : wemChunks)
+            if (!dropped.contains(c.tag))
+                appendChunk(body, c.tag, originalWem.mid(c.body, c.size));
+        appendChunk(body, "data", stream.data, false);
+        return riffFile(body);
+    }
+
     // Wwise's PCM "fmt ": WAVE_FORMAT_EXTENSIBLE, 16 bit, cbSize 6, then 2 bytes + the channel layout.
     QByteArray newFmt;
     put16(newFmt, kFormatExtensible);
@@ -242,9 +268,6 @@ QByteArray fromWav(const QByteArray& wav, const QByteArray& originalWem, QString
 
     QByteArray body;
     appendChunk(body, "fmt ", newFmt);
-    // The original's extra chunks (hash, akd, JUNK, ...), in their order. Left out: the format / audio itself and
-    // what points into the old audio (Vorbis setup / seek table, loop and cue points, markers).
-    static const QList<QByteArray> dropped = {"fmt ", "data", "vorb", "seek", "smpl", "cue ", "LIST", "fact"};
     for (const Chunk& c : wemChunks)
         if (!dropped.contains(c.tag))
             appendChunk(body, c.tag, originalWem.mid(c.body, c.size));
@@ -280,6 +303,78 @@ QByteArray withOriginalHash(const QByteArray& wem, const QByteArray& originalWem
             appendChunk(body, "hash", hashBody);
     }
     return riffFile(body);
+}
+
+QByteArray newFromFile(const QByteArray& source, bool isWem, const QByteArray& templateWem, const QByteArray& hash,
+                       QString* error) {
+    if (!isWem)
+        return newFromWav(source, templateWem, hash, error);
+    QString why;
+    if (readChunks(source, &why).isEmpty()) {
+        if (error)
+            *error = u"The WEM can't be read: "_s + why;
+        return {};
+    }
+    if (hash.size() != 16)
+        return source;
+    QByteArray hashFmt;
+    put16(hashFmt, kFormatPcm);
+    put16(hashFmt, 1);
+    put32(hashFmt, 44100);
+    put32(hashFmt, 88200);
+    put16(hashFmt, 2);
+    put16(hashFmt, 16);
+    QByteArray hashChunks;
+    appendChunk(hashChunks, "fmt ", hashFmt);
+    appendChunk(hashChunks, "hash", hash);
+    appendChunk(hashChunks, "data", QByteArray(), false);
+    return withOriginalHash(source, riffFile(hashChunks), error);
+}
+
+QByteArray defaultHash(const QByteArray& wav) {
+    return QCryptographicHash::hash(wav, QCryptographicHash::Md5);
+}
+
+QByteArray hashOf(const QByteArray& wem) {
+    const QList<Chunk> chunks = readChunks(wem);
+    const Chunk* hash = findChunk(chunks, "hash");
+    return hash ? wem.mid(hash->body, hash->size) : QByteArray();
+}
+
+QByteArray newFromWav(const QByteArray& wav, const QByteArray& templateWem, const QByteArray& hashIn, QString* error) {
+    const QByteArray hash = hashIn.size() == 16 ? hashIn : defaultHash(wav);
+    // A stand in for the WEM it would replace: the template's chunks, or a bare PCM "fmt " + "hash".
+    QByteArray original = templateWem;
+    if (readChunks(original).isEmpty()) {
+        QByteArray fmt;
+        put16(fmt, kFormatPcm);
+        put16(fmt, 0);   // No channel layout to keep.
+        put32(fmt, 44100);
+        put32(fmt, 0);
+        put16(fmt, 0);
+        put16(fmt, 16);
+        QByteArray chunks;
+        appendChunk(chunks, "fmt ", fmt);
+        appendChunk(chunks, "hash", hash);
+        appendChunk(chunks, "data", QByteArray(), false);
+        original = riffFile(chunks);
+    }
+    const QByteArray wem = fromWav(wav, original, error);
+    if (wem.isEmpty())
+        return {};
+    // Its own hash chunk (replaced, or added after "fmt ").
+    QByteArray hashFmt;
+    put16(hashFmt, kFormatPcm);
+    put16(hashFmt, 1);
+    put32(hashFmt, 44100);
+    put32(hashFmt, 88200);
+    put16(hashFmt, 2);
+    put16(hashFmt, 16);
+    QByteArray hashChunks;
+    appendChunk(hashChunks, "fmt ", hashFmt);
+    appendChunk(hashChunks, "hash", hash);
+    appendChunk(hashChunks, "data", QByteArray(), false);
+    return withOriginalHash(wem, riffFile(hashChunks), error);
 }
 
 QString describe(const QByteArray& riff) {

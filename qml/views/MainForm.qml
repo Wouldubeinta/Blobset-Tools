@@ -424,6 +424,35 @@ Item {
                             onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/DatabaseEditor.qml")
                         }
                         NavigationItem {
+                            tip: appOrchestrator.currentGameName === "Rugby League Live 3" ? "Edit the teams and players in Rugby League Live 3's save (FED000.SAV)"
+                                                                                     : "Edit the custom players and teams in " + appOrchestrator.currentGameName + "'s Academy save (AcademyData000.SAV)"
+                            iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/save_editor_32.png"
+                            text: "Save Editor";
+                            visible: ["Rugby League 26", "Rugby League Live 4", "Rugby League Live 3"].indexOf(appOrchestrator.currentGameName) >= 0
+                            onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/SaveEditor.qml")
+                        }
+                        NavigationItem {
+                            tip: "Edit a " + appOrchestrator.currentGameName + " career (" + (appOrchestrator.currentGameName === "Rugby League Live 3" ? "CAR000.SAV" : "Career000\\CareerData.SAV") + "): teams, players, settings, player status, contracts and competitions"
+                            iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/career_editor_32.png"
+                            text: "Career Editor";
+                            visible: ["Rugby League 26", "Rugby League Live 4", "Rugby League Live 3"].indexOf(appOrchestrator.currentGameName) >= 0
+                            onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/CareerEditor.qml")
+                        }
+                        NavigationItem {
+                            tip: "Edit the commentary and referee dialogue (sound\\lines.commentary.cmtry, lines.referee.dat and their category info)"
+                            iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/commentary_editor_32.png"
+                            text: "Commentary Editor";
+                            visible: appOrchestrator.currentGameName === "Rugby League 26"
+                            onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/CommentaryEditor.qml")
+                        }
+                        NavigationItem {
+                            tip: "Edit the names the commentary can say: surnames, team locations and mascots (sound\\dialogue.mempack.m3mp)"
+                            iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/dialogue_editor_32.png"
+                            text: "Dialogue Editor";
+                            visible: ["Rugby League 26", "Rugby 25"].indexOf(appOrchestrator.currentGameName) >= 0
+                            onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/DialogueEditor.qml")
+                        }
+                        NavigationItem {
                             tip: "Edit the game's text (text\\strings\\*.str, one table per language)"
                             iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/str_32.png"
                             text: "String Editor";
@@ -996,9 +1025,18 @@ Item {
                                         urls.push(drop.urls[i].toString())
                                     const index = fileIndexAt(drop.x, drop.y)
                                     const target = index >= 0 ? mainFormView.describeFile(index) : null
-                                    appOrchestrator.replaceDropped(urls, mainFormView.currentFolderPath(),
-                                                                   target !== null ? target.path : "")
+                                    const folder = mainFormView.currentFolderPath()
+                                    const result = appOrchestrator.replaceDropped(urls, folder, target !== null ? target.path : "")
                                     drop.acceptProposedAction()
+                                    // WAVs that match no sound of a sound folder: new sounds (a commentary line in
+                                    // sound\\commentary\\<speaker>, else a new WEM with a new id).
+                                    const wavs = result.newWavs || []
+                                    if (wavs.length > 0) {
+                                        if (appOrchestrator.soundFolderInfo(folder).kind === "commentary")
+                                            Qt.callLater(() => appOrchestrator.newCommentaryLinesFromWavs(wavs, folder))
+                                        else
+                                            newWemDialog.start(wavs, folder)
+                                    }
                                 }
                             }
 
@@ -1016,7 +1054,12 @@ Item {
                                 Text {
                                     id: dropHint
                                     anchors.centerIn: parent
-                                    text: "Drop files or folders to replace the matching files (copied into the mods folder)"
+                                    text: {
+                                        const kind = filesDrop.containsDrag ? appOrchestrator.soundFolderInfo(mainFormView.currentFolderPath()).kind : ""
+                                        return kind === "commentary" ? "Drop files to replace the matching files; a new .wav makes a new commentary line"
+                                             : kind === "standalone" ? "Drop files to replace the matching files; a new .wav makes a new WEM with a new id"
+                                             : "Drop files or folders to replace the matching files (copied into the mods folder)"
+                                    }
                                     color: BtDarkStyle.accentColor
                                     font.pixelSize: 11
                                 }
@@ -1466,6 +1509,140 @@ Item {
         }
     }
 
+    // ---------------------------------------------------------------------------------------------------
+    // New WEMs: WAVs dropped into a sound folder (not commentary) that match no file there. Each gets a new
+    // id ("<id>.wem" in the folder), its blobset path hash and the WEM's hash chunk (both editable).
+    // ---------------------------------------------------------------------------------------------------
+    Dialog {
+        id: newWemDialog
+        title: "New WEMs From WAV"
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        width: Math.min(900, mainFormView.width - 40)
+        padding: 16
+        property string folder: ""
+        ListModel { id: newWemModel }
+
+        function start(wavs, folderPath) {
+            folder = String(folderPath).replace(/\\/g, "/")
+            newWemModel.clear()
+            const taken = []
+            for (let i = 0; i < wavs.length; ++i) {
+                const id = appOrchestrator.newWemId(folder, taken)
+                taken.push(id)
+                newWemModel.append({ wav: wavs[i], id: id, hash: appOrchestrator.defaultWemHash(wavs[i]) })
+            }
+            open()
+        }
+        function pathOf(id) { return folder + "/" + id + ".wem" }
+        function create() {
+            let made = 0
+            for (let i = 0; i < newWemModel.count; ++i) {
+                const row = newWemModel.get(i)
+                const r = appOrchestrator.createWemFromWav(row.wav, pathOf(row.id), row.hash)
+                if (r.ok)
+                    ++made
+            }
+            mainFormView.logLine(made + " of " + newWemModel.count + " new WEM(s) made in the mods folder (mods\\"
+                                 + folder.replace(/\//g, "\\") + "). Click Modify to add them to the game; a sound bank or "
+                                 + "line still has to point at a new id for the game to play it.")
+            close()
+        }
+
+        background: Rectangle {
+            color: BtDarkStyle.bgDark
+            border.color: BtDarkStyle.accentColor
+            border.width: 1
+            radius: 6
+        }
+        header: Text {
+            text: newWemDialog.title + "  ·  " + newWemDialog.folder.replace(/\//g, "\\")
+            color: BtDarkStyle.accentColor
+            font.bold: true
+            font.pixelSize: 15
+            leftPadding: 16
+            topPadding: 14
+            elide: Text.ElideMiddle
+            width: newWemDialog.width
+        }
+        contentItem: ColumnLayout {
+            spacing: 6
+            Text {
+                Layout.fillWidth: true
+                text: "Each WAV becomes a WEM (Vorbis like the game's when the folder's sounds are, else PCM) named after a new id that no sound of the game uses (edit it if you need a "
+                      + "particular one). The path hash is what the blobset files it under; the WEM hash is its 16 byte \"hash\" "
+                      + "chunk (made from the WAV unless you type 32 hex digits)."
+                color: BtDarkStyle.textDim
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Text { text: "WAV"; color: BtDarkStyle.textDim; font.pixelSize: 11; font.bold: true; Layout.preferredWidth: 180 }
+                Text { text: "ID"; color: BtDarkStyle.textDim; font.pixelSize: 11; font.bold: true; Layout.preferredWidth: 110 }
+                Text { text: "PATH HASH"; color: BtDarkStyle.textDim; font.pixelSize: 11; font.bold: true; Layout.preferredWidth: 170 }
+                Text { text: "WEM HASH"; color: BtDarkStyle.textDim; font.pixelSize: 11; font.bold: true; Layout.fillWidth: true }
+            }
+            ListView {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(320, newWemModel.count * 38)
+                clip: true
+                model: newWemModel
+                spacing: 4
+                delegate: RowLayout {
+                    id: wemRow
+                    required property int index
+                    required property string wav
+                    required property string id
+                    required property string hash
+                    width: ListView.view.width
+                    spacing: 8
+                    readonly property bool idOk: /^\d{1,10}$/.test(wemRow.id) && Number(wemRow.id) <= 4294967295
+                    Text {
+                        text: { const u = decodeURIComponent(wemRow.wav); return u.substring(Math.max(u.lastIndexOf("/"), u.lastIndexOf("\\")) + 1) }
+                        color: BtDarkStyle.textMain
+                        font.pixelSize: 12
+                        elide: Text.ElideMiddle
+                        Layout.preferredWidth: 180
+                    }
+                    TextField {
+                        text: wemRow.id
+                        Layout.preferredWidth: 110
+                        font.pixelSize: 12
+                        font.family: "Consolas"
+                        color: wemRow.idOk ? BtDarkStyle.textMain : "#e57373"
+                        selectByMouse: true
+                        onTextEdited: newWemModel.setProperty(wemRow.index, "id", text.trim())
+                    }
+                    Text {
+                        text: wemRow.idOk ? appOrchestrator.newAssetPathHash(newWemDialog.pathOf(wemRow.id)) : "-"
+                        color: BtDarkStyle.textDim
+                        font.pixelSize: 12
+                        font.family: "Consolas"
+                        Layout.preferredWidth: 170
+                    }
+                    TextField {
+                        text: wemRow.hash
+                        Layout.fillWidth: true
+                        font.pixelSize: 12
+                        font.family: "Consolas"
+                        color: /^[0-9a-fA-F]{32}$/.test(text.trim()) || text.trim() === "" ? BtDarkStyle.textMain : "#e57373"
+                        selectByMouse: true
+                        onTextEdited: newWemModel.setProperty(wemRow.index, "hash", text.trim())
+                    }
+                }
+            }
+        }
+        footer: RowLayout {
+            spacing: 8
+            Item { Layout.fillWidth: true }
+            Button { text: "Create"; highlighted: true; Layout.bottomMargin: 12; onClicked: newWemDialog.create() }
+            Button { text: "Cancel"; Layout.rightMargin: 16; Layout.bottomMargin: 12; onClicked: newWemDialog.close() }
+        }
+    }
+
     function promptFileMapping() {
         if (appOrchestrator.fileMappingMissing && !appOrchestrator.workerRunning && !fileMappingDialog.visible)
             fileMappingDialog.open()
@@ -1846,7 +2023,7 @@ Item {
         function start(f) {
             file = f
             title = "Replace " + f.name
-            // A .wem can also be replaced by a .wav (converted to a PCM WEM with the original's header).
+            // A .wem can also be replaced by a .wav (converted to a WEM in the original's format: Vorbis or PCM, with its header).
             nameFilters = f.ext === "wem" ? ["Wwise audio or WAV (*.wem *.wav)", "WAV (*.wav)", "Wwise audio (*.wem)"]
                         : f.ext !== "" ? [f.ext.toUpperCase() + " file (*." + f.ext + ")"] : ["All files (*)"]
             if (saveAsSettings.lastReplaceFolder !== "")

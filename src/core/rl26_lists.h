@@ -14,6 +14,7 @@ const QStringList& affiliations();       // Team affiliation.
 const QStringList& stadiums();           // Stadium id - 5.
 const QStringList& supporters();         // Team supporters.
 const QStringList& logos();              // RL26 team logo names (ui\club_logos\large_mirrored\<name>.pc.dds).
+const QStringList& clubIcons();          // Academy save team emblem: value = position (save_editor/logos.txt default).
 
 /// Randomize Stats (Player Editor): a stat gets a random value in [min, max) for the primary roles in roleMask
 /// (bit = role index) at a level (0 star, 1 average, 2 rookie).

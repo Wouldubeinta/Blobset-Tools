@@ -1167,11 +1167,6 @@ bool TxpkToolManager::buildTxpk(const XmlExtractFileInfo& list, const QString& s
         ModifyFileEntry entry;
         entry.filePath = texture.storedPath;
         entry.bufferSize = texture.bufferSize;
-        entry.ddsType = ps3 ? texture.gcm.format : x360 ? static_cast<quint8>(texture.x360.format()) : 0;
-        entry.ddsMipMaps = ps3 ? texture.gcm.mipmap : x360 ? static_cast<quint8>(texture.x360.levelCount()) : 0;
-        entry.ddsWidth = static_cast<quint16>(texture.width);
-        entry.ddsHeight = static_cast<quint16>(texture.height);
-        entry.ddsImageType = static_cast<quint16>(texture.imageType);
         result.entries.append(entry);
     }
     return true;

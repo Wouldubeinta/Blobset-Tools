@@ -1705,3 +1705,371 @@ QString DatabaseManager::teamFullName(int team) const {
 QString DatabaseManager::prettyLabel(const QString& key) const {
     return niceLabel(key);
 }
+
+// ---------------------------------------------------------------------------
+// Raw Databases (the C# editors' Raw ... windows: every team / player as a row, edited as text, CSV in / out)
+// ---------------------------------------------------------------------------
+//
+// The tables come from the database's own lists (so every game gets them): players (and their skills, and each
+// match stats list), teams, their squads, each lineup list, feeder / fed from clubs. A column's key is the field's
+// ("|r" / "|g" / "|b": a colour's part, "|shirt": a lineup slot's shirt number), "#index", "#present:<list>" (the
+// list is in the record) or "#count:<prefix>" (how many of the fields starting with it aren't 0, read only). Fields the
+// C# editors had are named as they named them, so their CSV files import.
+
+namespace {
+
+const QHash<QString, QString>& rawNames() {
+    static const QHash<QString, QString> names = {
+        // Players.
+        {u"id"_s, u"Id"_s}, {u"firstname"_s, u"First Name"_s}, {u"surname"_s, u"Last Name"_s}, {u"sex"_s, u"Gender"_s},
+        {u"licensed"_s, u"Licensed"_s}, {u"hidden"_s, u"Hidden"_s}, {u"commentaryNameHash"_s, u"Commentary Name Hash"_s},
+        {u"club"_s, u"Club"_s}, {u"birthDay"_s, u"DOB - Day"_s}, {u"birthMonth"_s, u"DOB - Month"_s},
+        {u"birthYear"_s, u"DOB - Year"_s}, {u"age"_s, u"Age"_s}, {u"shirtNumber"_s, u"Jersey Number"_s},
+        {u"shirtName"_s, u"Jersey Name"_s}, {u"preferredRolePrimary"_s, u"Primary Role"_s},
+        {u"preferredRoleSecondary"_s, u"Secondary Role"_s}, {u"preferredRoleTertiary"_s, u"Tertiary Role"_s},
+        {u"stateOfOrigin"_s, u"State Of Origin"_s}, {u"originRepNumber"_s, u"State Of Origin Rep Number"_s},
+        {u"originOtherNumber"_s, u"State Of Origin Other Number"_s}, {u"cityVsCountry"_s, u"City V's Country"_s},
+        {u"allStars"_s, u"All Stars"_s}, {u"rightHanded"_s, u"Preferred Hand"_s}, {u"rightFooted"_s, u"Preferred Foot"_s},
+        {u"preferredHand"_s, u"Preferred Hand"_s}, {u"preferredFoot"_s, u"Preferred Foot"_s},
+        {u"representativeCountry"_s, u"Representative Country"_s}, {u"countryOfBirth"_s, u"Country Of Birth"_s},
+        {u"contractExpiry"_s, u"Contract Expiry"_s}, {u"height"_s, u"Height"_s}, {u"weight"_s, u"Weight"_s},
+        {u"reputation"_s, u"Reputation"_s}, {u"ego"_s, u"Ego"_s}, {u"loyalty"_s, u"Loyalty"_s}, {u"perk"_s, u"Perks"_s},
+        {u"strength"_s, u"Strength"_s}, {u"agility"_s, u"Agility"_s}, {u"stamina"_s, u"Fitness"_s},
+        {u"acceleration"_s, u"Acceleration"_s}, {u"aggression"_s, u"Discipline"_s}, {u"injuryTolerance"_s, u"Durability"_s},
+        {u"sprintSpeed"_s, u"Sprint Speed"_s}, {u"groundKick"_s, u"Grubber Kick"_s}, {u"grubberKick"_s, u"Grubber Kick"_s},
+        {u"puntKick"_s, u"Punt Kick"_s}, {u"chipKick"_s, u"Chip Kick"_s}, {u"bombKick"_s, u"Bomb Kick"_s},
+        {u"fieldgoalKick"_s, u"Field Goal Kick"_s}, {u"placeKick"_s, u"Place Kick"_s}, {u"basicPass"_s, u"Basic Pass"_s},
+        {u"longPass"_s, u"Long Pass"_s}, {u"offload"_s, u"Offload"_s}, {u"dummyPass"_s, u"Dummy Pass"_s},
+        {u"fend"_s, u"Fend"_s}, {u"sideStep"_s, u"Side Step"_s}, {u"breakTackle"_s, u"Break Tackle"_s},
+        {u"tackle"_s, u"Tackle"_s}, {u"driveTackle"_s, u"Drive Tackle"_s}, {u"diveTackle"_s, u"Dive Tackle"_s},
+        {u"impactTackle"_s, u"Impact Tackle"_s}, {u"contestedCollect"_s, u"Contested Collect"_s},
+        {u"diveCollect"_s, u"Dive Collect"_s},
+        // Teams.
+        {u"fullName"_s, u"Full Name"_s}, {u"shortName"_s, u"Location Name"_s}, {u"nickname"_s, u"Club Name"_s},
+        {u"hudName"_s, u"Abbreviated Name"_s}, {u"icon"_s, u"Logo"_s}, {u"clubType"_s, u"Team Type"_s},
+        {u"affiliations"_s, u"Affiliations"_s}, {u"supporters"_s, u"Supporters"_s},
+        {u"commentaryTeamLocationHash"_s, u"Commentary Team Location Hash"_s},
+        {u"commentaryTeamMascotHash"_s, u"Commentary Team Mascot Hash"_s},
+        {u"alternateNumbering"_s, u"Alternate Numbering"_s},
+        {u"alternativeNumberingSystem"_s, u"Alternate Numbering System"_s},
+        {u"frontendVisible"_s, u"Frontend Visible"_s}, {u"defaultLineupCategory"_s, u"Default Lineup Category"_s},
+        // Lineup roles.
+        {u"captain"_s, u"Team Captain Id"_s}, {u"goalKicker"_s, u"Team GoalKicker Id"_s},
+        {u"playMaker1"_s, u"Team PlayMaker1 Id"_s}, {u"playMaker2"_s, u"Team PlayMaker2 Id"_s}};
+    return names;
+}
+
+// The C# editors' Raw Player Skills: the fields the database groups as skills (RLL3's has no groups: no table).
+bool isRawSkill(const BigAntDb::Field& f) {
+    return f.list == 0 && f.type == ValueType::Int && f.group == u"skill"_s;
+}
+
+bool isClubLink(const QString& key) {
+    return key.startsWith(u"feederClubs#"_s) || key.startsWith(u"fedFromClubs#"_s);
+}
+
+// A column for a field (several for a colour or a lineup slot).
+void addFieldColumns(QList<RawColumn>* cols, const BigAntDb::Field& f, bool isPlayers) {
+    if (f.type == ValueType::Derived)
+        return;
+    const QString field = f.key.mid(f.key.indexOf(u'.') + 1);
+    QString name = rawNames().value(f.list == 0 ? f.key : field);
+    if (name.isEmpty())
+        name = niceLabel(f.key);
+    if (name.isEmpty())
+        name = f.key;
+    if (f.list == 0 && f.key == u"isWorldCup"_s)
+        name = isPlayers ? u"World Cup"_s : u"World Cup Team"_s;
+    if (f.type == ValueType::Colour) {
+        QString base = name;
+        if (f.key == u"primaryRGBColour"_s) base = u"Primary"_s;
+        else if (f.key == u"secondaryRGBColour"_s) base = u"Secondary"_s;
+        else if (f.key == u"hudTextRGBColour"_s) base = u"Hud Text"_s;
+        for (const char* part : {"R", "G", "B"})
+            *cols << RawColumn{u"%1 %2 Colour"_s.arg(base, QLatin1StringView(part)),
+                               f.key + u'|' + QString::fromLatin1(part).toLower()};
+        return;
+    }
+    *cols << RawColumn{name, f.key};
+    if (f.type == ValueType::Lineup)
+        *cols << RawColumn{name + u" Shirt"_s, f.key + u"|shirt"_s};
+}
+
+// Names the same (a game with two fields the C# editors named alike): the second gets its key.
+void uniqueNames(QList<RawColumn>* cols) {
+    QHash<QString, int> seen;
+    for (RawColumn& c : *cols) {
+        const QString k = c.name.toLower();
+        if (seen.contains(k))
+            c.name += u" ("_s + c.key + u')';
+        seen[c.name.toLower()]++;
+    }
+}
+
+} // namespace
+
+QVariantList DatabaseManager::rawTables() const {
+    QVariantList out;
+    if (!m_loaded)
+        return out;
+    const auto add = [&out](const QString& id, const QString& title) {
+        out << QVariantMap{{u"id"_s, id}, {u"title"_s, title}, {u"repair"_s, false}};
+    };
+    const BigAntDb::Schema& t = m_teams.schema();
+    const BigAntDb::Schema& p = m_players.schema();
+    if (t.list(u"roster"_s) >= 0)
+        add(u"teamPlayers"_s, u"Raw Team Players"_s);
+    for (const QVariant& v : matchLists()) {
+        const QVariantMap m = v.toMap();
+        add(u"lineup:"_s + m.value(u"list"_s).toString(), u"Raw Team Lineup (%1)"_s.arg(m.value(u"title"_s).toString()));
+    }
+    if (t.has(u"feederClubs#0"_s))
+        add(u"feeder"_s, u"Raw Team Feeder Clubs"_s);
+    if (t.has(u"fedFromClubs#0"_s))
+        add(u"fedFrom"_s, u"Raw Team Fed From Clubs"_s);
+    add(u"teams"_s, u"Raw Team Database"_s);
+    add(u"players"_s, u"Raw Player Database"_s);
+    if (std::any_of(p.fields.cbegin(), p.fields.cend(), isRawSkill))
+        add(u"skills"_s, u"Raw Player Skills"_s);
+    for (int l = 1; l < p.lists.size(); ++l)
+        add(u"stats:"_s + p.lists[l].name, u"Raw Player Stats (%1)"_s.arg(listTitle(p.lists[l].name)));
+    return out;
+}
+
+QList<RawColumn> DatabaseManager::rawColumnsFor(const QString& id, bool* teams) const {
+    QList<RawColumn> cols;
+    *teams = !(id == u"players"_s || id == u"skills"_s || id.startsWith(u"stats:"_s));
+    const BigAntDb::Schema& s = *teams ? m_teams.schema() : m_players.schema();
+    const auto field = [&s](const QString& key) -> const BigAntDb::Field* {
+        const int f = s.field(key);
+        return f >= 0 ? &s.fields[f] : nullptr;
+    };
+    // Which record a row is: its index and who it is (read only, but for the tables they belong to).
+    const auto identity = [&](bool editable) {
+        cols << RawColumn{u"Index"_s, u"#index"_s, true};
+        const QStringList keys = *teams ? QStringList{u"id"_s, u"fullName"_s, u"shortName"_s, u"nickname"_s}
+                                        : QStringList{u"id"_s, u"firstname"_s, u"surname"_s};
+        for (const QString& k : keys)
+            if (const BigAntDb::Field* f = field(k)) {
+                addFieldColumns(&cols, *f, !*teams);
+                cols.last().readOnly = !editable;
+            }
+    };
+    const auto listFields = [&](int l) {
+        if (l < 0)
+            return;
+        cols << RawColumn{u"Present"_s, u"#present:"_s + s.lists[l].name};
+        for (int f : s.lists[l].fields)
+            addFieldColumns(&cols, s.fields[f], !*teams);
+    };
+    if (id == u"players"_s || id == u"teams"_s) {
+        cols << RawColumn{u"Index"_s, u"#index"_s, true};
+        if (id == u"players"_s)
+            cols << RawColumn{u"Enabled"_s, u"#present:"_s + s.lists.value(0).name};
+        for (int f : s.lists.value(0).fields)
+            if (!(id == u"players"_s ? isRawSkill(s.fields[f]) : isClubLink(s.fields[f].key)))
+                addFieldColumns(&cols, s.fields[f], id == u"players"_s);
+    } else if (id == u"skills"_s) {
+        identity(true);
+        if (const BigAntDb::Field* f = field(u"sex"_s))
+            addFieldColumns(&cols, *f, true);
+        for (int f : s.lists.value(0).fields)
+            if (isRawSkill(s.fields[f]))
+                addFieldColumns(&cols, s.fields[f], true);
+    } else if (id.startsWith(u"stats:"_s)) {
+        identity(false);
+        listFields(s.list(id.mid(6)));
+    } else if (id == u"teamPlayers"_s) {
+        identity(false);
+        cols << RawColumn{u"Team Player Amount"_s, u"#count:roster."_s, true};
+        listFields(s.list(u"roster"_s));
+    } else if (id.startsWith(u"lineup:"_s)) {
+        identity(false);
+        listFields(s.list(id.mid(7)));
+    } else if (id == u"feeder"_s || id == u"fedFrom"_s) {
+        identity(false);
+        const QString prefix = id == u"feeder"_s ? u"feederClubs#"_s : u"fedFromClubs#"_s;
+        cols << RawColumn{id == u"feeder"_s ? u"Feeder Club Amount"_s : u"Fed From Clubs Amount"_s, u"#count:"_s + prefix, true};
+        for (int f : s.lists.value(0).fields)
+            if (s.fields[f].key.startsWith(prefix))
+                cols << RawColumn{(id == u"feeder"_s ? u"Feeder Club %1"_s : u"Fed From Club %1"_s)
+                                      .arg(s.fields[f].key.mid(prefix.size()).toInt() + 1),
+                                  s.fields[f].key};
+    }
+    // The derived roster / lineup "Club Name" columns are skipped by addFieldColumns (they take no space).
+    uniqueNames(&cols);
+    return cols;
+}
+
+QString DatabaseManager::rawGet(bool teams, int index, const QString& key) const {
+    const BigAntDb::Table& t = teams ? m_teams : m_players;
+    if (key == u"#index"_s)
+        return QString::number(index);
+    if (key.startsWith(u"#present:"_s))
+        return RawTableModel::boolText(t.listPresent(index, key.mid(9)));
+    if (key.startsWith(u"#count:"_s)) {
+        const QString prefix = key.mid(7);
+        int n = 0;
+        for (const BigAntDb::Field& f : t.schema().fields)
+            if (f.key.startsWith(prefix) && f.type != ValueType::Derived && t.get(index, f.key).toLongLong() != 0)
+                ++n;
+        return QString::number(n);
+    }
+    const qsizetype bar = key.indexOf(u'|');
+    const QString name = bar < 0 ? key : key.left(bar);
+    const int fi = t.schema().field(name);
+    if (fi < 0)
+        return {};
+    const BigAntDb::Field& f = t.schema().fields[fi];
+    if (bar >= 0) {
+        const QString part = key.mid(bar + 1);
+        if (part == u"shirt"_s)
+            return QString::number(t.shirt(index, name));
+        const uint rgb = t.get(index, fi).toString().mid(1).toUInt(nullptr, 16);
+        const int shift = part == u"r"_s ? 16 : part == u"g"_s ? 8 : 0;
+        return QString::number((rgb >> shift) & 0xFF);
+    }
+    const QVariant v = t.get(index, fi);
+    if (f.type == ValueType::Bool)
+        return RawTableModel::boolText(v.toBool());
+    return v.toString();
+}
+
+bool DatabaseManager::rawSet(bool teams, int index, const QString& key, const QString& text, QString* error) {
+    BigAntDb::Table& t = teams ? m_teams : m_players;
+    bool ok = false;
+    if (key.startsWith(u"#present:"_s)) {
+        const bool on = RawTableModel::parseBool(text, &ok);
+        if (!ok) {
+            *error = u"\"%1\" isn't True or False"_s.arg(text);
+            return false;
+        }
+        return t.setPresent(index, key.mid(9), on);
+    }
+    const qsizetype bar = key.indexOf(u'|');
+    const QString name = bar < 0 ? key : key.left(bar);
+    const int fi = t.schema().field(name);
+    if (fi < 0)
+        return false;
+    const BigAntDb::Field& f = t.schema().fields[fi];
+    const auto number = [&](qint64 lo, qint64 hi, qint64* v) {
+        *v = RawTableModel::parseInt(text, &ok);
+        if (!ok) {
+            *error = u"\"%1\" isn't a number"_s.arg(text);
+            return false;
+        }
+        if (*v < lo || *v > hi) {
+            *error = u"%1 is out of range (%2 to %3)"_s.arg(*v).arg(lo).arg(hi);
+            return false;
+        }
+        return true;
+    };
+    qint64 v = 0;
+    if (bar >= 0) {
+        const QString part = key.mid(bar + 1);
+        if (part == u"shirt"_s) {
+            if (!number(0, 255, &v))
+                return false;
+            return t.setShirt(index, name, static_cast<int>(v));
+        }
+        if (!number(0, 255, &v))
+            return false;
+        uint rgb = t.get(index, fi).toString().mid(1).toUInt(nullptr, 16);
+        const int shift = part == u"r"_s ? 16 : part == u"g"_s ? 8 : 0;
+        rgb = (rgb & ~(0xFFu << shift)) | (uint(v) << shift);
+        return t.set(index, fi, u"#%1"_s.arg(rgb, 6, 16, QChar(u'0')));
+    }
+    switch (f.type) {
+    case ValueType::Derived: return false;
+    case ValueType::String: return t.set(index, fi, text);
+    case ValueType::Bool: {
+        const bool on = RawTableModel::parseBool(text, &ok);
+        if (!ok) {
+            *error = u"\"%1\" isn't True or False"_s.arg(text);
+            return false;
+        }
+        return t.set(index, fi, on);
+    }
+    case ValueType::Colour:
+        if (!t.set(index, fi, text)) {
+            *error = u"\"%1\" isn't a colour (#rrggbb)"_s.arg(text);
+            return false;
+        }
+        return true;
+    case ValueType::Hash:
+        if (!number(0, 0xFFFFFFFFLL, &v))
+            return false;
+        return t.set(index, fi, static_cast<uint>(v));
+    default: {
+        const qint64 hi = f.width == 1 ? 255 : f.width == 2 ? 65535 : INT32_MAX;
+        if (!number(f.width > 0 ? 0 : INT32_MIN, hi, &v))
+            return false;
+        return t.set(index, fi, static_cast<int>(v));
+    }
+    }
+}
+
+bool DatabaseManager::fillRawTable(const QString& id, RawTableModel* model) const {
+    if (!model || !m_loaded)
+        return false;
+    bool teams = true;
+    const QList<RawColumn> cols = rawColumnsFor(id, &teams);
+    if (cols.isEmpty())
+        return false;
+    const BigAntDb::Table& t = teams ? m_teams : m_players;
+    QList<QStringList> rows;
+    rows.reserve(t.count());
+    for (int i = 0; i < t.count(); ++i) {
+        QStringList row;
+        row.reserve(cols.size());
+        for (const RawColumn& c : cols)
+            row << rawGet(teams, i, c.key);
+        rows << row;
+    }
+    QString title;
+    for (const QVariant& v : rawTables())
+        if (v.toMap().value(u"id"_s).toString() == id)
+            title = v.toMap().value(u"title"_s).toString();
+    model->setTable(id, title, cols, rows);
+    return true;
+}
+
+QString DatabaseManager::applyRawTable(RawTableModel* model) {
+    if (!model || !m_loaded)
+        return u"Nothing is loaded."_s;
+    if (m_busy)
+        return u"Busy, try again in a moment."_s;
+    const QString id = model->tableId();
+    bool teams = true;
+    rawColumnsFor(id, &teams);
+    const int count = teams ? m_teams.count() : m_players.count();
+    int changed = 0;
+    bool ids = false;
+    const QString errors = model->apply(
+        [model, count](int r) { return model->recordOfRow(r, count); },
+        [this, teams](int rec, const QString& key) { return rawGet(teams, rec, key); },
+        [this, teams, &ids](int rec, const QString& key, const QString& text, QString* error) {
+            if (!rawSet(teams, rec, key, text, error))
+                return false;
+            ids = ids || key == u"id"_s;
+            // The C# editor keeps the World Cup logo the same as the logo.
+            if (teams && key == u"icon"_s && m_teams.isSet(rec, u"worldCupIcon"_s))
+                m_teams.set(rec, u"worldCupIcon"_s, text);
+            return true;
+        },
+        &changed);
+    if (changed > 0) {
+        if (ids)
+            rebuildIndexes();
+        m_logoUrls.clear();
+        edited();
+    }
+    fillRawTable(id, model);
+    if (!errors.isEmpty())
+        return errors;
+    setStatus(true, changed > 0 ? u"Saved %1 changes from %2 (Save to Mods to keep them)."_s.arg(changed).arg(model->title())
+                                : u"Nothing changed in %1."_s.arg(model->title()));
+    return {};
+}
+
+int DatabaseManager::repairRawIds(RawTableModel*) const { return 0; }

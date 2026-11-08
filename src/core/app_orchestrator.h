@@ -101,9 +101,33 @@ public:
     //                 (the open folder's match wins when there are several);
     //   by its name - in the open folder, else a name that's unique in the blobset.
     // A .wav matches the .wem of the same name. One file that matches nothing replaces `fallbackPath` (the file
-    // it was dropped on) when given. { replaced, failed, unmatched: [names], message }
+    // it was dropped on) when given. A .wav that matches nothing in a V4 sound folder is a new sound (newWavs: its
+    // path; see soundFolderInfo()). { replaced, failed, unmatched: [names], newWavs: [paths], message }
     Q_INVOKABLE QVariantMap replaceDropped(const QStringList& urls, const QString& currentFolder,
                                            const QString& fallbackPath = QString());
+    // ---- New WEMs (WAVs dropped on MainForm's Files panel in a sound folder that match no file there) ----
+    // What a folder makes of a new WAV: {kind: "commentary" (sound\\commentary\\<speaker>, sound\\referee\\<speaker>:
+    // a new commentary line, its lines file linesHash / linesPath), "standalone" (any other folder under sound: a
+    // new WEM with a new id), or "" (not a V4 sound folder)}.
+    Q_INVOKABLE QVariantMap soundFolderInfo(const QString& folder) const;
+    // Opens the Commentary Editor on the folder's lines file; it then asks for each WAV's line
+    // (takePendingCommentaryWavs()).
+    Q_INVOKABLE void newCommentaryLinesFromWavs(const QStringList& wavPaths, const QString& folder);
+    Q_INVOKABLE QVariantMap takePendingCommentaryWavs();   // {wavs: [paths], folder}, then cleared.
+    // A new media id (a number up to 4294967295, as text) that no sound of the blobset, the mods folder or
+    // `taken` uses.
+    Q_INVOKABLE QString newWemId(const QString& folder, const QStringList& taken = {}) const;
+    // "0x..." the blobset path hash Modify gives a new file at workspacePath.
+    Q_INVOKABLE QString newAssetPathHash(const QString& workspacePath) const;
+    // The "hash" chunk a WAV's new WEM gets by default (32 hex digits: MD5 of the WAV), "" when unreadable.
+    Q_INVOKABLE QString defaultWemHash(const QString& wavPathOrUrl) const;
+    // Writes a new WEM made from the WAV at workspacePath ("sound/.../<id>.wem") in the mods folder: PCM, the extra
+    // chunks of a WEM of the game's from the same folder, its hash chunk = wemHash (32 hex) or the default.
+    // {ok, message, target, pathHash}
+    Q_INVOKABLE QVariantMap createWemFromWav(const QString& wavPathOrUrl, const QString& workspacePath, const QString& wemHash);
+    // A new asset written into the mods folder (a new WEM): adds it to the file mapping, the folder tree and the
+    // open folder's file list, so it shows (with its MOD badge) before Modify puts it into the blobset.
+    void registerNewAsset(const QString& workspacePath, quint64 pathHash);
     // Writes bytes as the replacement (the TXPK / M3MP viewers' rebuilt packs).
     QVariantMap writeModFile(const QString& workspacePath, const QByteArray& data);
     Q_INVOKABLE bool removeModFile(const QString& workspacePath);
@@ -247,6 +271,7 @@ signals:
     void openMeshViewerByHash(QString pathHash, QString displayName);
     void openHexViewerByHash(QString pathHash, QString displayName);
     void openStringEditorByHash(QString pathHash, QString displayName);
+    void openCommentaryEditorByHash(QString pathHash, QString displayName);
     void openBsbViewerByHash(QString pathHash, QString displayName);
 
 private slots:
@@ -276,7 +301,9 @@ private:
     bool m_gameLocationRequired = false;
     bool m_fileMappingMissing = false;
     int m_modFilesRevision = 0;
-    bool m_quietReplace = false;   // replaceDropped(): one summary instead of a line per replaced file.
+    bool m_quietReplace = false;
+    QVariantMap m_pendingCommentaryWavs;
+    QString m_currentFolderPath;           // selectFolderIndex(): the folder the file list shows ('/' separated).   // newCommentaryLinesFromWavs() -> the Commentary Editor.   // replaceDropped(): one summary instead of a line per replaced file.
     bool m_updateMappingAfterLocation = false;
     bool m_recordSteamBuildAfterTask = false;   // The running task is Update File Mapping Data.
     QSet<QString> m_steamNoticesShown;          // Each Steam update popup once per session.   // Update File Mapping waits for the game location dialog.

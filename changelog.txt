@@ -1,3 +1,46 @@
+v2.1.10.70
+
+  New
+  •  Save Editor (Tools > Save Editor): edit the custom teams and players in the Academy save of Rugby League 26,
+     Rugby League Live 4 and Rugby League Live 3 - details, ratings, appearance, stadiums, jerseys, rosters, lineups
+     and roles, stats. Add, copy, delete, import / export teams (.tem) and players (.ply). A port of Wouldy's RLL3 /
+     RLL4 Save Editors, plus Rugby League 26
+  •  Career Editor (Tools > Career Editor): edit a career save of Rugby League 26, Rugby League Live 4 and Rugby
+     League Live 3 - every team and player, plus the career's settings, team selection, player status (injuries,
+     suspensions, Origin camps), contracts, retirements, ladders and fixtures. A port of Wouldy's RLL3 / RLL4 Career
+     Save Editors, plus Rugby League 26
+  •  Raw Databases (Database, Save and Career Editors): the C# editors' Raw Database windows - every player, team,
+     roster, lineup, league, player status, ... as a table. Edit the values in place, Save Changes writes them back;
+     Export / Import CSV (the C# editors' CSV files import too: columns are matched by name). RLL4 Save has Repair IDs
+  •  Commentary Editor (Rugby League 26): the commentators' and referees' lines - add, copy, move, remove and edit
+     lines (sounds, parts, subtitles, pronoun, whole sentence), categories and sub-categories, with search
+  •  Dialogue Editor (Rugby League 26, Rugby 25): the names the commentary can say (player surnames, team locations
+     and mascots) - add, remove, rename, export / import. New names are kept in alphabetical order
+  •  New sounds from WAVs (Rugby League 26): drop .wav files into a sound folder that match no sound there and they
+     become new WEMs with a new id and path hash, ready for Modify. In sound\commentary\<speaker> (and referee)
+     "New Line From WAV" makes the sound and its commentary line in one go, so the game plays it with no sound bank
+     changes
+  •  Built-in Wwise Vorbis encoder: WAVs that replace or add Vorbis sounds (all of RL26's commentary) are encoded
+     exactly like the game's own (no Wwise needed); other sounds stay PCM
+  •  Save / Career Editors: team logos from logos.txt and the game's blobset, commentary names as drop downs, custom
+     stadium names (Levels\LevelData.SAV) and the game's vector logos (Decals\DecalData.SAV) shown as images
+
+  Improved
+  •  Rugby League 26 sounds get their real names: the sound banks' media ids and the commentary / referee lines'
+     sounds (sound\commentary\id1_andrewvoss\id1_try_27.wem, ...)
+  •  New files written into the mods folder show straight away in the folders and files, with their MOD badge
+  •  Jerseys tab: a splitter between the jersey list and the jersey
+  •  Mod Manager: a large picture of the selected mod above its details; click it to set or change the image
+  •  Database Editor: RLL3 commentary surnames are a drop down of the sound M3MP's names
+  •  A view that fails to load now says why (its QML errors)
+
+  Fixed
+  •  Dropping a new WAV into a commentary folder replaced the selected sound instead of adding it
+  •  Save / Career Editors: the Used For drop downs on the Jerseys tab were blank, and every stadium showed the same
+     name
+  •  Database Editor: the commentary name drop downs could stay empty until the editor was reopened
+  •  Modify File Info XMLs no longer carry the unused console DDS values
+
 v2.1.10.63
 
   New

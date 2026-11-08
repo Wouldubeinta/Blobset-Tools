@@ -157,13 +157,6 @@ bool XmlModifyFileInfo::deserialize(const QString& filePath) {
                 ModifyFileEntry entry;
                 entry.filePath = xml.attributes().value("FilePath").toString();
                 entry.bufferSize = xml.attributes().value("BufferSize").toUInt();
-                entry.ddsType = xml.attributes().value("DDSType").toUShort(); // fits quint8
-                entry.ddsMipMaps = xml.attributes().value("DDSMipMaps").toUShort();
-                entry.unknown1 = xml.attributes().value("Unknown1").toUInt();
-                entry.unknown2 = xml.attributes().value("Unknown2").toUShort();
-                entry.ddsWidth = xml.attributes().value("DDSWidth").toUShort();
-                entry.ddsHeight = xml.attributes().value("DDSHeight").toUShort();
-                entry.ddsImageType = xml.attributes().value("DDSImageType").toUShort();
                 entries.append(entry);
             }
         }
@@ -195,13 +188,6 @@ bool XmlModifyFileInfo::serialize(const QString& filePath) const {
         // FIX: Missing XML attributes added to serialization loop
         xml.writeAttribute("FilePath", entry.filePath);
         xml.writeAttribute("BufferSize", QString::number(entry.bufferSize));
-        xml.writeAttribute("DDSType", QString::number(entry.ddsType));
-        xml.writeAttribute("DDSMipMaps", QString::number(entry.ddsMipMaps));
-        xml.writeAttribute("Unknown1", QString::number(entry.unknown1));
-        xml.writeAttribute("Unknown2", QString::number(entry.unknown2));
-        xml.writeAttribute("DDSWidth", QString::number(entry.ddsWidth));
-        xml.writeAttribute("DDSHeight", QString::number(entry.ddsHeight));
-        xml.writeAttribute("DDSImageType", QString::number(entry.ddsImageType));
         xml.writeEndElement();
     }
 
