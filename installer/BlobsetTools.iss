@@ -13,7 +13,7 @@
 ; change the list. Silent installs: /GAMES="Cricket 24|AFL 26" (the <FolderName>s), otherwise the previous choice.
 
 #ifndef AppVersion
-  #define AppVersion "2.1.10.55"
+  #define AppVersion "2.1.10.73"
 #endif
 #ifndef StageDir
   #define StageDir "stage"

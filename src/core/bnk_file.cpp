@@ -196,7 +196,7 @@ QByteArray BnkFile::rebuild(const QByteArray& data, const BnkFile& bank, const Q
 
     // Alignment of the media in DATA: 16 when every original offset is a multiple of 16 (Wwise), else none.
     quint32 alignment = 16;
-    for (const Media& m : bank.media)
+    for (const Media& m : std::as_const(bank.media))
         if ((m.offset - bank.dataOffset) % 16 != 0)
             alignment = 1;
 
@@ -207,8 +207,9 @@ QByteArray BnkFile::rebuild(const QByteArray& data, const BnkFile& bank, const Q
     QList<Change> changes;
     for (int i = 0; i < bank.media.size(); ++i) {
         const Media& m = bank.media[i];
-        const bool replaced = replacements.contains(i);
-        const QByteArray bytes = replaced ? replacements.value(i) : data.mid(m.offset, m.size);
+        const auto replacement = replacements.constFind(i);
+        const bool replaced = replacement != replacements.constEnd();
+        const QByteArray bytes = replaced ? replacement.value() : data.mid(m.offset, m.size);
         while (newData.size() % alignment != 0)
             newData.append('\0');
         offsets.append(static_cast<quint32>(newData.size()));

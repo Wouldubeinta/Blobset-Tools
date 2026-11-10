@@ -104,8 +104,8 @@ bool BsbToolManager::loadBsbBytes(const QByteArray& data, qint64 mainSize, const
         QString& path = m_entries[i].ddsPath;
         const qsizetype slash = path.lastIndexOf(u'/');
         const qsizetype dot = path.lastIndexOf(u'.');
-        if (dot > slash && path.mid(dot + 1).compare(u"dds"_s, Qt::CaseInsensitive) != 0) {
-            path = path.left(dot) + u".dds"_s;
+        if (dot > slash && QStringView(path).sliced(dot + 1).compare(u"dds"_s, Qt::CaseInsensitive) != 0) {
+            path = path.first(dot) + u".dds"_s;
             m_fileList[i] = path;
             renamed = true;
         }

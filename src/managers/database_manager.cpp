@@ -80,10 +80,10 @@ QString typeName(ValueType type) {
 
 QVariantMap fieldTypes(const Table& table) {
     QVariantMap map;
-    for (const BigAntDb::Field& f : table.schema().fields)
+    for (const auto& fList = table.schema().fields; const BigAntDb::Field& f : fList)
         if (f.type != ValueType::Derived)
             map.insert(f.key, typeName(f.type));
-    for (const BigAntDb::List& l : table.schema().lists)
+    for (const auto& lList = table.schema().lists; const BigAntDb::List& l : lList)
         map.insert(l.name + u'!', u"list"_s);
     return map;
 }
@@ -197,7 +197,7 @@ KitLayout kitLayout(const PaSerial::Blob& blob) {
         k.slotsOffset = m[arrayIndex + 2].offset;
         k.slotCount = m[arrayIndex + 2].count * m[arrayIndex + 2].elementSize;
     }
-    for (const PaSerial::Member& u : blob.types()[k.uniformType].members) {
+    for (const auto& uList = blob.types()[k.uniformType].members; const PaSerial::Member& u : uList) {
         if (u.type >= 0)
             continue;
         if ((u.name == u"name"_s || (u.offset == 0 && u.count >= 8)) && k.nameOffset < 0) {
@@ -251,9 +251,9 @@ QVariantList rll3KitFields(const QByteArray& blob, qint64 base) {
     // Manufacturer, then that manufacturer's licensed jerseys (0 = none); the jersey list changes with the manufacturer.
     const int manufacturer = byteAt(base + 55);
     QVariantList makers, jerseys{QVariantMap{{u"name"_s, u"None"_s}, {u"value"_s, 0}}};
-    for (const Rll3Lists::Choice& c : Rll3Lists::manufacturers())
+    for (const auto& cList = Rll3Lists::manufacturers(); const Rll3Lists::Choice& c : cList)
         makers << QVariantMap{{u"name"_s, QString::fromLatin1(c.name)}, {u"value"_s, c.value}};
-    for (const Rll3Lists::Choice& c : Rll3Lists::licensedJerseys(manufacturer))
+    for (const auto& cList = Rll3Lists::licensedJerseys(manufacturer); const Rll3Lists::Choice& c : cList)
         jerseys << QVariantMap{{u"name"_s, QString::fromLatin1(c.name)}, {u"value"_s, c.value}};
     out << QVariantMap{{u"key"_s, u"n:%1:1"_s.arg(base + 55)}, {u"label"_s, u"Manufacturer"_s}, {u"group"_s, u"Uniform"_s},
                        {u"kind"_s, u"choice"_s}, {u"value"_s, manufacturer}, {u"choices"_s, makers}, {u"max"_s, 255},
@@ -267,7 +267,7 @@ QVariantList rll3KitFields(const QByteArray& blob, qint64 base) {
         {88, u"Name Font"_s}, {89, u"Name Colour (palette)"_s}, {91, u"Number Font"_s}, {92, u"Number Font Size"_s},
         {93, u"Keyline Size"_s}, {94, u"Keyline Offset"_s}, {95, u"Number Colour (palette)"_s},
         {96, u"Keyline Colour (palette)"_s}};
-    for (const auto& [offset, label] : bytes)
+    for (const auto& [offset, label] : std::as_const(bytes))
         out << QVariantMap{{u"key"_s, u"n:%1:1"_s.arg(base + offset)}, {u"label"_s, label}, {u"group"_s, u"Name & Number"_s},
                            {u"kind"_s, u"number"_s}, {u"value"_s, byteAt(base + offset)}, {u"max"_s, 255}};
     return out;
@@ -311,7 +311,7 @@ bool DatabaseManager::isDatabaseHash(const QString& hexHash) {
     const quint64 value = hexHash.trimmed().toULongLong(&ok, 16);
     if (!ok)
         return false;
-    for (const QString& h : kDatabaseHashes)
+    for (const QString& h : std::as_const(kDatabaseHashes))
         if (h.toULongLong(nullptr, 16) == value)
             return true;
     return false;
@@ -397,7 +397,7 @@ void DatabaseManager::rebuildIndexes() {
     m_playerClub.clear();
     if (!m_players.schema().has(u"club"_s))
         for (int t = 0; t < m_teams.count(); ++t)
-            for (int id : slotValues(t, m_rosterKeys))
+            for (const auto& idList = slotValues(t, m_rosterKeys); int id : idList)
                 if (!m_playerClub.contains(id))
                     m_playerClub.insert(id, t);
 }
@@ -408,7 +408,7 @@ QStringList DatabaseManager::listFieldKeys(const QString& list, bool includeDeri
     const int l = s.list(list);
     if (l < 0)
         return keys;
-    for (int f : s.lists[l].fields)
+    for (int f : std::as_const(s.lists[l].fields))
         if (includeDerived || s.fields[f].type != ValueType::Derived)
             keys << s.fields[f].key;
     return keys;
@@ -420,7 +420,7 @@ QStringList DatabaseManager::lineupKeys(const QString& list) const {
     // centre, 4 left centre, 5 left wing, 6 five-eighth, 7 halfback, 8 prop, 9 hooker, 10 prop, 11 / 12 second row,
     // 13 lock (the C# editor's winger / centre swap). Union and Nines lists are already in order.
     QStringList keys;
-    for (const QString& k : listFieldKeys(list))
+    for (const auto& kList = listFieldKeys(list); const QString& k : kList)
         if (!kTeamRoleKeys.contains(k.mid(k.indexOf(u'.') + 1)))
             keys << k;
     static const QStringList league = {u"fullBack"_s, u"wingRight"_s, u"centreRight"_s, u"centreLeft"_s, u"wingLeft"_s,
@@ -431,7 +431,7 @@ QStringList DatabaseManager::lineupKeys(const QString& list) const {
         if (!keys.contains(prefix + QLatin1StringView(side)))
             return keys;   // Nines / Union: already in order.
     QStringList ordered;
-    for (const QString& name : league)
+    for (const QString& name : std::as_const(league))
         if (keys.contains(prefix + name))
             ordered << prefix + name;
     for (const QString& k : std::as_const(keys))
@@ -457,7 +457,7 @@ void DatabaseManager::load() {
 
     QString hash;
     BlobsetEntry entry;
-    for (const QString& h : kDatabaseHashes) {
+    for (const QString& h : std::as_const(kDatabaseHashes)) {
         if (BlobsetEntryRegistry::findEntry(h, entry)) {
             hash = h;
             break;
@@ -517,16 +517,16 @@ void DatabaseManager::load() {
         {u"stamina"_s, {u"stamina"_s, u"fitness"_s}},
         {u"grubberKick"_s, {u"grubberKick"_s, u"groundKick"_s}}};
     QStringList names;
-    for (const auto& terms : Rl26Lists::ratingTerms())
-        for (const Rl26Lists::RatingTerm& t : terms)
+    for (const auto& termsList = Rl26Lists::ratingTerms(); const auto& terms : termsList)
+        for (const Rl26Lists::RatingTerm& t : std::as_const(terms))
             names << t.field;
-    for (const Rl26Lists::RandomRange& r : Rl26Lists::randomRanges())
+    for (const auto& rList = Rl26Lists::randomRanges(); const Rl26Lists::RandomRange& r : rList)
         names << r.field;
     for (const QString& n : std::as_const(names)) {
         if (m_ratingFields.contains(n))
             continue;
         QString found;
-        for (const QString& c : candidates.value(n, {n})) {
+        for (const auto& cList = candidates.value(n, {n}); const QString& c : cList) {
             if (m_players.schema().has(c)) {
                 found = c;
                 break;
@@ -600,10 +600,10 @@ QString DatabaseManager::exportCsv(const QString& kind, const QString& pathOrUrl
                                                  u"clubName"_s, u"roleName"_s, u"rating"_s, u"age"_s};
     lines << (teams ? u"Index,ID,Gender,Full Name,Location,Club,Abbreviation,Rating,Players"_s
                     : u"Index,ID,Gender,First Name,Last Name,Club,Primary Role,Rating,Age"_s);
-    for (const QVariant& row : rows) {
+    for (const QVariant& row : std::as_const(rows)) {
         const QVariantMap r = row.toMap();
         QStringList cells;
-        for (const QString& key : keys)
+        for (const QString& key : std::as_const(keys))
             cells << csvField(r.value(key));
         lines << cells.join(u',');
     }
@@ -674,7 +674,7 @@ QVariantList DatabaseManager::playerRows(const QString& filter, int gender, int 
 
     QList<int> indexes;
     if (team >= 0 && team < m_teams.count()) {
-        for (int id : slotValues(team, m_rosterKeys))
+        for (const auto& idList = slotValues(team, m_rosterKeys); int id : idList)
             indexes << playerIndexById(id);
     } else {
         indexes.reserve(m_players.count());
@@ -805,7 +805,7 @@ QVariantList DatabaseManager::playerSkillFields() const {
     static const QStringList order = {u"Main Stats"_s, u"Personality"_s, u"Kicking"_s, u"Passing"_s, u"Evasion"_s,
                                       u"Tackling"_s, u"Misc"_s};
     QList<QVariantMap> items;
-    for (int f : s.lists.value(0).fields) {
+    for (const auto& fList = s.lists.value(0).fields; int f : fList) {
         const BigAntDb::Field& field = s.fields[f];
         if (field.type != ValueType::Int || kNotSkills.contains(field.key)
             || field.key.contains(u"career"_s, Qt::CaseInsensitive))
@@ -825,7 +825,7 @@ QVariantList DatabaseManager::playerCareerFields() const {
     if (!m_loaded)
         return out;
     const BigAntDb::Schema& s = m_players.schema();
-    for (int f : s.lists.value(0).fields)
+    for (const auto& fList = s.lists.value(0).fields; int f : fList)
         if (s.fields[f].type == ValueType::Int && s.fields[f].key.contains(u"career"_s, Qt::CaseInsensitive))
             out << QVariantMap{{u"key"_s, s.fields[f].key}, {u"label"_s, niceLabel(s.fields[f].key)}};
     return out;
@@ -838,7 +838,7 @@ QVariantList DatabaseManager::playerStatLists() const {
     const BigAntDb::Schema& s = m_players.schema();
     for (int l = 1; l < s.lists.size(); ++l) {
         QVariantList fields;
-        for (int f : s.lists[l].fields)
+        for (int f : std::as_const(s.lists[l].fields))
             if (s.fields[f].type != ValueType::Derived)
                 fields << QVariantMap{{u"key"_s, s.fields[f].key}, {u"label"_s, niceLabel(s.fields[f].key)}};
         out << QVariantMap{{u"list"_s, s.lists[l].name},
@@ -856,7 +856,7 @@ int DatabaseManager::playerRating(int index) const {
     if (m_game != u"r25"_s && role >= 0 && role < terms.size() && !terms[role].isEmpty()) {
         int sum = 0;
         bool complete = true;
-        for (const Rl26Lists::RatingTerm& term : terms[role]) {
+        for (const Rl26Lists::RatingTerm& term : std::as_const(terms[role])) {
             const QString field = ratingField(term.field);
             if (field.isEmpty()) {
                 complete = false;
@@ -870,7 +870,7 @@ int DatabaseManager::playerRating(int index) const {
     // Rugby 25 (and anything the formulas don't fit): the average of the ratings.
     int sum = 0, count = 0;
     const BigAntDb::Schema& s = m_players.schema();
-    for (int f : s.lists.value(0).fields) {
+    for (const auto& fList = s.lists.value(0).fields; int f : fList) {
         const BigAntDb::Field& field = s.fields[f];
         if (field.type != ValueType::Int || kNotSkills.contains(field.key)
             || field.key.contains(u"career"_s, Qt::CaseInsensitive) || skillGroup(field.key) == u"Personality"_s)
@@ -920,7 +920,7 @@ QString DatabaseManager::teamName(int id) const {
 bool DatabaseManager::canRandomize() const {
     if (!m_loaded || m_game == u"r25"_s)
         return false;
-    for (const Rl26Lists::RandomRange& r : Rl26Lists::randomRanges())
+    for (const auto& rList = Rl26Lists::randomRanges(); const Rl26Lists::RandomRange& r : rList)
         if (ratingField(r.field).isEmpty())
             return false;
     return true;
@@ -931,7 +931,7 @@ void DatabaseManager::randomizeStats(int index, int level) {
         return;
     const int role = m_players.num(index, u"preferredRolePrimary"_s);
     bool changed = false;
-    for (const Rl26Lists::RandomRange& range : Rl26Lists::randomRanges()) {
+    for (const auto& rangeList = Rl26Lists::randomRanges(); const Rl26Lists::RandomRange& range : rangeList) {
         if (range.level != level || !(range.roleMask & (1 << role)))
             continue;
         changed |= m_players.set(index, ratingField(range.field), QRandomGenerator::global()->bounded(range.min, range.max));
@@ -974,7 +974,7 @@ QList<int> DatabaseManager::slotValues(int team, const QStringList& keys) const 
     QList<int> values;
     if (team < 0 || team >= m_teams.count())
         return values;
-    for (const QString& key : keys)
+    for (const QString& key : std::as_const(keys))
         if (m_teams.isSet(team, key))
             values << m_teams.num(team, key);
     return values;
@@ -1076,7 +1076,7 @@ QVariantList DatabaseManager::matchLists() const {
     std::stable_sort(order.begin(), order.end(), [&rank](int a, int b) { return rank(a) < rank(b); });
     for (int l : std::as_const(order)) {
         bool shirts = false;
-        for (int f : s.lists[l].fields)
+        for (int f : std::as_const(s.lists[l].fields))
             shirts = shirts || s.fields[f].type == ValueType::Lineup;
         out << QVariantMap{{u"list"_s, s.lists[l].name}, {u"title"_s, listTitle(s.lists[l].name)}, {u"shirts"_s, shirts}};
     }
@@ -1089,7 +1089,7 @@ QVariantList DatabaseManager::lineup(int team, const QString& list) const {
         return rows;
     const bool on = m_teams.listPresent(team, list);
     int number = 0;
-    for (const QString& key : lineupKeys(list)) {
+    for (const auto& keyList = lineupKeys(list); const QString& key : keyList) {
         const QString field = key.mid(key.indexOf(u'.') + 1);
         ++number;
         const bool present = on && m_teams.isSet(team, key);
@@ -1302,9 +1302,9 @@ static void rll4KitChoices(QVariantList& fields) {
         return;
     QVariantMap maker = fields[makerAt].toMap(), pattern = fields[patternAt].toMap();
     QVariantList makers, jerseys{QVariantMap{{u"name"_s, u"None"_s}, {u"value"_s, 0}}};
-    for (const Rll4Lists::Choice& c : Rll4Lists::manufacturers())
+    for (const auto& cList = Rll4Lists::manufacturers(); const Rll4Lists::Choice& c : cList)
         makers << QVariantMap{{u"name"_s, QString::fromUtf8(c.name)}, {u"value"_s, c.value}};
-    for (const Rll4Lists::Choice& c : Rll4Lists::licensedJerseys(maker.value(u"value"_s).toInt()))
+    for (const auto& cList = Rll4Lists::licensedJerseys(maker.value(u"value"_s).toInt()); const Rll4Lists::Choice& c : cList)
         jerseys << QVariantMap{{u"name"_s, QString::fromUtf8(c.name)}, {u"value"_s, c.value}};
     maker.insert({{u"label"_s, u"Manufacturer"_s}, {u"group"_s, u"Uniform"_s}, {u"kind"_s, u"choice"_s},
                   {u"choices"_s, makers}, {u"refresh"_s, true}});
@@ -1571,12 +1571,12 @@ QStringList DatabaseManager::list(const QString& name) const {
 QVariantList DatabaseManager::choices(const QString& name) const {
     QVariantList out;
     const auto add = [&out](const QList<Rll3Lists::Choice>& list) {
-        for (const Rll3Lists::Choice& c : list)
+        for (const Rll3Lists::Choice& c : std::as_const(list))
             out << QVariantMap{{u"name"_s, QString::fromLatin1(c.name)}, {u"value"_s, c.value}};
     };
     if (m_game == u"rll4"_s) {
         if (name == u"logos"_s)
-            for (const Rll4Lists::TextChoice& c : Rll4Lists::logos())
+            for (const auto& cList = Rll4Lists::logos(); const Rll4Lists::TextChoice& c : cList)
                 out << QVariantMap{{u"name"_s, QString::fromUtf8(c.name)}, {u"value"_s, QString::fromUtf8(c.value)}};
         return out;
     }
@@ -1587,7 +1587,7 @@ QVariantList DatabaseManager::choices(const QString& name) const {
     else if (name == u"supporters"_s)
         add(Rll3Lists::supporters());
     else if (name == u"logos"_s)
-        for (const Rll3Lists::TextChoice& c : Rll3Lists::emblems())
+        for (const auto& cList = Rll3Lists::emblems(); const Rll3Lists::TextChoice& c : cList)
             out << QVariantMap{{u"name"_s, QString::fromLatin1(c.name)}, {u"value"_s, QString::fromLatin1(c.value)}};
     return out;
 }
@@ -1619,7 +1619,7 @@ void DatabaseManager::loadCommentary() {
     static const QList<QPair<QString, QString>> lists = {
         {u"surnames"_s, u"surnames"_s}, {u"location"_s, u"teamslocation"_s},
         {u"mascot"_s, u"teamsmascot"_s}, {u"teams"_s, u"teams"_s}};
-    for (const auto& [kind, file] : lists) {
+    for (const auto& [kind, file] : std::as_const(lists)) {
         const QByteArray data = sound.entryDataByPath((hashed ? u"sound/dialogue_wildcardhash_"_s : u"sound/ui_"_s) + file);
         if (data.size() < 4)
             continue;
@@ -1696,7 +1696,7 @@ QString DatabaseManager::logoUrl(const QString& logo) const {
 
 QString DatabaseManager::teamFullName(int team) const {
     // RLL3 has no full name: location + club ("BARROW RAIDERS").
-    const QString full = m_teams.str(team, u"fullName"_s);
+    QString full = m_teams.str(team, u"fullName"_s);
     if (!full.isEmpty())
         return full;
     return (m_teams.str(team, u"shortName"_s) + u' ' + m_teams.str(team, u"nickname"_s)).trimmed();
@@ -1819,7 +1819,7 @@ QVariantList DatabaseManager::rawTables() const {
     const BigAntDb::Schema& p = m_players.schema();
     if (t.list(u"roster"_s) >= 0)
         add(u"teamPlayers"_s, u"Raw Team Players"_s);
-    for (const QVariant& v : matchLists()) {
+    for (const auto& vList = matchLists(); const QVariant& v : vList) {
         const QVariantMap m = v.toMap();
         add(u"lineup:"_s + m.value(u"list"_s).toString(), u"Raw Team Lineup (%1)"_s.arg(m.value(u"title"_s).toString()));
     }
@@ -1849,7 +1849,7 @@ QList<RawColumn> DatabaseManager::rawColumnsFor(const QString& id, bool* teams) 
         cols << RawColumn{u"Index"_s, u"#index"_s, true};
         const QStringList keys = *teams ? QStringList{u"id"_s, u"fullName"_s, u"shortName"_s, u"nickname"_s}
                                         : QStringList{u"id"_s, u"firstname"_s, u"surname"_s};
-        for (const QString& k : keys)
+        for (const QString& k : std::as_const(keys))
             if (const BigAntDb::Field* f = field(k)) {
                 addFieldColumns(&cols, *f, !*teams);
                 cols.last().readOnly = !editable;
@@ -1859,21 +1859,21 @@ QList<RawColumn> DatabaseManager::rawColumnsFor(const QString& id, bool* teams) 
         if (l < 0)
             return;
         cols << RawColumn{u"Present"_s, u"#present:"_s + s.lists[l].name};
-        for (int f : s.lists[l].fields)
+        for (int f : std::as_const(s.lists[l].fields))
             addFieldColumns(&cols, s.fields[f], !*teams);
     };
     if (id == u"players"_s || id == u"teams"_s) {
         cols << RawColumn{u"Index"_s, u"#index"_s, true};
         if (id == u"players"_s)
             cols << RawColumn{u"Enabled"_s, u"#present:"_s + s.lists.value(0).name};
-        for (int f : s.lists.value(0).fields)
+        for (const auto& fList = s.lists.value(0).fields; int f : fList)
             if (!(id == u"players"_s ? isRawSkill(s.fields[f]) : isClubLink(s.fields[f].key)))
                 addFieldColumns(&cols, s.fields[f], id == u"players"_s);
     } else if (id == u"skills"_s) {
         identity(true);
         if (const BigAntDb::Field* f = field(u"sex"_s))
             addFieldColumns(&cols, *f, true);
-        for (int f : s.lists.value(0).fields)
+        for (const auto& fList = s.lists.value(0).fields; int f : fList)
             if (isRawSkill(s.fields[f]))
                 addFieldColumns(&cols, s.fields[f], true);
     } else if (id.startsWith(u"stats:"_s)) {
@@ -1890,10 +1890,10 @@ QList<RawColumn> DatabaseManager::rawColumnsFor(const QString& id, bool* teams) 
         identity(false);
         const QString prefix = id == u"feeder"_s ? u"feederClubs#"_s : u"fedFromClubs#"_s;
         cols << RawColumn{id == u"feeder"_s ? u"Feeder Club Amount"_s : u"Fed From Clubs Amount"_s, u"#count:"_s + prefix, true};
-        for (int f : s.lists.value(0).fields)
+        for (const auto& fList = s.lists.value(0).fields; int f : fList)
             if (s.fields[f].key.startsWith(prefix))
                 cols << RawColumn{(id == u"feeder"_s ? u"Feeder Club %1"_s : u"Fed From Club %1"_s)
-                                      .arg(s.fields[f].key.mid(prefix.size()).toInt() + 1),
+                                      .arg(QStringView(s.fields[f].key).mid(prefix.size()).toInt() + 1),
                                   s.fields[f].key};
     }
     // The derived roster / lineup "Club Name" columns are skipped by addFieldColumns (they take no space).
@@ -1910,7 +1910,7 @@ QString DatabaseManager::rawGet(bool teams, int index, const QString& key) const
     if (key.startsWith(u"#count:"_s)) {
         const QString prefix = key.mid(7);
         int n = 0;
-        for (const BigAntDb::Field& f : t.schema().fields)
+        for (const auto& fList = t.schema().fields; const BigAntDb::Field& f : fList)
             if (f.key.startsWith(prefix) && f.type != ValueType::Derived && t.get(index, f.key).toLongLong() != 0)
                 ++n;
         return QString::number(n);
@@ -1925,7 +1925,7 @@ QString DatabaseManager::rawGet(bool teams, int index, const QString& key) const
         const QString part = key.mid(bar + 1);
         if (part == u"shirt"_s)
             return QString::number(t.shirt(index, name));
-        const uint rgb = t.get(index, fi).toString().mid(1).toUInt(nullptr, 16);
+        const uint rgb = QStringView(t.get(index, fi).toString()).mid(1).toUInt(nullptr, 16);
         const int shift = part == u"r"_s ? 16 : part == u"g"_s ? 8 : 0;
         return QString::number((rgb >> shift) & 0xFF);
     }
@@ -1974,7 +1974,7 @@ bool DatabaseManager::rawSet(bool teams, int index, const QString& key, const QS
         }
         if (!number(0, 255, &v))
             return false;
-        uint rgb = t.get(index, fi).toString().mid(1).toUInt(nullptr, 16);
+        uint rgb = QStringView(t.get(index, fi).toString()).mid(1).toUInt(nullptr, 16);
         const int shift = part == u"r"_s ? 16 : part == u"g"_s ? 8 : 0;
         rgb = (rgb & ~(0xFFu << shift)) | (uint(v) << shift);
         return t.set(index, fi, u"#%1"_s.arg(rgb, 6, 16, QChar(u'0')));
@@ -2022,12 +2022,12 @@ bool DatabaseManager::fillRawTable(const QString& id, RawTableModel* model) cons
     for (int i = 0; i < t.count(); ++i) {
         QStringList row;
         row.reserve(cols.size());
-        for (const RawColumn& c : cols)
+        for (const RawColumn& c : std::as_const(cols))
             row << rawGet(teams, i, c.key);
         rows << row;
     }
     QString title;
-    for (const QVariant& v : rawTables())
+    for (const auto& vList = rawTables(); const QVariant& v : vList)
         if (v.toMap().value(u"id"_s).toString() == id)
             title = v.toMap().value(u"title"_s).toString();
     model->setTable(id, title, cols, rows);
@@ -2045,7 +2045,7 @@ QString DatabaseManager::applyRawTable(RawTableModel* model) {
     const int count = teams ? m_teams.count() : m_players.count();
     int changed = 0;
     bool ids = false;
-    const QString errors = model->apply(
+    QString errors = model->apply(
         [model, count](int r) { return model->recordOfRow(r, count); },
         [this, teams](int rec, const QString& key) { return rawGet(teams, rec, key); },
         [this, teams, &ids](int rec, const QString& key, const QString& text, QString* error) {

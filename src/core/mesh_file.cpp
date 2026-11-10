@@ -19,6 +19,7 @@ namespace {
 constexpr quint32 kStaticMeshMagic = 0xFEDCBA02u;
 constexpr quint32 kStaticMeshV1Magic = 0xFEDCBA01u;
 constexpr quint32 kNoParent = 0xFFFFFFFFu;
+constexpr quint32 kMaterialMagic = 0x23456789u;
 
 class Reader {
 public:
@@ -390,6 +391,7 @@ bool MeshFile::parseLists(const QByteArray& mainPart, const QByteArray& vram, qi
         int ib = 0;
         quint32 vs = 0, vc = 0, is = 0, ic = 0;
         quint32 lod = 0;   // V4: detail level (0 = most detailed).
+        quint32 surface = 0;
     };
     QList<Part> parts;
     for (qint64 a = end; a + 8 <= mainPart.size() && parts.isEmpty(); a += 4) {
@@ -414,6 +416,8 @@ bool MeshFile::parseLists(const QByteArray& mainPart, const QByteArray& vram, qi
                 part.is = in.u32(t + vsOffset + 12);
                 part.ic = in.u32(t + vsOffset + 16);
                 part.lod = v4 ? in.u32(t + vsOffset - 8) : 0;
+                part.surface = in.u32(t + 8);   // Index into the surface list (checked against every RLL3,
+                                                // RLL4 and RL26 sample: always a surface the material names).
                 if (part.vb < 0 || part.vb >= vbs.size() || part.ib >= ibs.size() || part.vc == 0 || part.ic == 0
                     || part.ic % 3 != 0 || quint64(part.vs) + part.vc > vbs[part.vb].count
                     || quint64(part.is) + part.ic > ibs[part.ib].count) {
@@ -428,7 +432,7 @@ bool MeshFile::parseLists(const QByteArray& mainPart, const QByteArray& vram, qi
                 }
                 const bool duplicate = std::any_of(found.cbegin(), found.cend(), [&](const Part& f) {
                     return f.vb == part.vb && f.ib == part.ib && f.vs == part.vs && f.vc == part.vc && f.is == part.is
-                           && f.ic == part.ic && f.lod == part.lod;
+                           && f.ic == part.ic && f.lod == part.lod && f.surface == part.surface;
                 });
                 if (!duplicate)
                     found.append(part);
@@ -551,12 +555,35 @@ bool MeshFile::parseLists(const QByteArray& mainPart, const QByteArray& vram, qi
         hasUv = hasUv || vb.uvOffset >= 0;
     }
 
+    // Surface names: the header's pointer at 0x24 -> count, count pointers -> { pointer -> name }.
+    {
+        const qint64 list = in.pointer(0x24);
+        const quint32 count = in.u32(list);
+        if (count > 0 && count <= kMaxListCount && in.fits(list, 4 + 4 * qint64(count))) {
+            for (quint32 k = 0; k < count; ++k)
+                surfaces.append(in.cString(in.pointer(in.pointer(list + 4 + 4 * qint64(k)))));
+        }
+    }
+    // V4: the material block follows the mesh description (u32 at 0x34: its offset from 0x38).
+    if (v4) {
+        const auto isMaterial = [&](qint64 at) { return at >= 0 && in.fits(at, 16) && in.u32(at) == kMaterialMagic; };
+        qint64 at = 0x38 + qint64(in.u32(0x34));
+        if (!isMaterial(at)) {
+            char magic[4];
+            qToLittleEndian(kMaterialMagic, magic);
+            at = mainPart.indexOf(QByteArrayView(magic, 4), 0x38);
+        }
+        if (isMaterial(at))
+            materialBlock = mainPart.mid(at);
+    }
+
     // Indices of every submesh, made absolute into the combined vertex buffer.
     QList<quint32> indices;
     indices.reserve(qsizetype(totalIndices));
     for (const Part& part : std::as_const(parts)) {
         const quint32 first = vbs[part.vb].base + part.vs;
-        submeshes.append({first, part.vc, quint32(indices.size()), part.ic});
+        submeshes.append({first, part.vc, quint32(indices.size()), part.ic,
+                          part.surface < quint32(surfaces.size()) ? int(part.surface) : -1});
         for (quint32 i = part.is; i < part.is + part.ic; ++i)
             indices.append(first + indexAt(ibs[part.ib], i));
     }
@@ -619,11 +646,89 @@ bool MeshFile::parseLists(const QByteArray& mainPart, const QByteArray& vram, qi
     return true;
 }
 
-QByteArray MeshFile::toObj(const QString& name) const {
+// ---------------------------------------------------------------------------------------------------------------
+// Material block (magic 0x23456789): RLL3 / RLL4 "<model>.material.mat", embedded in the V4 (RL26) meshes.
+//
+//   0x00  magic, u32 version (2)
+//   0x08  pointer -> surface list: count, count pointers -> surface
+//   surface  +0 pointer -> name ("props/goalposts/.../cornerPostPadding_Top", the mesh's surface name)
+//            +4 pointer -> shader ("rugby/es2_goalposts")
+//            +8 u32 group count, then a pointer per group -> count, count { pointer -> key, pointer -> value }
+//   The texture group's keys end in "_map" ("col_map", "nrm_map", "mat_map", ...) and its values are texture
+//   paths without an extension; the other groups hold numbers and options ("opt_punchthrough": the colour
+//   texture's alpha cuts holes - fences, light towers, roof atlases).
+// ---------------------------------------------------------------------------------------------------------------
+QString MeshFile::Material::map(const QString& slot) const {
+    for (const auto& entry : maps)
+        if (entry.first.compare(slot, Qt::CaseInsensitive) == 0)
+            return entry.second;
+    return {};
+}
+
+QList<MeshFile::Material> MeshFile::parseMaterials(const QByteArray& data) {
+    QList<Material> out;
+    if (data.size() < 16)
+        return out;
+    const bool bigEndian = qFromBigEndian<quint32>(data.constData()) == kMaterialMagic;
+    if (!bigEndian && qFromLittleEndian<quint32>(data.constData()) != kMaterialMagic)
+        return out;
+    const Reader in(data, bigEndian);
+    const auto text = [&](qint64 pointerAt) -> QString {
+        if (!in.fits(pointerAt, 4))
+            return {};
+        const QString s = in.cString(in.pointer(pointerAt), 512);
+        for (const QChar c : s)
+            if (c.unicode() < 0x20 || c.unicode() > 0x7E)
+                return {};
+        return s;
+    };
+
+    constexpr quint32 kMaxCount = 4096;
+    const qint64 list = in.pointer(8);
+    const quint32 count = in.u32(list);
+    if (count == 0 || count > kMaxCount || !in.fits(list, 4 + 4 * qint64(count)))
+        return out;
+    for (quint32 k = 0; k < count; ++k) {
+        const qint64 surface = in.pointer(list + 4 + 4 * qint64(k));
+        if (!in.fits(surface, 12))
+            continue;
+        Material material;
+        material.name = text(surface);
+        material.shader = text(surface + 4);
+        const quint32 groups = in.u32(surface + 8);
+        for (quint32 g = 0; g < groups && g < 64 && in.fits(surface + 12 + 4 * qint64(g), 4); ++g) {
+            const qint64 group = in.pointer(surface + 12 + 4 * qint64(g));
+            const quint32 entries = in.u32(group);
+            if (entries > kMaxCount || !in.fits(group, 4 + 8 * qint64(entries)))
+                continue;
+            for (quint32 e = 0; e < entries; ++e) {
+                const QString key = text(group + 4 + 8 * qint64(e));
+                if (key.compare(u"opt_punchthrough"_s, Qt::CaseInsensitive) == 0) {
+                    // An option: its value is 0 when off (1 in the first byte on the PC when on).
+                    const qint64 value = in.pointer(group + 8 + 8 * qint64(e));
+                    material.punchthrough = in.fits(value, 4) && in.u32(value) != 0;
+                    continue;
+                }
+                if (!key.endsWith(u"_map"_s, Qt::CaseInsensitive))
+                    continue;
+                const QString value = text(group + 8 + 8 * qint64(e));
+                if (!value.isEmpty())
+                    material.maps.append({key, value});
+            }
+        }
+        if (!material.name.isEmpty())
+            out.append(material);
+    }
+    return out;
+}
+
+QByteArray MeshFile::toObj(const QString& name, const QString& mtlFile, const QStringList& submeshMaterials) const {
     QByteArray obj;
     obj += "# " + name.toUtf8() + " - exported by Blobset Tools\n";
     obj += "# format " + formatName.toUtf8() + ", " + QByteArray::number(vertexCount) + " vertices, "
            + QByteArray::number(triangleCount()) + " triangles\n";
+    if (!mtlFile.isEmpty())
+        obj += "mtllib " + mtlFile.toUtf8() + '\n';
 
     const auto* v = reinterpret_cast<const float*>(displayVertices.constData());
     for (quint32 k = 0; k < vertexCount; ++k)
@@ -642,6 +747,8 @@ QByteArray MeshFile::toObj(const QString& name) const {
     for (int s = 0; s < submeshes.size(); ++s) {
         const Submesh& sub = submeshes[s];
         obj += "g submesh_" + QByteArray::number(s) + '\n';
+        if (!mtlFile.isEmpty() && !submeshMaterials.value(s).isEmpty())
+            obj += "usemtl " + submeshMaterials.value(s).toUtf8() + '\n';
         for (quint32 t = sub.indexStart; t + 2 < sub.indexStart + sub.indexCount; t += 3) {
             obj += 'f';
             for (int c = 0; c < 3; ++c) {

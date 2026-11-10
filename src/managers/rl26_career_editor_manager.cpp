@@ -52,7 +52,7 @@ constexpr NameEntry kNames[] = {
 const QHash<quint32, QString>& nameTable() {
     static const QHash<quint32, QString> table = [] {
         QHash<quint32, QString> t;
-        for (const NameEntry& e : kNames)
+        for (const NameEntry& e : std::as_const(kNames))
             t.insert(e.hash, QString::fromLatin1(e.name));
         return t;
     }();
@@ -113,7 +113,7 @@ QString competitionLogoName(const QString& comp) {
         {u"Championship"_s, u"betfred_championship"_s}, {u"QLDCup"_s, u"qld_cup"_s}, {u"NRLW"_s, u"nrlw"_s},
         {u"NRL"_s, u"nrl"_s}, {u"Cup"_s, u"1895_cup"_s}, {u"IndigenousVsMaori"_s, u"all_stars"_s},
         {u"Ashes"_s, u"ashes"_s}};
-    for (const auto& [key, logo] : map)
+    for (const auto& [key, logo] : std::as_const(map))
         if (comp.contains(key))
             return logo;
     return u"custom"_s;
@@ -125,7 +125,7 @@ Rl26CareerEditorManager::Rl26CareerEditorManager(QObject* parent) : QObject(pare
 
 quint32 Rl26CareerEditorManager::fnv(const QByteArray& text) {
     quint32 h = 0x811c9dc5u;
-    for (const char c : text) {
+    for (const char c : std::as_const(text)) {
         h ^= static_cast<quint8>(c);
         h *= 0x01000193u;
     }
@@ -326,7 +326,7 @@ const Rl26CareerEditorManager::Member* Rl26CareerEditorManager::member(int type,
         return m;
     // Members named from the game's database (not by their hash).
     if (type >= 0 && type < m_types.size())
-        for (const Member& m : m_types.at(type).members)
+        for (const auto& mList = m_types.at(type).members; const Member& m : mList)
             if (m.name == name)
                 return &m;
     return nullptr;
@@ -338,10 +338,10 @@ Rl26CareerEditorManager::Ref Rl26CareerEditorManager::child(const Ref& parent, c
     QString name = token;
     int index = 0;
     if (const int hashAt = int(name.indexOf(u'#')); hashAt > 0) {
-        index = name.mid(hashAt + 1).toInt();
+        index = QStringView(name).mid(hashAt + 1).toInt();
         name = name.left(hashAt);
     }
-    const Member* m = name.startsWith(u'@') ? member(parent.type, name.mid(1).toUInt(nullptr, 16)) : member(parent.type, name);
+    const Member* m = name.startsWith(u'@') ? member(parent.type, QStringView(name).mid(1).toUInt(nullptr, 16)) : member(parent.type, name);
     if (!m || index < 0 || index >= qMax<int>(1, m->count))
         return {};
     Ref r;
@@ -558,8 +558,8 @@ void Rl26CareerEditorManager::buildDefs() {
             {u"Evasion"_s, {u"fend"_s, u"sideStep"_s, u"breakTackle"_s}},
             {u"Tackling"_s, {u"tackle"_s, u"driveTackle"_s, u"diveTackle"_s, u"impactTackle"_s}},
             {u"Misc Skills"_s, {u"contestedCollect"_s, u"diveCollect"_s, u"ballStrip"_s}}};
-        for (const auto& [group, names] : skills)
-            for (const QString& s : names)
+        for (const auto& [group, names] : std::as_const(skills))
+            for (const QString& s : std::as_const(names))
                 add(m_playerDefs, p, s, pretty(s), group, u"paPlayer.m_skills."_s + s, u"number"_s, {}, 0, 99, true);
         // Lifetime statistics.
         const Ref stats = resolve(p, u"m_lifetimeStats.base"_s);
@@ -628,7 +628,7 @@ void Rl26CareerEditorManager::buildDefs() {
         const Ref r = resolve(root, path);
         if (!r.ok() || r.type < 0)
             return;
-        for (const Member& m : m_types.at(r.type).members) {
+        for (const auto& mList = m_types.at(r.type).members; const Member& m : mList) {
             if (m.name.isEmpty() || m.type >= 0 || (m.count > 1 && m.kind != 0xFDEB))
                 continue;
             const QString kind = m.kind == 0xFDE8 ? u"bool"_s : m.kind == 0xFDF2 ? u"float"_s
@@ -660,14 +660,14 @@ void Rl26CareerEditorManager::buildDefs() {
 }
 
 const Rl26CareerEditorManager::FieldDef* Rl26CareerEditorManager::playerDef(const QString& key) const {
-    for (const FieldDef& d : m_playerDefs)
+    for (const FieldDef& d : std::as_const(m_playerDefs))
         if (d.key == key)
             return &d;
     return nullptr;
 }
 
 const Rl26CareerEditorManager::FieldDef* Rl26CareerEditorManager::teamDef(const QString& key) const {
-    for (const FieldDef& d : m_teamDefs)
+    for (const FieldDef& d : std::as_const(m_teamDefs))
         if (d.key == key)
             return &d;
     return nullptr;
@@ -764,7 +764,7 @@ int Rl26CareerEditorManager::playerRating(int player) const {
     if (role < 0 || role >= terms.size() || terms[role].isEmpty())
         return 0;
     int sum = 0;
-    for (const Rl26Lists::RatingTerm& term : terms[role]) {
+    for (const Rl26Lists::RatingTerm& term : std::as_const(terms[role])) {
         const FieldDef* d = playerDef(alias.value(term.field, term.field));
         if (!d)
             return 0;
@@ -776,7 +776,7 @@ int Rl26CareerEditorManager::playerRating(int player) const {
 int Rl26CareerEditorManager::teamRating(int team) const {
     const QList<int> ids = rosterIds(team);
     QList<int> ratings;
-    for (int id : ids)
+    for (int id : std::as_const(ids))
         if (const int p = m_playerById.value(id, -1); p >= 0)
             ratings << playerRating(p);
     std::sort(ratings.begin(), ratings.end(), std::greater<int>());
@@ -784,7 +784,7 @@ int Rl26CareerEditorManager::teamRating(int team) const {
     if (ratings.isEmpty())
         return 0;
     int sum = 0;
-    for (int r : ratings)
+    for (int r : std::as_const(ratings))
         sum += r;
     return sum / int(ratings.size());
 }
@@ -858,7 +858,7 @@ QStringList Rl26CareerEditorManager::logoNames() const {
         return m_logos;
     }
     m_logos.clear();
-    for (const QByteArray& raw : in.readAll().split('\n')) {
+    for (const auto& rawList = in.readAll().split('\n'); const QByteArray& raw : rawList) {
         const QString line = QString::fromUtf8(raw).trimmed();
         if (!line.isEmpty() && !line.startsWith(u'#'))
             m_logos << line;
@@ -984,7 +984,7 @@ QVariantList Rl26CareerEditorManager::choices(const QString& list, const QVarian
             for (int i = 0; i < m_clubs.size(); ++i)
                 clubs << qMakePair(fieldValue(m_clubs.at(i), safe(teamDef(u"fullName"_s))).toString(), clubId(i));
             std::sort(clubs.begin(), clubs.end());
-            for (const auto& [name, id] : clubs)
+            for (const auto& [name, id] : std::as_const(clubs))
                 out << QVariantMap{{u"name"_s, name}, {u"value"_s, id}};
         } else {
             for (int i = 0; i < m_players.size(); ++i)
@@ -1014,9 +1014,9 @@ QVariantList Rl26CareerEditorManager::choices(const QString& list, const QVarian
         out << QVariantMap{{u"name"_s, u"None"_s}, {u"value"_s, double(none)}};
         bool found = id == none;
         QHash<QString, int> uses;
-        for (const Rl26UserContent::Item& i : items)
+        for (const Rl26UserContent::Item& i : std::as_const(items))
             ++uses[i.name];
-        for (const Rl26UserContent::Item& i : items) {
+        for (const Rl26UserContent::Item& i : std::as_const(items)) {
             found = found || i.id == id;
             out << QVariantMap{{u"name"_s, uses.value(i.name) > 1 ? u"%1 (%2)"_s.arg(i.name).arg(i.id) : i.name}, {u"value"_s, double(i.id)}};
         }
@@ -1041,7 +1041,7 @@ QVariantList Rl26CareerEditorManager::choices(const QString& list, const QVarian
 QStringList Rl26CareerEditorManager::groups(const QString& kind) const {
     QStringList out;
     const QList<FieldDef>& defs = kind == u"team"_s ? m_teamDefs : m_playerDefs;
-    for (const FieldDef& d : defs)
+    for (const FieldDef& d : std::as_const(defs))
         if (!out.contains(d.group))
             out << d.group;
     return out;
@@ -1120,7 +1120,7 @@ QVariantList Rl26CareerEditorManager::fields(const QString& kind, int index) con
     }
     if (record < 0 || !defs)
         return out;
-    for (const FieldDef& d : *defs) {
+    for (const FieldDef& d : std::as_const(*defs)) {
         QVariantMap m{{u"key"_s, d.key}, {u"label"_s, d.label}, {u"group"_s, d.group}, {u"kind"_s, d.kind},
                       {u"value"_s, fieldValue(record, d)}, {u"min"_s, d.min}, {u"max"_s, d.max},
                       {u"offset"_s, u"+0x"_s + QString::number(d.rel, 16).toUpper()}, {u"readOnly"_s, d.readOnly},
@@ -1140,7 +1140,7 @@ QVariantList Rl26CareerEditorManager::fields(const QString& kind, int index) con
         // The player's status (Player Status page).
         const int id = playerId(index);
         int reason = 0;
-        for (const QVariant& v : statusRows())
+        for (const auto& vList = statusRows(); const QVariant& v : vList)
             if (v.toMap().value(u"id"_s).toInt() == id)
                 reason = v.toMap().value(u"reason"_s).toInt();
         out << QVariantMap{{u"key"_s, u"@status"_s}, {u"label"_s, u"Status"_s}, {u"group"_s, u"Status"_s}, {u"kind"_s, u"choice"_s},
@@ -1161,7 +1161,7 @@ bool Rl26CareerEditorManager::setField(const QString& kind, int index, const QSt
         def = teamDef(key);
     } else if (kind == u"career"_s) {
         record = m_rootAt;
-        for (const FieldDef& d : m_careerDefs)
+        for (const FieldDef& d : std::as_const(m_careerDefs))
             if (d.key == key)
                 def = &d;
     } else if (kind == u"contract"_s) {
@@ -1196,7 +1196,7 @@ bool Rl26CareerEditorManager::setField(const QString& kind, int index, const QSt
         QString s = value.toString();
         if (s.startsWith(u'#'))
             s = s.mid(1);
-        const uint rgb = s.left(6).toUInt(nullptr, 16);
+        const uint rgb = QStringView(s).left(6).toUInt(nullptr, 16);
         m_data[at] = char((rgb >> 16) & 0xFF);
         m_data[at + 1] = char((rgb >> 8) & 0xFF);
         m_data[at + 2] = char(rgb & 0xFF);
@@ -1233,7 +1233,7 @@ bool Rl26CareerEditorManager::setField(const QString& kind, int index, const QSt
 
 QVariantList Rl26CareerEditorManager::careerFields(int page) const {
     QVariantList out;
-    for (const FieldDef& d : m_careerDefs) {
+    for (const FieldDef& d : std::as_const(m_careerDefs)) {
         const bool selection = d.path.startsWith(u"#1|"_s);
         if ((page == 1) != selection)
             continue;
@@ -1255,7 +1255,7 @@ QVariantList Rl26CareerEditorManager::objectFields(qsizetype at, int type, const
     QList<Member> members = m_types.at(type).members;
     std::sort(members.begin(), members.end(), [](const Member& a, const Member& b) { return a.name < b.name; });
     QSet<QString> colours;
-    for (const Member& m : members) {
+    for (const Member& m : std::as_const(members)) {
         if (m.name.isEmpty() || m.type >= 0)
             continue;
         if (m.name.endsWith(u"_r"_s) || m.name.endsWith(u"_g"_s) || m.name.endsWith(u"_b"_s)) {
@@ -1297,7 +1297,7 @@ bool Rl26CareerEditorManager::setObjectField(qsizetype at, int type, const QStri
         const Member* b = member(type, key + u"_b"_s);
         if (!g || !b)
             return false;
-        const uint rgb = value.toString().mid(1, 6).toUInt(nullptr, 16);
+        const uint rgb = QStringView(value.toString()).mid(1, 6).toUInt(nullptr, 16);
         m_data[at + r->off] = char((rgb >> 16) & 0xFF);
         m_data[at + g->off] = char((rgb >> 8) & 0xFF);
         m_data[at + b->off] = char(rgb & 0xFF);
@@ -1435,7 +1435,7 @@ QVariantList Rl26CareerEditorManager::pickablePlayers(const QString& filter) con
     QHash<int, QString> clubOf;
     for (int c = 0; c < m_clubs.size(); ++c) {
         const QString name = fieldValue(m_clubs.at(c), safe(teamDef(u"fullName"_s))).toString();
-        for (int id : rosterIds(c))
+        for (const auto& idList = rosterIds(c); int id : idList)
             clubOf.insert(id, name);
     }
     for (int i = 0; i < m_players.size(); ++i) {
@@ -1475,7 +1475,7 @@ QVariantList Rl26CareerEditorManager::matchLists(int team) const {
 }
 
 bool Rl26CareerEditorManager::listPresent(int team, const QString& list) const {
-    const int i = list.mid(1).toInt();
+    const int i = QStringView(list).mid(1).toInt();
     const qsizetype at = clubAt(team);
     if (at < 0)
         return false;
@@ -1488,7 +1488,7 @@ int Rl26CareerEditorManager::lineupCount(int team) const {
 }
 
 bool Rl26CareerEditorManager::setListPresent(int team, const QString& list, bool on) {
-    const int i = list.mid(1).toInt();
+    const int i = QStringView(list).mid(1).toInt();
     const int count = lineupCount(team);
     if (on || i < 0 || i >= count)
         return on && i < count;
@@ -1508,13 +1508,13 @@ bool Rl26CareerEditorManager::setListPresent(int team, const QString& list, bool
 }
 
 QString Rl26CareerEditorManager::lineupName(int team, const QString& list) const {
-    const Ref l = lineupRef(team, list.mid(1).toInt());
+    const Ref l = lineupRef(team, QStringView(list).mid(1).toInt());
     const Ref name = resolve(l, u"m_name"_s);
     return name.ok() ? readText(name.at, name.size * name.count) : QString();
 }
 
 bool Rl26CareerEditorManager::setLineupName(int team, const QString& list, const QString& name) {
-    const int i = list.mid(1).toInt();
+    const int i = QStringView(list).mid(1).toInt();
     if (i < 0 || i >= lineupCount(team) || name == lineupName(team, list))
         return false;
     const Ref n = resolve(lineupRef(team, i), u"m_name"_s);
@@ -1543,7 +1543,7 @@ int Rl26CareerEditorManager::addLineup(int team) {
 
 QVariantList Rl26CareerEditorManager::lineupRows(int team, const QString& list) const {
     QVariantList rows;
-    const Ref l = lineupRef(team, list.mid(1).toInt());
+    const Ref l = lineupRef(team, QStringView(list).mid(1).toInt());
     if (!l.ok())
         return rows;
     const Ref players = resolve(l, u"@c179eadf"_s);
@@ -1557,7 +1557,7 @@ QVariantList Rl26CareerEditorManager::lineupRows(int team, const QString& list) 
         const int id = int(readInt(players.at + 4 * i, 4));
         QVariantMap row = playerInfo(id);
         QStringList roles;
-        for (const QVariant& r : row.value(u"roles"_s).toList())
+        for (const auto& rList = row.value(u"roles"_s).toList(); const QVariant& r : rList)
             roles << kRoleShort.value(r.toInt());
         row[u"roles"_s] = roles.join(u" / "_s);
         row[u"present"_s] = true;
@@ -1571,14 +1571,14 @@ QVariantList Rl26CareerEditorManager::lineupRows(int team, const QString& list) 
 
 QVariantList Rl26CareerEditorManager::teamRoles(int team, const QString& list) const {
     QVariantList rows;
-    const Ref l = lineupRef(team, list.mid(1).toInt());
+    const Ref l = lineupRef(team, QStringView(list).mid(1).toInt());
     if (!l.ok())
         return rows;
     const Ref roles = resolve(l, u"@1da459df"_s);
     for (int r = 0; r < roles.count; ++r) {
         QVariantMap row = playerInfo(int(readInt(roles.at + 4 * r, 4)));
         QStringList rs;
-        for (const QVariant& x : row.value(u"roles"_s).toList())
+        for (const auto& xList = row.value(u"roles"_s).toList(); const QVariant& x : xList)
             rs << kRoleShort.value(x.toInt());
         row[u"roles"_s] = rs.join(u" / "_s);
         row[u"present"_s] = true;
@@ -1590,7 +1590,7 @@ QVariantList Rl26CareerEditorManager::teamRoles(int team, const QString& list) c
 }
 
 bool Rl26CareerEditorManager::setLineupSlot(int team, const QString& list, const QString& key, int playerId) {
-    const Ref l = lineupRef(team, list.mid(1).toInt());
+    const Ref l = lineupRef(team, QStringView(list).mid(1).toInt());
     const QStringList parts = key.split(u':');
     if (!l.ok() || parts.size() != 2)
         return false;
@@ -1622,14 +1622,14 @@ QVariantList Rl26CareerEditorManager::pickerRows(const QString& filter, int team
     };
     if (squadOnly) {
         const QString f = filter.trimmed();
-        for (int id : rosterIds(team)) {
+        for (const auto& idList = rosterIds(team); int id : idList) {
             const QVariantMap m = playerInfo(id);
             if (f.isEmpty() || m.value(u"name"_s).toString().contains(f, Qt::CaseInsensitive) || QString::number(id) == f)
                 out << toRow(m);
         }
         return out;
     }
-    for (const QVariant& v : pickablePlayers(filter))
+    for (const auto& vList = pickablePlayers(filter); const QVariant& v : vList)
         out << toRow(v.toMap());
     return out;
 }
@@ -1644,7 +1644,7 @@ QString Rl26CareerEditorManager::generateBestLineup(int team) {
         int id, rating, roles[3], place, punt;
     };
     QList<P> players;
-    for (int id : rosterIds(team)) {
+    for (const auto& idList = rosterIds(team); int id : idList) {
         const QVariantMap m = playerInfo(id);
         if (!m.value(u"known"_s).toBool())
             continue;
@@ -1941,7 +1941,7 @@ void Rl26CareerEditorManager::buildStages() {
     int competitionType = -1, configType = -1;
     QList<QPair<int, quint32>> layouts;   // (type, offset of its competition)
     for (int t = 0; t < m_types.size(); ++t)
-        for (const Member& m : m_types.at(t).members)
+        for (const auto& mList = m_types.at(t).members; const Member& m : mList)
             if (m.name == u"competition"_s && m.type >= 0) {
                 layouts << qMakePair(t, m.off);
                 competitionType = m.type;
@@ -1952,10 +1952,10 @@ void Rl26CareerEditorManager::buildStages() {
         configType = fc->type;
     const auto stageMembers = [&](int type) {
         QList<const Member*> out;
-        for (const Member& m : m_types.at(type).members) {
+        for (const auto& mList = m_types.at(type).members; const Member& m : mList) {
             if (m.type < 0 || m.type == competitionType)
                 continue;
-            for (const Member& s : m_types.at(m.type).members)
+            for (const auto& sList = m_types.at(m.type).members; const Member& s : sList)
                 if (s.type == configType && configType >= 0) {
                     out << &m;
                     break;
@@ -1981,7 +1981,7 @@ void Rl26CareerEditorManager::buildStages() {
             list << m;
         }
         QString text;
-        for (const Member& m : ms)
+        for (const Member& m : std::as_const(ms))
             if (m.kind == 0xFDEB && m.count == 64) {
                 const QByteArray raw = m_data.mid(at + m.off, 64);
                 const int end = int(raw.indexOf('\0'));
@@ -1998,7 +1998,7 @@ void Rl26CareerEditorManager::buildStages() {
         *matches = list;
         *name = text;
         *config = -1;
-        for (const Member& m : ms)
+        for (const Member& m : std::as_const(ms))
             if (m.type == configType)
                 *config = at + m.off;
         return true;
@@ -2016,13 +2016,13 @@ void Rl26CareerEditorManager::buildStages() {
         const Member* nameMember = member(competitionType, u"m_competitionDisplayName"_s);
         const Member* keyMember = member(competitionType, u"name"_s);
         QList<Stage> best;
-        for (const auto& [type, compOff] : layouts) {
+        for (const auto& [type, compOff] : std::as_const(layouts)) {
             const qsizetype c = buffer + compOff;
             if (!idMember || quint8(m_data.at(c + idMember->off)) != compId)
                 continue;
             QList<Stage> stages;
             bool ok = true;
-            for (const Member* m : stageMembers(type)) {
+            for (const auto& mList = stageMembers(type); const Member* m : mList) {
                 Stage st;
                 if (!readStage(buffer + m->off, m->type, &st.matches, &st.stageName, &st.config)) {
                     ok = false;
@@ -2122,7 +2122,7 @@ QVariantList Rl26CareerEditorManager::ladderRows(int comp) const {
     QHash<int, Row> rows;
     QSet<int> roundsPlayed;
     QHash<int, QSet<int>> teamRounds;
-    for (int m : st.matches) {
+    for (int m : std::as_const(st.matches)) {
         const QVariantMap x = readMatch(m);
         const int h = x.value(u"home"_s).toInt(), a = x.value(u"away"_s).toInt();
         rows[h].id = h;
@@ -2145,7 +2145,7 @@ QVariantList Rl26CareerEditorManager::ladderRows(int comp) const {
         else { ++rh.draws; ++ra.draws; }
     }
     QList<Row> list;
-    for (Row r : rows) {
+    for (Row r : std::as_const(rows)) {
         r.byes = qMax(0, int(roundsPlayed.size()) - int(teamRounds.value(r.id).size()));
         list << r;
     }
@@ -2182,7 +2182,7 @@ QStringList Rl26CareerEditorManager::fixtureRounds(int stage) const {
     if (stage < 0 || stage >= m_stages.size())
         return out;
     QList<int> rounds;
-    for (int m : m_stages.at(stage).matches) {
+    for (const auto& mList = m_stages.at(stage).matches; int m : mList) {
         const int r = readMatch(m).value(u"round"_s).toInt();
         if (!rounds.contains(r))
             rounds << r;
@@ -2199,7 +2199,7 @@ QVariantList Rl26CareerEditorManager::fixtureRows(int stage, int round) const {
     if (stage < 0 || stage >= m_stages.size())
         return out;
     QList<int> rounds;
-    for (int m : m_stages.at(stage).matches) {
+    for (const auto& mList = m_stages.at(stage).matches; int m : mList) {
         const int r = readMatch(m).value(u"round"_s).toInt();
         if (!rounds.contains(r))
             rounds << r;
@@ -2207,7 +2207,7 @@ QVariantList Rl26CareerEditorManager::fixtureRows(int stage, int round) const {
     std::sort(rounds.begin(), rounds.end());
     if (round < 0 || round >= rounds.size())
         return out;
-    for (int n : m_stages.at(stage).matches) {
+    for (const auto& nList = m_stages.at(stage).matches; int n : nList) {
         const QVariantMap m = readMatch(n);
         if (m.value(u"round"_s).toInt() != rounds.at(round))
             continue;
@@ -2257,7 +2257,7 @@ QVariantMap Rl26CareerEditorManager::matchStats(int stage, int match) const {
         const Ref team = resolve(r, u"m_result."_s + QString::fromLatin1(name));
         const Ref stats = resolve(team, u"statistics"_s);
         if (stats.ok())
-            for (const Member& mem : m_types.at(stats.type).members) {
+            for (const auto& memList = m_types.at(stats.type).members; const Member& mem : memList) {
                 const int v = int(readInt(stats.at + mem.off, mem.size));
                 if (mem.name == u"fieldGoals"_s) t.t.insert(u"fieldgoal"_s, v);
                 else if (mem.name == u"missedTackles"_s) t.t.insert(u"missTackles"_s, v);
@@ -2278,7 +2278,7 @@ QVariantMap Rl26CareerEditorManager::matchStats(int stage, int match) const {
             pl.playerIndex = info.value(u"playerIndex"_s).toInt();
             const Ref s = resolve(p, u"statisticsStored"_s);
             if (s.ok())
-                for (const Member& mem : m_types.at(s.type).members)
+                for (const auto& memList = m_types.at(s.type).members; const Member& mem : memList)
                     pl.s.insert(playerKeys.value(mem.name, mem.name), int(readInt(s.at + mem.off, mem.size)));
             t.players << pl;
         }
@@ -2295,7 +2295,7 @@ QVariantMap Rl26CareerEditorManager::matchStats(int stage, int match) const {
         out[u"competitionLogoUrl"_s] = competitionLogoUrl(m_stages.at(stage).comp);
         const QStringList rounds = fixtureRounds(stage);
         QList<int> rs;
-        for (int n : m_stages.at(stage).matches) {
+        for (const auto& nList = m_stages.at(stage).matches; int n : nList) {
             const int x = readMatch(n).value(u"round"_s).toInt();
             if (!rs.contains(x))
                 rs << x;
@@ -2320,21 +2320,34 @@ QString Rl26CareerEditorManager::recordOffset(const QString& kind, int index) co
                                     + QString::number(at, 16).toUpper() + u')';
 }
 
+// The rows the Raw tab shows (the same as the other Save / Career Editors): {offset, hex: 16 "XX", known: the bytes
+// of mapped fields, text}.
 QVariantList Rl26CareerEditorManager::rawRows(const QString& kind, int index) const {
     QVariantList out;
     const qsizetype at = kind == u"team"_s ? clubAt(index) : playerAt(index);
     const int size = recordSize(kind);
-    if (at < 0)
+    if (at < 0 || size <= 0 || at + size > m_data.size())
         return out;
+    QList<bool> known(size, false);
+    for (const FieldDef& d : kind == u"team"_s ? m_teamDefs : m_playerDefs) {
+        if (d.rel < 0)
+            continue;
+        const int bytes = d.kind == u"colour"_s ? 3 : qMax(1, d.size);
+        for (qsizetype i = d.rel; i < d.rel + bytes && i < size; ++i)
+            known[i] = true;
+    }
+    out.reserve((size + 15) / 16);
     for (int row = 0; row < size; row += 16) {
-        QVariantList bytes;
-        QString ascii;
-        for (int i = 0; i < 16 && row + i < size; ++i) {
-            const uchar b = uchar(m_data.at(at + row + i));
-            bytes << int(b);
-            ascii += b >= 32 && b < 127 ? QChar(b) : QChar(u'.');
+        QVariantList hex;
+        QVariantList marks;
+        QString text;
+        for (int i = row; i < qMin(row + 16, size); ++i) {
+            const quint8 c = static_cast<quint8>(m_data.at(at + i));
+            hex.append(QString::number(c, 16).rightJustified(2, u'0').toUpper());
+            marks.append(known.at(i));
+            text += (c >= 32 && c < 127) ? QChar(c) : QChar(u'.');
         }
-        out << QVariantMap{{u"offset"_s, row}, {u"bytes"_s, bytes}, {u"ascii"_s, ascii}};
+        out.append(QVariantMap{{u"offset"_s, row}, {u"hex"_s, hex}, {u"known"_s, marks}, {u"text"_s, text}});
     }
     return out;
 }
@@ -2376,7 +2389,7 @@ QList<RawColumn> Rl26CareerEditorManager::rawColumnsFor(const QString& id) const
         cols << RawColumn{d.label, d.key, readOnly};
     };
     if (id == u"players"_s || id == u"teams"_s) {
-        for (const FieldDef& d : id == u"players"_s ? m_playerDefs : m_teamDefs)
+        for (const auto& dList = id == u"players"_s ? m_playerDefs : m_teamDefs; const FieldDef& d : dList)
             add(d, d.readOnly || d.kind == u"date"_s);
     } else if (id == u"teamPlayers"_s) {
         for (const char* key : {"id", "fullName"})
@@ -2409,7 +2422,7 @@ QString Rl26CareerEditorManager::rawGet(const QString& kind, int index, const QS
             return {};
         if (key == u"#rosterCount"_s)
             return QString::number(readInt(count.at, 2));
-        const int j = key.mid(7).toInt();
+        const int j = QStringView(key).mid(7).toInt();
         return j < ids.count ? QString::number(readInt(ids.at + 4 * j, 4)) : QString();
     }
     const qsizetype bar = key.indexOf(u'|');
@@ -2459,7 +2472,7 @@ bool Rl26CareerEditorManager::rawSet(const QString& kind, int index, const QStri
                 return false;
             writeInt(count.at, 2, v);
         } else {
-            const int j = key.mid(7).toInt();
+            const int j = QStringView(key).mid(7).toInt();
             if (j >= ids.count || !number(0, 0xFFFFFFFFLL))
                 return false;
             writeInt(ids.at + 4 * j, 4, v);
@@ -2476,7 +2489,7 @@ bool Rl26CareerEditorManager::rawSet(const QString& kind, int index, const QStri
         if (!number(0, 255))
             return false;
         const int part = QStringLiteral("rgb").indexOf(key.back());
-        uint rgb = fieldValue(at, *d).toString().mid(1).toUInt(nullptr, 16);
+        uint rgb = QStringView(fieldValue(at, *d).toString()).mid(1).toUInt(nullptr, 16);
         const int shift = part == 0 ? 16 : part == 1 ? 8 : 0;
         rgb = (rgb & ~(0xFFu << shift)) | (uint(v) << shift);
         return setField(kind, index, name, u"#%1"_s.arg(rgb, 6, 16, QChar(u'0')));
@@ -2521,12 +2534,12 @@ bool Rl26CareerEditorManager::fillRawTable(const QString& id, RawTableModel* mod
     rows.reserve(count);
     for (int i = 0; i < count; ++i) {
         QStringList row;
-        for (const RawColumn& c : cols)
+        for (const RawColumn& c : std::as_const(cols))
             row << rawGet(kind, i, c.key);
         rows << row;
     }
     QString title;
-    for (const QVariant& t : rawTables())
+    for (const auto& tList = rawTables(); const QVariant& t : tList)
         if (t.toMap().value(u"id"_s).toString() == id)
             title = t.toMap().value(u"title"_s).toString();
     model->setTable(id, title, cols, rows);
@@ -2542,7 +2555,7 @@ QString Rl26CareerEditorManager::applyRawTable(RawTableModel* model) {
     int changed = 0;
     m_rawBatch = true;   // One refresh at the end, not one per cell.
     m_rawEdited = false;
-    const QString errors = model->apply(
+    QString errors = model->apply(
         [model, count](int r) { return model->recordOfRow(r, count); },
         [this, &kind](int rec, const QString& key) { return rawGet(kind, rec, key); },
         [this, &kind](int rec, const QString& key, const QString& text, QString* error) {

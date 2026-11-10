@@ -2,7 +2,6 @@
 #include "asset_signatures.h"
 #include "blobset_asset_reader.h"
 #include "compression_io.h"
-#include "dds_processor.h"
 #include "gcm_texture.h"
 #include "package_stream.h"
 #include "txpk_file.h"
@@ -384,7 +383,7 @@ QString ExtractWorker::extractTxpkDds(const QString& txpkFile, int mainSize, int
 
     const qint64 fileLength = in.length();
 
-    for (const TXPK::Entry& e : txpk.getEntries()) {
+    for (const auto& eList = txpk.getEntries(); const TXPK::Entry& e : eList) {
         // Data offsets are relative to the vram section; fall back to absolute offsets if that doesn't fit.
         qint64 start = static_cast<qint64>(mainSize) + e.DDSDataOffset;
         if (start + e.DDSDataSize > fileLength)

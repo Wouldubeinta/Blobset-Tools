@@ -115,7 +115,7 @@ bool XmlExtractFileInfo::serialize(const QString& filePath) const {
     if (!movie.isEmpty())
         xml.writeAttribute("Movie", movie);
 
-    for (const auto& entry : entries) {
+    for (const auto& entry : std::as_const(entries)) {
         xml.writeStartElement("Entry");
         xml.writeAttribute("FilePath", entry.filePath);
         if (!entry.file.isEmpty())
@@ -183,7 +183,7 @@ bool XmlModifyFileInfo::serialize(const QString& filePath) const {
     xml.writeAttribute("VramCompressedSize", QString::number(vramCompressedSize));
     xml.writeAttribute("VramUnCompressedSize", QString::number(vramUnCompressedSize));
 
-    for (const auto& entry : entries) {
+    for (const auto& entry : std::as_const(entries)) {
         xml.writeStartElement("Entry");
         // FIX: Missing XML attributes added to serialization loop
         xml.writeAttribute("FilePath", entry.filePath);

@@ -6,7 +6,7 @@
 
 #include <QFile>
 #include <QFileInfo>
-#include <QFutureWatcher>
+#include <QFuture>
 #include <QLocale>
 #include <QUrl>
 #include <QtConcurrent/QtConcurrentRun>
@@ -165,18 +165,15 @@ void HexViewerModel::startLoad(const QFuture<LoadResult>& future, const QString&
     setBusy(true);
     setStatus(true, u"Reading %1..."_s.arg(sourceName));
 
-    auto* watcher = new QFutureWatcher<LoadResult>(this);
-    connect(watcher, &QFutureWatcher<LoadResult>::finished, this, [this, watcher, generation]() {
-        const LoadResult result = watcher->result();
-        watcher->deleteLater();
-
+    // Runs on this object's thread when the load finishes (and not at all if the model is gone by then).
+    QFuture<void> done = QFuture<LoadResult>(future).then(this, [this, generation](const LoadResult& result) {
         if (generation != m_generation)
             return; // A newer load was started in the meantime.
 
         setBusy(false);
         applyResult(result);
     });
-    watcher->setFuture(future);
+    Q_UNUSED(done);
 }
 
 void HexViewerModel::applyResult(const LoadResult& result) {

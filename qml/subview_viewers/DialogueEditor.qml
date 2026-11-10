@@ -95,7 +95,6 @@ Item {
     }
 
     property string localStatus: ""
-    property bool localStatusOk: true
     Connections {
         target: dm
         function onStatusChanged() { editorRoot.localStatus = "" }

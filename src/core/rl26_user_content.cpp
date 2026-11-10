@@ -202,7 +202,7 @@ QList<Item> decals(const QString& savePath) {
 }
 
 QString decalName(const QString& savePath, quint32 id) {
-    for (const Item& i : decalFile(savePath).items)
+    for (const auto& iList = decalFile(savePath).items; const Item& i : iList)
         if (i.id == id)
             return i.name;
     return {};
@@ -276,7 +276,7 @@ QImage renderDecalData(const QByteArray& data, int size) {
     if (shapes.isEmpty())
         return {};
     QRectF bounds;
-    for (const Shape& s : shapes)
+    for (const Shape& s : std::as_const(shapes))
         bounds |= s.path.boundingRect();
     if (bounds.width() <= 0 || bounds.height() <= 0)
         return {};
@@ -290,14 +290,10 @@ QImage renderDecalData(const QByteArray& data, int size) {
     painter.scale(scale, scale);
     painter.translate(-bounds.center());
     painter.setPen(Qt::NoPen);
-    for (const Shape& s : shapes)
+    for (const Shape& s : std::as_const(shapes))
         painter.fillPath(s.path, s.colour);
     painter.end();
     return image;
-}
-
-QImage renderDecal(const QString& savePath, quint32 id, int size) {
-    return renderDecalData(decalFile(savePath).blobs.value(id), size);
 }
 
 QString decalImageUrl(const QString& savePath, quint32 id, int size) {
@@ -363,7 +359,7 @@ QList<Item> customStadiums(const QString& savePath) {
 QString customStadiumName(const QString& savePath, quint32 id) {
     if (id == kNoLevel)
         return {};
-    for (const Item& i : customStadiums(savePath))
+    for (const auto& iList = customStadiums(savePath); const Item& i : iList)
         if (i.id == id)
             return i.name;
     return u"Custom Stadium"_s;

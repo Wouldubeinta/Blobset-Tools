@@ -31,7 +31,7 @@ void BlobsetEntryRegistry::replaceAll(const QList<BlobsetEntry>& entries) {
     QHash<quint32, quint64> indices;
     map.reserve(entries.size());
     indices.reserve(entries.size());
-    for (const BlobsetEntry& entry : entries) {
+    for (const BlobsetEntry& entry : std::as_const(entries)) {
         const quint64 key = keyOf(entry);
         if (key == 0)
             continue;

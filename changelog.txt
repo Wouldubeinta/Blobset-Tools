@@ -1,3 +1,45 @@
+v2.1.10.73
+
+  New
+  •  Mesh Viewer: meshes are shown with their textures (Textures: On / Off). Each part gets its material's colour
+     texture: the RLL3 / RLL4 .material.mat next to the mesh, or the material the RL26 meshes carry. The textures
+     load in the background with a progress bar, and ones shared by several meshes (stadiums) load once
+  •  Mesh Viewer: Extract > Wavefront .obj + textures also writes an .mtl and the textures each part uses as PNGs
+     (<name>_textures), so the model opens textured in Blender and the like - colour, normal and see-through maps
+     linked, the others exported too
+  •  Resolve File Names (Rugby League 26): names about 15,000 more files - every player's head, hair, hair cap,
+     beard and headwear parts (characters\...\models\<name>\<name>.modelcomponent.mdl / .blendshapes.mdat) and
+     helper joint offsets, the generic beards and the trophies, the static meshes, the texture packs and model
+     texture lists (.txpl), and the crowd node files
+
+  •  DLL mods (Rugby League 26, Rugby 25, Cricket 24, AFL 23, Tiebreak): the Blobset Mod Loader (dinput8.dll) loads
+     every .dll / .asi in <game>\DLL_Mods into the game before it starts. Mod Manager > DLL Mods keeps them in
+     games\<game>\pc\mods\dll_mods; Install DLL Mods / Build copies them into the game with the loader and takes
+     out removed ones
+  •  File Mapping Editor: Delete Row (button, right click or Delete) removes a file path / hash; Save Changes writes it
+
+  Improved
+  •  Mesh Viewer: zooming keeps going into a mesh once you're close (into a stadium instead of stopping at its
+     middle), and the camera's clip distances follow it, so close-up surfaces no longer vanish
+  •  Mesh Viewer: only the materials the game marks as see-through (fences, light towers, sign atlases) are drawn
+     alpha tested; other textures' alpha no longer punches holes in walls and stands
+  •  Database, Save and Career Editors: every tab has an icon (teams, players, details, stadiums, roster, lineup,
+     jerseys, ratings, appearance, stats, raw, career pages)
+  •  Restore Backup Files reloads the game's files and refreshes the folders and files straight away, so files the
+     restore took out (new sounds) can be added again
+  •  Faster, leaner code: unused code removed, regular expressions built once, fewer copies of Qt containers
+  •  The Windows resources (icon, version info) are generated from the project version at build time
+
+  Fixed
+  •  Dropping a new WAV into a commentary folder didn't open the Commentary Editor's New Line From WAV when a WEM of
+     that name was left in the mods folder (after Restore Backup Files, or an earlier drop)
+  •  Career Editor: the Ladder showed another competition's logo; Fixtures now pick the logo by stage too
+  •  The file mapping kept the names of new files (sounds) after Restore Backup Files took them out; they're now
+     removed from it when they're in neither the game nor the mods folder
+  •  Rugby League 26 Career Editor: the Raw tab was blank
+  •  Save / Career Editors: the Jerseys tab showed collapsed until its splitter was moved
+  •  A possible memory leak when an audio file failed to load, and other analyzer / clazy warnings
+
 v2.1.10.70
 
   New

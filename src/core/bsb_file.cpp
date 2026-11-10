@@ -2,8 +2,6 @@
 
 #include <QtEndian>
 
-#include <algorithm>
-
 using namespace Qt::StringLiterals;
 
 namespace Bsb {

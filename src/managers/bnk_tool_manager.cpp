@@ -4,8 +4,6 @@
 #include "audio_decoder.h"
 #include "blobset_asset_reader.h"
 #include "blobset_entry_registry.h"
-#include "core_defs.h"
-#include "utilities.h"
 #include "wem_file.h"
 
 #include <QCoreApplication>
@@ -17,7 +15,6 @@
 #include <QtConcurrent/QtConcurrentRun>
 
 #include <algorithm>
-#include <stdexcept>
 
 using namespace Qt::StringLiterals;
 
@@ -271,7 +268,7 @@ bool BnkToolManager::replaceRow(int row, const QString& pathOrUrl) {
 int BnkToolManager::replaceByName(const QStringList& pathsOrUrls) {
     int replaced = 0;
     QStringList unmatched;
-    for (const QString& item : pathsOrUrls) {
+    for (const QString& item : std::as_const(pathsOrUrls)) {
         const QString file = toLocalPath(item);
         const QString base = QFileInfo(file).completeBaseName();
         int entry = -1;
@@ -511,8 +508,7 @@ QVariantList BnkToolManager::buildEntryInfo(int entry) {
 
         if (meta.sampleRate > 0 && meta.totalSamples > 0) {
             const double seconds = static_cast<double>(meta.totalSamples) / meta.sampleRate;
-            info << infoRow(u"Duration"_s, u"%1  (%2 samples)"_s.arg(formatDuration(seconds))
-                                                               .arg(QLocale().toString(meta.totalSamples)));
+            info << infoRow(u"Duration"_s, u"%1  (%2 samples)"_s.arg(formatDuration(seconds), QLocale().toString(meta.totalSamples)));
             info << infoRow(u"Average bitrate"_s,
                             u"%1 kbps"_s.arg(qRound(media.size * 8.0 / seconds / 1000.0)));
         }

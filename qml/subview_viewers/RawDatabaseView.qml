@@ -374,7 +374,6 @@ Rectangle {
                     required property string display
                     required property bool readOnly
                     required property bool changed
-                    required property bool selected
                     required property bool current
 
                     implicitHeight: 26

@@ -18,6 +18,15 @@ Every game / platform has its own mod library: `games\<game>\<platform>\mod_libr
 - Two built in entries take part in the load order: **Workspace** (`games\<game>\<platform>\mods`, what Modify always
   used) and **Vortex / external mods** (`<game>\BlobsetToolsMods`, shown when that folder exists).
 
+### DLL mods (V4 PC games)
+
+*DLL Mods…* (Rugby League 26, Rugby 25, Cricket 24, AFL 23, Tiebreak) manages `.dll` / `.asi` mods. They're kept in
+`games\<game>\pc\mods\dll_mods` (*Add DLL…*, or drop files into that folder) and *Install DLL Mods* - or *Build* -
+copies them into `<game>\DLL_Mods` together with the Blobset Mod Loader (`dinput8.dll`), which loads every `.dll` /
+`.asi` there (in name order) before the game's own code runs. Removing one from the library takes it out of the game on
+the next install; files in `<game>\DLL_Mods` that Blobset Tools didn't put there are left alone.
+`<game>\DLL_Mods\dll_mods.log` lists what the game loaded. The `dll_mods` folder is never built into the blobset.
+
 ### blobsetmod.json (optional, for mod authors)
 
 Put it in the mod's root folder to give the mod a name and details:

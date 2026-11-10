@@ -79,6 +79,10 @@ private:
     // lines' sounds, which the game loads as "sound/<folder><name>" - hashed without a type, so they come back as
     // hash -> mapped path in `direct`.
     void harvestSound(const QHash<quint64, QString>& mappedPaths, QHash<quint64, QString>& direct);
+    // V4 (RL26, ...): names the game builds from others - every player's helper joint offsets and character parts
+    // (from the "hj_offsets_<player>.lua" names inside the .hjo files), the crowd node files (from their
+    // "<stadium>_crowdnodes" names), the trophies' and the generic beards' parts.
+    void deriveCharacterNames(const QStringList& allPaths);
     void addStrings(const QByteArray& data);
     void addString(QString s);
 };

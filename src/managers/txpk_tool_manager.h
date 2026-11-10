@@ -20,7 +20,6 @@
 
 #include <atomic>
 #include <functional>
-#include <memory>
 
 class TxpkToolManager : public QObject {
     Q_OBJECT

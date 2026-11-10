@@ -1291,7 +1291,7 @@ const unsigned int kSkinPalette[] = {
 template <typename T, size_t N>
 QList<T> toList(const T (&list)[N]) {
     QList<T> out;
-    for (const T& v : list)
+    for (const T& v : std::as_const(list))
         out << v;
     return out;
 }
@@ -1309,7 +1309,7 @@ const QList<Choice>& teamCommentary() {
 const QStringList& commentarySurnames() {
     static const QStringList list = [] {
         QStringList out;
-        for (const char* s : kSurnames)
+        for (const char* s : std::as_const(kSurnames))
             out << QString::fromUtf8(s);
         return out;
     }();

@@ -45,10 +45,6 @@ struct Stream {
 bool encode(const QByteArray& pcm, int channels, quint32 sampleRate, int targetChannels, quint32 layout, Stream* out,
             QString* error);
 
-// For tests: the standard Vorbis setup packet a Wwise setup stands for (the codebooks from the library); empty when it
-// can't be read.
-QByteArray standardSetup(const QByteArray& wwiseSetup, int channels);
-
 } // namespace WwiseVorbis
 
 #endif // WWISE_VORBIS_H

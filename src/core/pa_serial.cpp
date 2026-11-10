@@ -15,7 +15,7 @@ namespace {
 
 quint32 fnv1a(const QByteArray& s) {
     quint32 h = 0x811C9DC5u;
-    for (char c : s) {
+    for (char c : std::as_const(s)) {
         h ^= static_cast<quint32>(static_cast<qint32>(static_cast<signed char>(c)));
         h *= 0x01000193u;
     }
@@ -51,7 +51,7 @@ quint32 murmur2(const QByteArray& s, quint32 seed = 0xDEADBEEFu) {
 const QHash<quint32, QString>& dictionary() {
     static const QHash<quint32, QString> dict = [] {
         QHash<quint32, QString> d;
-        for (const QString& name : knownNames()) {
+        for (const auto& nameList = knownNames(); const QString& name : nameList) {
             const QByteArray utf8 = name.toUtf8();
             d.insert(fnv1a(utf8), name);
             d.insert(murmur2(utf8), name);
@@ -111,7 +111,7 @@ QString groupFor(const QString& name) {
                                      u"temple"_s, u"malar"_s, u"philtrum"_s, u"septum"_s, u"oris"_s, u"temporalis"_s,
                                      u"skin"_s, u"freckle"_s, u"mole"_s, u"scar"_s, u"redness"_s, u"highlight"_s,
                                      u"crowsfeet"_s, u"pockmark"_s, u"limbal"_s, u"age"_s, u"pimple"_s, u"facepaint"_s};
-    for (const QString& part : face)
+    for (const QString& part : std::as_const(face))
         if (n.contains(part))
             return u"Face"_s;
     return u"Other"_s;
@@ -227,27 +227,11 @@ bool Blob::parse(const QByteArray& data, QString* error) {
     return true;
 }
 
-int Blob::typeByName(const QString& name) const {
-    for (int t = 0; t < m_types.size(); ++t)
-        if (m_types[t].name == name)
-            return t;
-    return -1;
-}
-
 const Member* Blob::member(int type, const QString& name) const {
     if (type < 0 || type >= m_types.size())
         return nullptr;
-    for (const Member& m : m_types[type].members)
+    for (const Member& m : std::as_const(m_types[type].members))
         if (m.name == name)
-            return &m;
-    return nullptr;
-}
-
-const Member* Blob::memberByHash(int type, quint32 hash) const {
-    if (type < 0 || type >= m_types.size())
-        return nullptr;
-    for (const Member& m : m_types[type].members)
-        if (m.hash == hash)
             return &m;
     return nullptr;
 }
@@ -286,7 +270,7 @@ void Blob::collect(int type, qint64 base, const QString& prefix, QVariantList& o
 
     // Colour triples: "<stem>_r", "<stem>_g", "<stem>_b" bytes.
     QHash<QString, const Member*> bytesByName;
-    for (const Member& m : t.members)
+    for (const Member& m : std::as_const(t.members))
         if (m.type < 0 && m.elementSize == 1 && m.count == 1 && !m.name.isEmpty())
             bytesByName.insert(m.name, &m);
     QSet<quint32> used;
@@ -342,7 +326,7 @@ void Blob::collect(int type, qint64 base, const QString& prefix, QVariantList& o
             const QByteArray raw = m_data.mid(at, m.count);
             const QByteArray text = raw.left(raw.indexOf('\0') < 0 ? raw.size() : raw.indexOf('\0'));
             bool printable = true;
-            for (char c : text)
+            for (char c : std::as_const(text))
                 printable = printable && (static_cast<uchar>(c) >= 0x20);
             if (printable) {
                 out << QVariantMap{{u"key"_s, u"t:%1:%2"_s.arg(at).arg(m.count)},
@@ -387,7 +371,7 @@ bool naturalLess(const QString& a, const QString& b) {
             qsizetype ei = i, ej = j;
             while (ei < a.size() && a[ei].isDigit()) ++ei;
             while (ej < b.size() && b[ej].isDigit()) ++ej;
-            const qlonglong na = a.mid(i, ei - i).toLongLong(), nb = b.mid(j, ej - j).toLongLong();
+            const qlonglong na = QStringView(a).mid(i, ei - i).toLongLong(), nb = QStringView(b).mid(j, ej - j).toLongLong();
             if (na != nb)
                 return na < nb;
             i = ei;
@@ -428,7 +412,7 @@ bool Blob::setField(const QString& key, const QVariant& value) {
     const QStringList parts = key.split(u':');
     if (parts.size() < 2)
         return false;
-    const QString kind = parts[0];
+    const QString& kind = parts[0];
     if (kind == u"n"_s && parts.size() == 3) {
         const int size = parts[2].toInt();
         const quint64 v = static_cast<quint64>(value.toDouble());

@@ -10,7 +10,6 @@
 #include "lua_script.h"
 #include "m3mp_file.h"
 #include "package_stream.h"
-#include "utilities.h"
 #include "xml_models.h"
 
 #include <QBuffer>
@@ -257,7 +256,7 @@ bool M3mpToolManager::loadFromBytes(const QByteArray& data, bool isBigEndian, in
         }
 
         int bad = 0;
-        for (const M3MP::UnCompressedEntry& e : m3mp.getUnCompressedEntries()) {
+        for (const auto& eList = m3mp.getUnCompressedEntries(); const M3MP::UnCompressedEntry& e : eList) {
             Entry entry;
             entry.offset = e.info.offset;
             entry.size = e.info.size;
@@ -447,7 +446,7 @@ bool M3mpToolManager::replaceFileAt(int fileIndex, const QString& pathOrUrl) {
 int M3mpToolManager::replaceByName(const QStringList& pathsOrUrls) {
     int replaced = 0;
     QStringList unmatched;
-    for (const QString& item : pathsOrUrls) {
+    for (const QString& item : std::as_const(pathsOrUrls)) {
         const QString file = toLocalPath(item);
         const QString name = QFileInfo(file).fileName();
         int entry = -1;
@@ -970,7 +969,7 @@ void M3mpToolManager::selectFolder(const QModelIndex& index) {
     TreeNode* node = index.isValid() ? static_cast<TreeNode*>(index.internalPointer()) : nullptr;
     if (node && node->isFolder) {
         const QString folderPath = m_treeModel->getPathFromIndex(index);
-        for (const auto& child : node->children) {
+        for (const auto& child : std::as_const(node->children)) {
             if (child->isFolder)
                 continue;
             const int entry = m_pathToEntry.value(folderPath + u'/' + child->name, -1);
@@ -1055,7 +1054,7 @@ QString M3mpToolManager::writeCreatorList(const QString& outDir) const {
     list.version = m_source.version;
     list.outputName = m_source.outputName.isEmpty() ? m_sourceName + u".m3mp"_s : m_source.outputName;
 
-    for (const Entry& entry : m_entries) {
+    for (const Entry& entry : std::as_const(m_entries)) {
         ExtractFileEntry item;
         item.filePath = entry.storedPath;
         item.file = entry.path;
@@ -1239,7 +1238,7 @@ void M3mpToolManager::createM3mp(const QString& xmlPathIn, const QString& source
             info.fileNameHash = list.fileNameHash;
             info.isCompressed = list.isCompressed;
             info.mainCompressedSize = info.mainUnCompressedSize = static_cast<quint32>(total);
-            for (const ExtractFileEntry& item : list.entries) {
+            for (const ExtractFileEntry& item : std::as_const(list.entries)) {
                 ModifyFileEntry entry;
                 entry.filePath = item.filePath;
                 info.entries.append(entry);

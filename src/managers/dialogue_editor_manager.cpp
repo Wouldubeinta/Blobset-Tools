@@ -15,8 +15,6 @@
 #include <QUrl>
 #include <QtEndian>
 
-#include <algorithm>
-
 using namespace Qt::StringLiterals;
 
 namespace {
@@ -50,7 +48,7 @@ QString hex32(quint32 v) {
 // What a typed name becomes: lower case, spaces / punctuation dropped (the game's are a-z only: "A Hall" -> "ahall").
 QByteArray cleanName(const QString& text) {
     QByteArray out;
-    for (const QChar ch : text.trimmed().toLower()) {
+    for (const auto& chList = text.trimmed().toLower(); const QChar ch : chList) {
         const char c = ch.toLatin1();
         if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
             out.append(c);
@@ -70,7 +68,7 @@ bool DialogueEditorManager::isDialogueHash(const QString& hexHash) {
 
 quint32 DialogueEditorManager::nameHash(const QByteArray& name) {
     quint32 h = 0x811c9dc5u;
-    for (const char c : name) {
+    for (const char c : std::as_const(name)) {
         h ^= static_cast<quint8>(c);
         h *= 0x01000193u;
     }
@@ -146,7 +144,7 @@ QByteArray DialogueEditorManager::listData(int list) const {
     };
     const List& l = m_lists.at(list);
     put(quint32(l.names.size()));
-    for (const Name& n : l.names) {
+    for (const Name& n : std::as_const(l.names)) {
         put(nameHash(n.name));
         put(quint32(n.name.size()));
         out += n.name;
@@ -156,7 +154,7 @@ QByteArray DialogueEditorManager::listData(int list) const {
 
 bool DialogueEditorManager::loadFromEntries(const QList<QPair<QString, QByteArray>>& entries, const QByteArray& commentary) {
     QList<List> parsed;
-    for (const auto& [path, data] : entries) {
+    for (const auto& [path, data] : std::as_const(entries)) {
         bool ok = false;
         const QList<Name> names = parseList(data, &ok);
         if (!ok) {
@@ -176,7 +174,7 @@ bool DialogueEditorManager::loadFromEntries(const QList<QPair<QString, QByteArra
     }
     m_lists = parsed;
     m_speakers.clear();
-    for (const auto& sp : CommentaryEditorManager::speakerCategories(commentary))
+    for (const auto& spList = CommentaryEditorManager::speakerCategories(commentary); const auto& sp : spList)
         m_speakers << Speaker{sp.name, sp.categories};
     ++m_revision;
     emit loadedChanged();
@@ -229,7 +227,7 @@ bool DialogueEditorManager::load() {
         return false;
     }
     QList<QPair<QString, QByteArray>> entries;
-    for (const ListKind& k : kKinds) {
+    for (const ListKind& k : std::as_const(kKinds)) {
         const QString path = QString::fromLatin1(kListPrefix) + QString::fromLatin1(k.key);
         const QByteArray data = m_m3mp->entryDataByPath(path);
         if (!data.isEmpty())
@@ -311,7 +309,7 @@ void DialogueEditorManager::revertAll() {
 QStringList DialogueEditorManager::prefixes(int list) const {
     if (list < 0 || list >= m_lists.size())
         return {};
-    for (const ListKind& k : kKinds)
+    for (const ListKind& k : std::as_const(kKinds))
         if (m_lists.at(list).key == QString::fromLatin1(k.key))
             return QString::fromLatin1(k.prefixes).split(u',');
     return {};
@@ -321,10 +319,10 @@ QStringList DialogueEditorManager::voicesFor(int list, const QString& name) cons
     QStringList out;
     const QStringList pre = prefixes(list);
     const QStringList real = voices(list);
-    for (const Speaker& sp : m_speakers) {
+    for (const Speaker& sp : std::as_const(m_speakers)) {
         if (!real.contains(sp.name))
             continue;
-        for (const QString& p : pre)
+        for (const QString& p : std::as_const(pre))
             if (sp.categories.contains(p + name)) {
                 out << sp.name;
                 break;
@@ -337,10 +335,10 @@ QStringList DialogueEditorManager::voicesFor(int list, const QString& name) cons
 QStringList DialogueEditorManager::voices(int list) const {
     QStringList out;
     const QStringList pre = prefixes(list);
-    for (const Speaker& sp : m_speakers) {
+    for (const Speaker& sp : std::as_const(m_speakers)) {
         int count = 0;
-        for (const QString& c : sp.categories)
-            for (const QString& p : pre)
+        for (const QString& c : std::as_const(sp.categories))
+            for (const QString& p : std::as_const(pre))
                 if (c.startsWith(p)) {
                     ++count;
                     break;
@@ -360,7 +358,7 @@ QVariantList DialogueEditorManager::lists() const {
     for (int i = 0; i < m_lists.size(); ++i) {
         const List& l = m_lists.at(i);
         QString title = l.key, hint;
-        for (const ListKind& k : kKinds)
+        for (const ListKind& k : std::as_const(kKinds))
             if (l.key == QString::fromLatin1(k.key)) {
                 title = QString::fromLatin1(k.title);
                 hint = QString::fromLatin1(k.hint);
@@ -403,19 +401,19 @@ QVariantList DialogueEditorManager::unlisted(int list) const {
     if (list < 0 || list >= m_lists.size())
         return out;
     QSet<QString> listed;
-    for (const Name& n : m_lists.at(list).names)
+    for (const auto& nList = m_lists.at(list).names; const Name& n : nList)
         listed.insert(QString::fromLatin1(n.name));
     // Locations and mascots share the team_ categories: one isn't "unlisted" because it's in the other list.
     const QStringList pre = prefixes(list);
     if (pre.contains(u"team_mid_"_s))
         for (int other = 0; other < m_lists.size(); ++other)
             if (other != list && prefixes(other) == pre)
-                for (const Name& n : m_lists.at(other).names)
+                for (const auto& nList = m_lists.at(other).names; const Name& n : nList)
                     listed.insert(QString::fromLatin1(n.name));
     QSet<QString> found;
-    for (const Speaker& sp : m_speakers)
-        for (const QString& c : sp.categories)
-            for (const QString& p : pre)
+    for (const Speaker& sp : std::as_const(m_speakers))
+        for (const QString& c : std::as_const(sp.categories))
+            for (const QString& p : std::as_const(pre))
                 if (c.startsWith(p)) {
                     const QString name = c.mid(p.size());
                     if (!name.isEmpty() && !listed.contains(name))
@@ -423,7 +421,7 @@ QVariantList DialogueEditorManager::unlisted(int list) const {
                 }
     QStringList names(found.begin(), found.end());
     names.sort();
-    for (const QString& name : names) {
+    for (const QString& name : std::as_const(names)) {
         const QStringList v = voicesFor(list, name);
         out << QVariantMap{{u"name"_s, name}, {u"voices"_s, int(v.size())}, {u"voiceNames"_s, v.join(u", "_s)},
                            {u"hash"_s, hex32(nameHash(name.toLatin1()))}};
@@ -502,7 +500,7 @@ int DialogueEditorManager::addNames(int list, const QStringList& names) {
     if (list < 0 || list >= m_lists.size())
         return 0;
     int added = 0;
-    for (const QString& n : names) {
+    for (const QString& n : std::as_const(names)) {
         if (!checkName(list, n).isEmpty())
             continue;
         const QByteArray name = cleanName(n);
@@ -569,7 +567,7 @@ bool DialogueEditorManager::exportList(int list, const QString& pathOrUrl) {
     if (list < 0 || list >= m_lists.size())
         return false;
     QByteArray text;
-    for (const Name& n : m_lists.at(list).names)
+    for (const auto& nList = m_lists.at(list).names; const Name& n : nList)
         text += n.name + "\r\n";
     const QString path = toLocalPath(pathOrUrl);
     QSaveFile out(path);
@@ -590,7 +588,8 @@ bool DialogueEditorManager::importList(int list, const QString& pathOrUrl) {
         setStatus(false, u"Could not open %1: %2"_s.arg(QDir::toNativeSeparators(path), file.errorString()));
         return false;
     }
-    const QStringList names = QString::fromUtf8(file.readAll()).split(QRegularExpression(u"[\\r\\n,;\\t]+"_s), Qt::SkipEmptyParts);
+    static const QRegularExpression separators(u"[\\r\\n,;\\t]+"_s);
+    const QStringList names = QString::fromUtf8(file.readAll()).split(separators, Qt::SkipEmptyParts);
     const int added = addNames(list, names);
     setStatus(true, u"Imported %1: %2 new name(s) added (names already in the list are skipped)."_s
                         .arg(QFileInfo(path).fileName()).arg(added));

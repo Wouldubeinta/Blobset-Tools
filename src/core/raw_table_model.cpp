@@ -35,7 +35,7 @@ QString localPath(const QString& pathOrUrl) {
 QString nameKey(const QString& name) {
     QString out;
     out.reserve(name.size());
-    for (const QChar c : name)
+    for (const QChar c : std::as_const(name))
         if (c.isLetterOrNumber() || c == u'\'' || c == u'#')
             out += c.toLower();
     return out;
@@ -121,7 +121,7 @@ int RawTableModel::find(const QString& query, int from) const {
         return -1;
     for (int i = 0; i < count; ++i) {
         const int r = (std::max(0, from) + i) % count;
-        for (const QString& c : m_rows.at(r))
+        for (const auto& cList = m_rows.at(r); const QString& c : cList)
             if (c.contains(q, Qt::CaseInsensitive))
                 return r;
     }
@@ -146,7 +146,7 @@ bool RawTableModel::parseBool(const QString& text, bool* ok) {
 qint64 RawTableModel::parseInt(const QString& text, bool* ok) {
     const QString t = text.trimmed();
     if (t.startsWith(u"0x"_s, Qt::CaseInsensitive))
-        return static_cast<qint64>(t.mid(2).toULongLong(ok, 16));
+        return static_cast<qint64>(QStringView(t).mid(2).toULongLong(ok, 16));
     qint64 v = t.toLongLong(ok);
     if (*ok)
         return v;
@@ -262,10 +262,10 @@ QString RawTableModel::exportCsv(const QString& pathOrUrl) const {
         return u"Nothing to export."_s;
     QStringList lines;
     QStringList header;
-    for (const RawColumn& c : m_columns)
+    for (const RawColumn& c : std::as_const(m_columns))
         header << csvCell(c.name);
     lines << header.join(u',');
-    for (const QStringList& r : m_rows) {
+    for (const QStringList& r : std::as_const(m_rows)) {
         QStringList cells;
         for (int c = 0; c < m_columns.size(); ++c)
             cells << csvCell(c < r.size() ? r.at(c) : QString());
@@ -300,7 +300,7 @@ QString RawTableModel::importCsv(const QString& pathOrUrl) {
     QList<QStringList> records;
     bool open = false;
     QString carry;
-    for (QString line : lines) {
+    for (QString line : std::as_const(lines)) {
         if (line.endsWith(u'\r'))
             line.chop(1);
         if (!open && line.trimmed().isEmpty())
@@ -332,7 +332,7 @@ QString RawTableModel::importCsv(const QString& pathOrUrl) {
         byName.insert(nameKey(m_columns.at(c).name), c);
     QList<int> map;
     int matched = 0;
-    for (const QString& h : header) {
+    for (const QString& h : std::as_const(header)) {
         const int c = byName.value(nameKey(h), -1);
         map << c;
         if (c >= 0)

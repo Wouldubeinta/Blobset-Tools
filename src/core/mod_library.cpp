@@ -1,4 +1,5 @@
 #include "mod_library.h"
+#include "dll_mod_installer.h"
 
 #include <QDir>
 #include <QDirIterator>
@@ -109,13 +110,16 @@ QStringList ModLibrary::modFiles(const QString& folder) const {
         return files;
 
     QStringList filters;
-    for (const QString& extension : m_extensions)
+    for (const QString& extension : std::as_const(m_extensions))
         filters.append(u"*."_s + extension);
 
     const QDir root(folder);
     QDirIterator it(folder, filters, QDir::Files, QDirIterator::Subdirectories);
-    while (it.hasNext())
-        files.append(root.relativeFilePath(it.next()));
+    while (it.hasNext()) {
+        const QString relative = root.relativeFilePath(it.next());
+        if (!DllModInstaller::isLibraryPath(relative))   // DLL mods aren't blobset files.
+            files.append(relative);
+    }
     return files;
 }
 
@@ -151,7 +155,7 @@ void ModLibrary::load() {
     QSet<QString> seen;
 
     const QJsonArray order = readJson(QDir(m_libraryDir).filePath(kModListFile)).value(u"order"_s).toArray();
-    for (const QJsonValue& value : order) {
+    for (const QJsonValue value : std::as_const(order)) {
         const QJsonObject entry = value.toObject();
         const QString id = entry.value(u"id"_s).toString();
         if (id.isEmpty() || seen.contains(id))
@@ -197,16 +201,16 @@ bool ModLibrary::save(QString* error) const {
         return false;
     }
     QJsonArray order;
-    for (const Mod& mod : m_mods)
+    for (const Mod& mod : std::as_const(m_mods))
         order.append(QJsonObject{{u"id"_s, mod.id}, {u"enabled"_s, mod.enabled}});
     return writeJson(QDir(m_libraryDir).filePath(kModListFile), QJsonObject{{u"order"_s, order}}, error);
 }
 
 const ModLibrary::Mod* ModLibrary::find(const QString& idOrName) const {
-    for (const Mod& mod : m_mods)
+    for (const Mod& mod : std::as_const(m_mods))
         if (mod.id.compare(idOrName, Qt::CaseInsensitive) == 0)
             return &mod;
-    for (const Mod& mod : m_mods)
+    for (const Mod& mod : std::as_const(m_mods))
         if (mod.name.compare(idOrName, Qt::CaseInsensitive) == 0)
             return &mod;
     return nullptr;
@@ -246,11 +250,11 @@ QString ModLibrary::findImage(const QString& folder) {
     }
     // 2. preview.png / image.png / ... in the mod's top folder.
     QStringList filters;
-    for (const QString& suffix : kImageSuffixes)
+    for (const QString& suffix : std::as_const(kImageSuffixes))
         filters << u"*."_s + suffix;
     const QStringList pictures = dir.entryList(filters, QDir::Files, QDir::Name | QDir::IgnoreCase);
-    for (const QString& name : kImageNames)
-        for (const QString& picture : pictures)
+    for (const QString& name : std::as_const(kImageNames))
+        for (const QString& picture : std::as_const(pictures))
             if (QFileInfo(picture).completeBaseName().compare(name, Qt::CaseInsensitive) == 0)
                 return dir.filePath(picture);
     // 3. The only picture there.
@@ -274,7 +278,7 @@ bool ModLibrary::setImage(const QString& id, const QString& imageFile, QString* 
     const QDir dir(mod->path);
     const QString target = dir.filePath(u"preview."_s + QFileInfo(imageFile).suffix().toLower());
     if (QDir::cleanPath(QFileInfo(imageFile).absoluteFilePath()).compare(QDir::cleanPath(target), Qt::CaseInsensitive) != 0) {
-        for (const QString& suffix : kImageSuffixes)
+        for (const QString& suffix : std::as_const(kImageSuffixes))
             QFile::remove(dir.filePath(u"preview."_s + suffix));
         if (!QFile::copy(imageFile, target))
             return failWith(u"Could not copy the picture into %1."_s.arg(QDir::toNativeSeparators(mod->path)));
@@ -339,7 +343,7 @@ bool ModLibrary::setInfo(const QString& id, const QString& name, const QString& 
 
 QStringList ModLibrary::enabledSources() const {
     QStringList sources;
-    for (const Mod& mod : m_mods)
+    for (const Mod& mod : std::as_const(m_mods))
         if (mod.enabled && !mod.path.isEmpty() && QFileInfo(mod.path).isDir())
             sources.append(mod.path);
     return sources;
@@ -347,10 +351,10 @@ QStringList ModLibrary::enabledSources() const {
 
 int ModLibrary::enabledFileCount() const {
     QSet<QString> keys;
-    for (const Mod& mod : m_mods) {
+    for (const Mod& mod : std::as_const(m_mods)) {
         if (!mod.enabled)
             continue;
-        for (const QString& file : modFiles(mod.path))
+        for (const auto& fileList = modFiles(mod.path); const QString& file : fileList)
             keys.insert(normalizedKey(file));
     }
     return static_cast<int>(keys.size());
@@ -359,10 +363,10 @@ int ModLibrary::enabledFileCount() const {
 QList<ModLibrary::Conflict> ModLibrary::conflicts() const {
     QHash<QString, Conflict> byKey;
     QStringList keys;   // First seen order.
-    for (const Mod& mod : m_mods) {
+    for (const Mod& mod : std::as_const(m_mods)) {
         if (!mod.enabled)
             continue;
-        for (const QString& file : modFiles(mod.path)) {
+        for (const auto& fileList = modFiles(mod.path); const QString& file : fileList) {
             const QString key = normalizedKey(file);
             auto it = byKey.find(key);
             if (it == byKey.end()) {
@@ -448,7 +452,7 @@ QString ModLibrary::findRoot(const QString& folder, const QSet<QString>& mappedP
 
         int mapped = 0;
         int knownTop = 0;
-        for (const QString& file : modFiles(current)) {
+        for (const auto& fileList = modFiles(current); const QString& file : fileList) {
             if (mappedPaths.contains(normalizedKey(file)))
                 ++mapped;
             const qsizetype slash = file.indexOf(u'/');
@@ -463,7 +467,7 @@ QString ModLibrary::findRoot(const QString& folder, const QSet<QString>& mappedP
 
         if (d >= kMaxRootDepth)
             continue;
-        for (const QString& child : QDir(current).entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name)) {
+        for (const auto& childList = QDir(current).entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name); const QString& child : childList) {
             if (child == u"__MACOSX"_s || child.startsWith(u'.'))
                 continue;
             const QString path = QDir(current).filePath(child);
@@ -488,7 +492,7 @@ QString ModLibrary::findRoot(const QString& folder, const QSet<QString>& mappedP
 
 QString ModLibrary::uniqueId(const QString& name) const {
     QString id;
-    for (const QChar ch : name.trimmed()) {
+    for (const auto& chList = name.trimmed(); const QChar ch : chList) {
         if (ch.isLetterOrNumber() || QStringLiteral(" _-.()[]").contains(ch))
             id += ch;
         else
@@ -569,7 +573,7 @@ std::optional<ModLibrary::Mod> ModLibrary::install(const QString& sourceIn, cons
             break;
         }
     }
-    if (QFileInfo(target).exists() && !removeTree(target))
+    if (QFileInfo::exists(target) && !removeTree(target))
         return failWith(u"Could not replace the installed %1 (is a file in it open?)."_s.arg(name));
 
     QString reason;

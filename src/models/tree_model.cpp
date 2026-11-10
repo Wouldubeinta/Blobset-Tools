@@ -53,7 +53,7 @@ void TreeModel::buildTree(const QList<QString>& filePaths) {
     folderCache.insert(QString(), m_rootNode.get());
 
     QString cleanPath;
-    for (const QString& path : filePaths) {
+    for (const QString& path : std::as_const(filePaths)) {
         cleanPath = path;
         cleanPath.replace(u'\\', u'/');
 
@@ -64,7 +64,7 @@ void TreeModel::buildTree(const QList<QString>& filePaths) {
         if (!folder) {
             folder = m_rootNode.get();
             QString accumulated;
-            for (const QString& part : folderPath.split(u'/', Qt::SkipEmptyParts)) {
+            for (const auto& partList = folderPath.split(u'/', Qt::SkipEmptyParts); const QString& part : partList) {
                 if (!accumulated.isEmpty()) accumulated += u'/';
                 accumulated += part;
                 if (TreeNode* known = folderCache.value(accumulated, nullptr)) {
@@ -125,7 +125,7 @@ bool TreeModel::addFile(const QString& filePath) {
         folderIndex = createIndex(folder->folderRow, 0, folder);
     }
     const QString& name = parts.last();
-    for (const auto& child : folder->children)
+    for (const auto& child : std::as_const(folder->children))
         if (!child->isFolder && child->name.compare(name, Qt::CaseInsensitive) == 0)
             return false;
     auto file = std::make_unique<TreeNode>();
@@ -152,7 +152,7 @@ QModelIndex TreeModel::indexFromPath(const QString& path) const {
 
     const TreeNode* node = m_rootNode.get();
     QModelIndex result;
-    for (const QString& part : parts) {
+    for (const QString& part : std::as_const(parts)) {
         const auto it = std::find_if(node->folders.cbegin(), node->folders.cend(),
                                      [&part](const TreeNode* folder) { return folder->name == part; });
         if (it == node->folders.cend()) return QModelIndex();

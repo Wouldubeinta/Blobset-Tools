@@ -263,7 +263,7 @@ bool toWwiseSetup(const QByteArray& setup, int channels, QByteArray* wwise, QVec
         if (it == lib.idsOf.constEnd())
             return fail(u"codebook %1 isn't one of Wwise's (the encoder's codebooks don't match its library)."_s.arg(i));
         int id = it.value().first();
-        for (const int candidate : it.value())
+        for (const auto& candidateList = it.value(); const int candidate : candidateList)
             if (previous >= 0 && std::abs(candidate - previous) < std::abs(id - previous))
                 id = candidate;
         out.put(10, quint32(id));
@@ -556,12 +556,12 @@ bool encode(const QByteArray& pcm, int channels, quint32 sampleRate, int targetC
 
     // FNV-1 32 of the setup: Wwise's id for it (the decoder shares decoded setups by it).
     quint32 setupHash = 0x811C9DC5u;
-    for (const char c : wwSetup) {
+    for (const char c : std::as_const(wwSetup)) {
         setupHash *= 0x01000193u;
         setupHash ^= quint8(c);
     }
     quint32 alloc = 20480, alloc64 = 21000;   // Not one of the game's setups: room to spare.
-    for (const KnownSetup& known : kKnownSetups)
+    for (const KnownSetup& known : std::as_const(kKnownSetups))
         if (known.hash == setupHash) {
             alloc = known.alloc;
             alloc64 = known.alloc64;
@@ -610,107 +610,6 @@ bool encode(const QByteArray& pcm, int channels, quint32 sampleRate, int targetC
     result->samples = quint32(samples);
     result->channels = targetChannels;
     return true;
-}
-
-QByteArray standardSetup(const QByteArray& wwiseSetup, int channels) {
-    BitReader in(wwiseSetup);
-    BitWriter out;
-    for (const char c : QByteArray("\x05vorbis", 7))
-        out.put(8, quint8(c));
-    const auto copy = [&](int n) {
-        const quint32 v = in.get(n);
-        out.put(n, v);
-        return v;
-    };
-    const int codebooks = int(copy(8)) + 1;
-    const qsizetype size = sizeof(kLibrary);
-    const quint32 tableStart = qFromLittleEndian<quint32>(kLibrary + size - 4);
-    for (int i = 0; i < codebooks; ++i) {
-        const quint32 id = in.get(10);
-        if (int(id) >= int((size - tableStart) / 4) - 1)
-            return {};
-        const quint32 from = qFromLittleEndian<quint32>(kLibrary + tableStart + 4 * id);
-        const quint32 to = qFromLittleEndian<quint32>(kLibrary + tableStart + 4 * (id + 1));
-        BitReader book(kLibrary + from, to - from);
-        if (!unpackCodebook(book, out))
-            return {};
-    }
-    out.put(6, 0);
-    out.put(16, 0);
-    const int floors = int(copy(6)) + 1;
-    for (int i = 0; i < floors; ++i) {
-        out.put(16, 1);
-        const int partitions = int(copy(5));
-        QVector<int> classes(partitions);
-        int maximum = -1;
-        for (int j = 0; j < partitions; ++j) {
-            classes[j] = int(copy(4));
-            maximum = std::max(maximum, classes[j]);
-        }
-        QVector<int> dimensions(maximum + 1);
-        for (int j = 0; j <= maximum; ++j) {
-            dimensions[j] = int(copy(3)) + 1;
-            const int subclasses = int(copy(2));
-            if (subclasses)
-                copy(8);
-            for (int k = 0; k < (1 << subclasses); ++k)
-                copy(8);
-        }
-        copy(2);
-        const int rangeBits = int(copy(4));
-        for (int j = 0; j < partitions; ++j)
-            for (int k = 0; k < dimensions[classes[j]]; ++k)
-                copy(rangeBits);
-    }
-    const int residues = int(copy(6)) + 1;
-    for (int i = 0; i < residues; ++i) {
-        out.put(16, in.get(2));
-        copy(24);
-        copy(24);
-        copy(24);
-        const int classifications = int(copy(6)) + 1;
-        copy(8);
-        QVector<quint32> cascade(classifications);
-        for (int j = 0; j < classifications; ++j) {
-            const quint32 low = copy(3);
-            const quint32 high = copy(1) ? copy(5) : 0;
-            cascade[j] = high * 8 + low;
-        }
-        for (int j = 0; j < classifications; ++j)
-            for (int k = 0; k < 8; ++k)
-                if (cascade[j] & (1u << k))
-                    copy(8);
-    }
-    const int mappings = int(copy(6)) + 1;
-    for (int i = 0; i < mappings; ++i) {
-        out.put(16, 0);
-        const int submaps = copy(1) ? int(copy(4)) + 1 : 1;
-        if (copy(1)) {
-            const int steps = int(copy(8)) + 1;
-            for (int j = 0; j < steps; ++j) {
-                copy(ilog(quint32(channels - 1)));
-                copy(ilog(quint32(channels - 1)));
-            }
-        }
-        copy(2);
-        if (submaps > 1)
-            for (int j = 0; j < channels; ++j)
-                copy(4);
-        for (int j = 0; j < submaps; ++j) {
-            copy(8);
-            copy(8);
-            copy(8);
-        }
-    }
-    const int modes = int(copy(6)) + 1;
-    for (int i = 0; i < modes; ++i) {
-        copy(1);
-        out.put(16, 0);
-        out.put(16, 0);
-        copy(8);
-    }
-    out.put(1, 1);
-    return in.overrun ? QByteArray() : out.bytes;
 }
 
 } // namespace WwiseVorbis

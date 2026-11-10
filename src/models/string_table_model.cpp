@@ -150,7 +150,7 @@ QHash<int, QByteArray> StringTableModel::roleNames() const {
 
 int StringTableModel::modifiedCount() const {
     int changed = 0;
-    for (const Entry& entry : m_entries)
+    for (const Entry& entry : std::as_const(m_entries))
         changed += entry.changed() ? 1 : 0;
     return changed;
 }
@@ -268,12 +268,12 @@ bool StringTableModel::loadFile(const QString& pathIn) {
 QByteArray StringTableModel::serialize() const {
     QByteArray out;
     qsizetype size = 4;
-    for (const Entry& entry : m_entries)
+    for (const Entry& entry : std::as_const(m_entries))
         size += 8 + entry.key.size() + entry.text.size() * 2;
     out.reserve(size);
 
     appendU32(out, quint32(m_entries.size()), m_bigEndian);
-    for (const Entry& entry : m_entries) {
+    for (const Entry& entry : std::as_const(m_entries)) {
         const QByteArray key = entry.key.toUtf8();
         const QByteArray text = entry.text.toUtf8();
         appendU32(out, quint32(key.size()), m_bigEndian);
@@ -310,7 +310,7 @@ QString StringTableModel::saveToMods() {
         return {};
     }
 
-    const QString path = QDir::cleanPath(QDir(mods).filePath(m_workspacePath));
+    QString path = QDir::cleanPath(QDir(mods).filePath(m_workspacePath));
     if (!writeFile(path, serialize()))
         return {};
 
@@ -336,7 +336,7 @@ bool StringTableModel::saveAs(const QString& pathIn) {
 bool StringTableModel::exportCsv(const QString& pathIn) const {
     const QString path = toLocalPath(pathIn);
     QString csv = u"Key,Text\r\n"_s;
-    for (const Entry& entry : m_entries)
+    for (const Entry& entry : std::as_const(m_entries))
         csv += csvField(entry.key) + u',' + csvField(entry.text) + u"\r\n"_s;
 
     QSaveFile out(path);
@@ -373,7 +373,7 @@ bool StringTableModel::importCsv(const QString& pathIn) {
         if (i == 0 && row[0].compare(u"Key"_s, Qt::CaseInsensitive) == 0)
             continue;   // Header.
 
-        const QString key = row[0];
+        const QString& key = row[0];
         const auto existing = m_keyRows.constFind(key);
         if (existing != m_keyRows.constEnd()) {
             if (m_entries[size_t(existing.value())].text != row[1]) {
@@ -464,7 +464,7 @@ bool StringTableModel::setKey(int row, const QString& keyIn) {
 }
 
 QString StringTableModel::uniqueKey(const QString& baseIn) const {
-    const QString base = baseIn.trimmed().isEmpty() ? u"NewString"_s : baseIn.trimmed();
+    QString base = baseIn.trimmed().isEmpty() ? u"NewString"_s : baseIn.trimmed();
     if (!m_keyRows.contains(base))
         return base;
     for (int n = 2;; ++n) {

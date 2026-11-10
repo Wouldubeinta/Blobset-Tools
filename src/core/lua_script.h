@@ -45,10 +45,6 @@ Compiled compile(const QString& source, const QString& name, quint8 flags);
 // Empty when compile() writes a file the game can load in place of one with this header, else why not.
 QString checkWritable(quint8 version, quint8 flags);
 
-// The bytecode version and FR2 flag this build of LuaJIT writes.
-quint8 builtVersion();
-quint8 builtFlags();
-
 } // namespace LuaScript
 
 #endif // LUA_SCRIPT_H

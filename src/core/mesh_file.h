@@ -3,7 +3,9 @@
 
 #include <QByteArray>
 #include <QList>
+#include <QPair>
 #include <QString>
+#include <QStringList>
 #include <QVector3D>
 
 /// BigAnt static mesh, decoded far enough to display and export it. Two layouts:
@@ -44,7 +46,22 @@ public:
         quint32 vertexCount = 0;
         quint32 indexStart = 0;
         quint32 indexCount = 0;
+        int surface = -1;   // Index into `surfaces` (the material it's drawn with), -1 = unknown.
     };
+
+    /// One surface (material) of a material block: its name (the mesh's surface name), shader and texture maps
+    /// ("col_map" -> "props/goalposts/postpads_col", "nrm_map", "mat_map", ...; the paths have no extension).
+    struct Material {
+        QString name;
+        QString shader;
+        QList<QPair<QString, QString>> maps;
+        bool punchthrough = false;   // Alpha tested: the colour texture's alpha cuts holes (fences, ...).
+        QString map(const QString& slot) const;
+    };
+
+    /// A material block (magic 0x23456789): the older games' "<model>.material.mat", embedded in the V4 meshes.
+    /// Little or big endian (consoles). Empty when it isn't one.
+    static QList<Material> parseMaterials(const QByteArray& data);
 
     /// Parses a .mesh. `data` is the main section, followed by the vram section when `mainSize` >= 0 (the older
     /// layout keeps its buffers there). Returns false (and the reason in `error`) when it can't be decoded.
@@ -72,8 +89,16 @@ public:
     int lodCount = 1;              // Detail levels in the file (only the most detailed one is displayed).
     int vertexBufferCount = 1;
 
-    /// Wavefront OBJ of the display data (one group per submesh).
-    QByteArray toObj(const QString& name) const;
+    /// The surface names (header pointer at 0x24), in the order the submeshes' surface indices use. The same
+    /// name can be listed more than once. Names match the material block's surface names.
+    QStringList surfaces;
+    /// V4: the material block the mesh carries (the older games keep it in "<model>.material.mat").
+    QByteArray materialBlock;
+
+    /// Wavefront OBJ of the display data (one group per submesh). With `mtlFile`, "mtllib" names it and each
+    /// submesh uses the material `submeshMaterials[submesh]` (none when empty).
+    QByteArray toObj(const QString& name, const QString& mtlFile = QString(),
+                     const QStringList& submeshMaterials = QStringList()) const;
 
 private:
     // main: the mesh description; data: where its buffer offsets point (V1/V2: the vram section, V4: the main

@@ -192,7 +192,7 @@ bool TxpkToolManager::loadFromBytes(const QByteArray& data, qint64 mainSize, boo
         if (mainSize < 0) {
             // Standalone file: the vram section starts right after the header / info records.
             qint64 headerEnd = 0;
-            for (const TXPK::Entry& e : txpk.getEntries())
+            for (const auto& eList = txpk.getEntries(); const TXPK::Entry& e : eList)
                 headerEnd = std::max<qint64>(headerEnd, static_cast<qint64>(e.DDSPathOffset) + e.DDSPathSize);
             mainSize = headerEnd;
         }
@@ -205,7 +205,7 @@ bool TxpkToolManager::loadFromBytes(const QByteArray& data, qint64 mainSize, boo
             return isBigEndian || m_data.mid(offset, 4) == "DDS "; // PC data is a complete .dds file.
         };
 
-        for (const TXPK::Entry& e : txpk.getEntries()) {
+        for (const auto& eList = txpk.getEntries(); const TXPK::Entry& e : eList) {
             TxpkEntry entry;
             entry.dataSize = e.DDSDataSize;
             entry.width = e.DDSWidth;
@@ -224,11 +224,11 @@ bool TxpkToolManager::loadFromBytes(const QByteArray& data, qint64 mainSize, boo
             const qint64 candidates[2] = { mainSize + static_cast<qint64>(e.DDSDataOffset),
                                            static_cast<qint64>(e.DDSDataOffset) };
             entry.dataOffset = -1;
-            for (qint64 c : candidates) {
+            for (qint64 c : std::as_const(candidates)) {
                 if (fits(c, entry.dataSize) && looksRight(c)) { entry.dataOffset = c; break; }
             }
             if (entry.dataOffset < 0) {
-                for (qint64 c : candidates) {
+                for (qint64 c : std::as_const(candidates)) {
                     if (fits(c, entry.dataSize)) { entry.dataOffset = c; break; }
                 }
             }
@@ -387,7 +387,7 @@ bool TxpkToolManager::replaceFileAt(int fileIndex, const QString& pathOrUrl) {
 int TxpkToolManager::replaceByName(const QStringList& pathsOrUrls) {
     int replaced = 0;
     QStringList unmatched;
-    for (const QString& item : pathsOrUrls) {
+    for (const QString& item : std::as_const(pathsOrUrls)) {
         const QString file = toLocalPath(item);
         const QString name = QFileInfo(file).fileName();
         int entry = -1;
@@ -514,7 +514,7 @@ QByteArray TxpkToolManager::ddsBytesFor(int index) const {
     if (entry.dataOffset < 0)
         return {};
 
-    const QByteArray raw = m_data.mid(entry.dataOffset, entry.dataSize);
+    QByteArray raw = m_data.mid(entry.dataOffset, entry.dataSize);
     if (!m_isBigEndian)
         return raw;
 
@@ -875,7 +875,7 @@ void TxpkToolManager::selectFolder(const QModelIndex& index) {
     TreeNode* node = index.isValid() ? static_cast<TreeNode*>(index.internalPointer()) : nullptr;
     if (node && node->isFolder) {
         const QString folderPath = m_treeModel->getPathFromIndex(index);
-        for (const auto& child : node->children) {
+        for (const auto& child : std::as_const(node->children)) {
             if (child->isFolder)
                 continue;
 

@@ -54,7 +54,7 @@ QByteArray riffFile(const QByteArray& chunks) {
 }
 
 const Chunk* findChunk(const QList<Chunk>& chunks, const char* tag) {
-    for (const Chunk& c : chunks)
+    for (const Chunk& c : std::as_const(chunks))
         if (c.tag == tag)
             return &c;
     return nullptr;
@@ -247,7 +247,7 @@ QByteArray fromWav(const QByteArray& wav, const QByteArray& originalWem, QString
             return fail(why);
         QByteArray body;
         appendChunk(body, "fmt ", stream.fmt);
-        for (const Chunk& c : wemChunks)
+        for (const Chunk& c : std::as_const(wemChunks))
             if (!dropped.contains(c.tag))
                 appendChunk(body, c.tag, originalWem.mid(c.body, c.size));
         appendChunk(body, "data", stream.data, false);
@@ -268,7 +268,7 @@ QByteArray fromWav(const QByteArray& wav, const QByteArray& originalWem, QString
 
     QByteArray body;
     appendChunk(body, "fmt ", newFmt);
-    for (const Chunk& c : wemChunks)
+    for (const Chunk& c : std::as_const(wemChunks))
         if (!dropped.contains(c.tag))
             appendChunk(body, c.tag, originalWem.mid(c.body, c.size));
     appendChunk(body, "data", pcm, false);

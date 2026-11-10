@@ -106,7 +106,7 @@ int roundRating(double r) {
 template <size_t N>
 QList<const FieldDef*> toList(const FieldDef (&defs)[N]) {
     QList<const FieldDef*> out;
-    for (const FieldDef& d : defs)
+    for (const FieldDef& d : std::as_const(defs))
         out.append(&d);
     return out;
 }
@@ -123,7 +123,7 @@ const QList<const FieldDef*>& jerseyDefs() {
 }
 
 const FieldDef* findDef(const QList<const FieldDef*>& defs, const QString& key) {
-    for (const FieldDef* d : defs)
+    for (const FieldDef* d : std::as_const(defs))
         if (key == QLatin1StringView(d->key))
             return d;
     return nullptr;
@@ -174,7 +174,7 @@ QVariantList namedChoices(const QStringList& names, int base = 0) {
 template <typename C>
 QVariantList choiceList(const QList<C>& list) {
     QVariantList out;
-    for (const C& c : list)
+    for (const C& c : std::as_const(list))
         out << QVariantMap{{u"name"_s, QString::fromUtf8(c.name)}, {u"value"_s, c.value}};
     return out;
 }
@@ -303,7 +303,7 @@ bool Rll3CareerEditorManager::load(const QString& pathOrUrl) {
     m_careerInfo = texts.at(1).trimmed() + u" - "_s + state;
     m_careerYear = 2015;
     bool ok = false;
-    const int year = state.left(4).toInt(&ok);
+    const int year = QStringView(state).left(4).toInt(&ok);
     if (ok && year > 1900 && !state.contains(u"NOT YET BEGAN"_s))
         m_careerYear = year;
     loadCareer();
@@ -591,7 +591,7 @@ int Rll3CareerEditorManager::teamRating(int team) const {
 
 QStringList Rll3CareerEditorManager::groups(const QString& kind) const {
     QStringList out;
-    for (const FieldDef* d : defsFor(kind))
+    for (const auto& dList = defsFor(kind); const FieldDef* d : dList)
         if (!out.contains(QString::fromLatin1(d->group)))
             out << QString::fromLatin1(d->group);
     return out;
@@ -644,7 +644,7 @@ QVariantList Rll3CareerEditorManager::recordFields(const QString& kind, int inde
     const qsizetype at = recordAt(kind, index);
     if (at < 0)
         return out;
-    for (const FieldDef* d : defsFor(kind)) {
+    for (const auto& dList = defsFor(kind); const FieldDef* d : dList) {
         if ((d->flags & kLook) != (wantPage & kLook))
             continue;
         QVariantMap m;
@@ -697,7 +697,7 @@ QVariantList Rll3CareerEditorManager::choicesFor(const QString& kind, qsizetype 
     Q_UNUSED(at)
     QVariantList out;
     if (list == u"emblems"_s) {
-        for (const Rll3Lists::TextChoice& c : Rll3Lists::emblems())
+        for (const auto& cList = Rll3Lists::emblems(); const Rll3Lists::TextChoice& c : cList)
             out << QVariantMap{{u"name"_s, QString::fromLatin1(c.name)}, {u"value"_s, QString::fromLatin1(c.value)}};
         const QString v = value.toString();
         if (std::none_of(out.cbegin(), out.cend(), [&v](const QVariant& c) { return c.toMap().value(u"value"_s).toString() == v; }))
@@ -707,7 +707,7 @@ QVariantList Rll3CareerEditorManager::choicesFor(const QString& kind, qsizetype 
     if (list.endsWith(u"Palette"_s))
         return paletteChoices(paletteFor(list));
     if (list == u"@surnames"_s) {
-        const QStringList names = Rll3SaveLists::commentarySurnames();
+        const QStringList& names = Rll3SaveLists::commentarySurnames();
         out = namedChoices(names);
         if (!out.isEmpty())
             out.last() = QVariantMap{{u"name"_s, names.last()}, {u"value"_s, kNoCommentary}};
@@ -937,7 +937,7 @@ bool Rll3CareerEditorManager::setListPresent(int team, const QString& list, bool
 QVariantMap Rll3CareerEditorManager::lineupRow(int id, bool present) const {
     QVariantMap m = playerInfo(present ? id : 0);
     QStringList roles;
-    for (const QVariant& r : m.value(u"roles"_s).toList())
+    for (const auto& rList = m.value(u"roles"_s).toList(); const QVariant& r : rList)
         roles << kRoleShort.value(r.toInt());
     m[u"roles"_s] = roles.join(u" / "_s);
     m[u"present"_s] = present;
@@ -1002,14 +1002,14 @@ QVariantList Rll3CareerEditorManager::pickerRows(const QString& filter, int team
     };
     if (squadOnly) {
         const QString f = filter.trimmed();
-        for (int id : rosterIds(team)) {
+        for (const auto& idList = rosterIds(team); int id : idList) {
             const QVariantMap m = playerInfo(id);
             if (f.isEmpty() || m.value(u"name"_s).toString().contains(f, Qt::CaseInsensitive) || QString::number(id) == f)
                 out << toRow(m);
         }
         return out;
     }
-    for (const QVariant& v : pickablePlayers(filter))
+    for (const auto& vList = pickablePlayers(filter); const QVariant& v : vList)
         out << toRow(v.toMap());
     return out;
 }
@@ -1024,7 +1024,7 @@ QString Rll3CareerEditorManager::generateBestLineup(int team) {
         int id, rating, roles[3];
     };
     QList<P> players;
-    for (int id : rosterIds(team)) {
+    for (const auto& idList = rosterIds(team); int id : idList) {
         const QVariantMap m = playerInfo(id);
         const QVariantList roles = m.value(u"roles"_s).toList();
         players << P{id, m.value(u"rating"_s).toInt(), {roles.value(0, -1).toInt(), roles.value(1, -1).toInt(), roles.value(2, -1).toInt()}};
@@ -1108,7 +1108,7 @@ QVariantList Rll3CareerEditorManager::jerseyFields(int team, int uniform) const 
     if (base < 0)
         return out;
     const int maker = static_cast<quint8>(m_data.at(base + findDef(jerseyDefs(), u"manufactureId"_s)->off));
-    for (const FieldDef* d : jerseyDefs()) {
+    for (const auto& dList = jerseyDefs(); const FieldDef* d : dList) {
         const QString key = QString::fromLatin1(d->key);
         QVariantMap m;
         m[u"key"_s] = u"j:%1:%2"_s.arg(uniform).arg(key);
@@ -1297,11 +1297,11 @@ QVariantList Rll3CareerEditorManager::rawRows(const QString& kind, int index) co
         for (int i = 0; i < n && off >= 0 && off + i < size; ++i)
             known[off + i] = true;
     };
-    for (const FieldDef* d : defsFor(kind))
+    for (const auto& dList = defsFor(kind); const FieldDef* d : dList)
         mark(d->off, d->size);
     if (kind == u"team"_s) {
         for (int u = 0; u < kMaxJerseys; ++u)
-            for (const FieldDef* d : jerseyDefs())
+            for (const auto& dList = jerseyDefs(); const FieldDef* d : dList)
                 mark(kJerseyBase + u * kJerseyStride + d->off, d->size);
         mark(kJerseyAmount, 1);
         mark(kPlayerAmount, 2 + 4 * rosterMax());
@@ -1460,7 +1460,7 @@ constexpr CareerDef kCareerDefs[] = {
 
 QVariantList valueChoices(const QList<int>& values, const QString& unit) {
     QVariantList out;
-    for (int v : values)
+    for (int v : std::as_const(values))
         out << QVariantMap{{u"name"_s, u"%1 %2"_s.arg(v).arg(unit)}, {u"value"_s, v}};
     return out;
 }
@@ -1470,7 +1470,7 @@ QVariantList valueChoices(const QList<int>& values, const QString& unit) {
 // The competitions (the C# editor's 21): u8 id, name[52], short name[8], kind[15], i32 count, i32 team ids.
 void Rll3CareerEditorManager::loadCareer() {
     m_leagues.clear();
-    for (const qsizetype rel : kLeagueAt) {
+    for (const qsizetype rel : std::as_const(kLeagueAt)) {
         const qsizetype at = m_base + rel;
         League l;
         l.name = readText(at + 1, 52);
@@ -1505,10 +1505,10 @@ QString Rll3CareerEditorManager::teamNameById(int id) const {
 
 QVariantList Rll3CareerEditorManager::teamChoices(const QList<int>& leagues, bool none) const {
     QVariantList out;
-    for (int l : leagues) {
+    for (int l : std::as_const(leagues)) {
         if (l < 0 || l >= m_leagues.size())
             continue;
-        for (int id : m_leagues.at(l).teams) {
+        for (const auto& idList = m_leagues.at(l).teams; int id : idList) {
             QString name = teamNameById(id);
             if (leagues.size() > 1)
                 name += u"  ("_s + titleCase(m_leagues.at(l).name) + u")"_s;
@@ -1544,7 +1544,7 @@ QVariantList Rll3CareerEditorManager::careerFields(int page) const {
     QVariantList out;
     if (!m_loaded)
         return out;
-    for (const CareerDef& d : kCareerDefs) {
+    for (const CareerDef& d : std::as_const(kCareerDefs)) {
         if (d.page != page)
             continue;
         const qsizetype at = m_base + d.at;
@@ -1627,7 +1627,7 @@ QVariantList Rll3CareerEditorManager::careerFields(int page) const {
 }
 
 bool Rll3CareerEditorManager::setCareerField(int page, const QString& key, const QVariant& value) {
-    for (const CareerDef& d : kCareerDefs) {
+    for (const CareerDef& d : std::as_const(kCareerDefs)) {
         if (d.page != page || key != QLatin1StringView(d.key))
             continue;
         const qsizetype at = m_base + d.at;
@@ -1834,7 +1834,7 @@ QVariantList Rll3CareerEditorManager::contractFields(int index) const {
     if (!m_loaded || index < 0 || index >= count)
         return out;
     const qsizetype e = m_base + kContractEntries + qsizetype(index) * kContractSize;
-    for (const ContractDef& d : kContractDefs) {
+    for (const ContractDef& d : std::as_const(kContractDefs)) {
         const int value = static_cast<int>(readNum(e + d.off, d.size, true, d.size == 4));
         QVariantMap m{{u"key"_s, QString::fromLatin1(d.key)}, {u"label"_s, QString::fromLatin1(d.label)}, {u"group"_s, u"Contract"_s},
                       {u"readOnly"_s, false}, {u"slider"_s, false}, {u"min"_s, 0},
@@ -1861,7 +1861,7 @@ bool Rll3CareerEditorManager::setContractField(int index, const QString& key, co
     if (index < 0 || index >= count)
         return false;
     const qsizetype e = m_base + kContractEntries + qsizetype(index) * kContractSize;
-    for (const ContractDef& d : kContractDefs) {
+    for (const ContractDef& d : std::as_const(kContractDefs)) {
         if (key != QLatin1StringView(d.key))
             continue;
         const qint64 v = static_cast<qint64>(value.toDouble());
@@ -1954,7 +1954,7 @@ QVariantList Rll3CareerEditorManager::ladderRows(int comp) const {
         rows[i].id = teams.at(i);
     QList<QList<bool>> playing(rounds, QList<bool>(teams.size(), false));
     int stopRound = rounds;
-    for (const Match& m : readStage(lc.stage)) {
+    for (const auto& mList = readStage(lc.stage); const Match& m : mList) {
         if (m.round >= rounds)
             continue;
         if (!m.played) {
@@ -2052,7 +2052,7 @@ QVariantList Rll3CareerEditorManager::fixtureRows(int stage, int round) const {
         const int h = teamIndexById(m.home), a = teamIndexById(m.away);
         const QVariantMap hr = all.value(h).toMap(), ar = all.value(a).toMap();
         QString stadium = u"Stadium %1"_s.arg(m.stadium);
-        for (const Rll3SaveLists::Choice& c : Rll3SaveLists::stadiums())
+        for (const auto& cList = Rll3SaveLists::stadiums(); const Rll3SaveLists::Choice& c : cList)
             if (c.value == m.stadium)
                 stadium = QString::fromUtf8(c.name);
         out << QVariantMap{{u"home"_s, teamNameById(m.home)}, {u"away"_s, teamNameById(m.away)},
@@ -2151,7 +2151,7 @@ QVariantMap Rll3CareerEditorManager::matchStats(int stage, int match) const {
         t.colour = row.value(u"primaryColour"_s).toString();
     }
     QString stadium = u"Stadium %1"_s.arg(m.stadium);
-    for (const Rll3SaveLists::Choice& c : Rll3SaveLists::stadiums())
+    for (const auto& cList = Rll3SaveLists::stadiums(); const Rll3SaveLists::Choice& c : cList)
         if (c.value == m.stadium)
             stadium = QString::fromUtf8(c.name);
     QVariantMap out = CareerMatch::build(
@@ -2241,7 +2241,7 @@ const QStringList kRawLineupNames = {u"1 - Fullback"_s, u"5 - LWing"_s, u"4 - LC
 
 QList<RawColumn> rawColumns(const QList<RawCol>& cols) {
     QList<RawColumn> out;
-    for (const RawCol& c : cols)
+    for (const RawCol& c : std::as_const(cols))
         out << RawColumn{QString::fromLatin1(c.name), QString::fromLatin1(c.key), c.key[0] == '#'};
     return out;
 }
@@ -2332,7 +2332,7 @@ bool Rll3CareerEditorManager::rawCellAt(const QString& kind, const QString& key,
         if (!key.startsWith(name))
             return false;
         bool ok = false;
-        *j = key.mid(name.size()).toInt(&ok);
+        *j = QStringView(key).mid(name.size()).toInt(&ok);
         return ok && *j >= 0 && *j < count;
     };
     int j = 0;
@@ -2380,7 +2380,7 @@ QString Rll3CareerEditorManager::rawGet(const QString& kind, int index, const QS
         if (size == 0)
             return readText(at + off, static_cast<int>(max));
         if (kind == u"league"_s && key.startsWith(u"#team"_s) && key != u"#teamAmount"_s
-            && key.mid(5).toInt() >= readNum(at + 76, 4, false, true))
+            && QStringView(key).mid(5).toInt() >= readNum(at + 76, 4, false, true))
             return {};   // Past the league's teams.
         return QString::number(readNum(at + off, size, kind != u"league"_s, size == 4));
     }
@@ -2427,7 +2427,7 @@ bool Rll3CareerEditorManager::rawSet(const QString& kind, int index, const QStri
         if (!number(size == 4 && max == INT32_MAX ? INT32_MIN : 0, max))
             return false;
         if (kind == u"league"_s && key.startsWith(u"#team"_s) && key != u"#teamAmount"_s
-            && key.mid(5).toInt() >= readNum(at + 76, 4, false, true))
+            && QStringView(key).mid(5).toInt() >= readNum(at + 76, 4, false, true))
             return false;
         writeNum(at + off, size, kind != u"league"_s, v);
         return true;
@@ -2474,12 +2474,12 @@ bool Rll3CareerEditorManager::fillRawTable(const QString& id, RawTableModel* mod
     for (int i = 0; i < count; ++i) {
         QStringList row;
         row.reserve(cols.size());
-        for (const RawColumn& c : cols)
+        for (const RawColumn& c : std::as_const(cols))
             row << rawGet(kind, i, c.key);
         rows << row;
     }
     QString title;
-    for (const QVariant& t : rawTables())
+    for (const auto& tList = rawTables(); const QVariant& t : tList)
         if (t.toMap().value(u"id"_s).toString() == id)
             title = t.toMap().value(u"title"_s).toString();
     model->setTable(id, title, cols, rows);
@@ -2493,7 +2493,7 @@ QString Rll3CareerEditorManager::applyRawTable(RawTableModel* model) {
     const QString kind = rawKindOf(id);
     const int count = rawCount(kind);
     int changed = 0;
-    const QString errors = model->apply(
+    QString errors = model->apply(
         [model, count](int r) { return model->recordOfRow(r, count); },
         [this, &kind](int rec, const QString& key) { return rawGet(kind, rec, key); },
         [this, &kind](int rec, const QString& key, const QString& text, QString* error) {

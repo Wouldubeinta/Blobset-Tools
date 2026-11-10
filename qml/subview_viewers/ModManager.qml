@@ -257,6 +257,16 @@ Item {
                     onClicked: folderDialog.open()
                 }
                 HeaderButton {
+                    text: "DLL Mods…"
+                    iconSource: managerRoot.iconDir + "file_32.png"
+                    visible: modManager.dllModsSupported
+                    tip: "DLL mods: .dll / .asi files the Blobset Mod Loader loads into the game from <game>\\DLL_Mods"
+                    onClicked: {
+                        modManager.reloadDllMods()
+                        dllModsPopup.open()
+                    }
+                }
+                HeaderButton {
                     text: "Open Library"
                     iconSource: managerRoot.iconDir + "folder_32.png"
                     tip: "Open the folder the installed mods are kept in"
@@ -860,6 +870,159 @@ Item {
         onAccepted: {
             managerRoot.pendingInstalls.push(selectedFolder.toString())
             managerRoot.installNext()
+        }
+    }
+
+    // ---- DLL mods ----------------------------------------------------------------------------------------------
+    FileDialog {
+        id: dllFileDialog
+        title: "Add DLL mods (.dll / .asi and the files they need)"
+        fileMode: FileDialog.OpenFiles
+        nameFilters: ["DLL mods (*.dll *.asi)", "All files (*)"]
+        onAccepted: {
+            const files = []
+            for (let i = 0; i < selectedFiles.length; ++i)
+                files.push(selectedFiles[i].toString())
+            modManager.addDllMods(files)
+        }
+    }
+
+    Popup {
+        id: dllModsPopup
+        anchors.centerIn: parent
+        width: Math.min(managerRoot.width - 80, 760)
+        height: Math.min(managerRoot.height - 80, 520)
+        modal: true
+        padding: 16
+        property int selected: -1
+        background: Rectangle {
+            color: BtDarkStyle.bgDark
+            border.color: BtDarkStyle.borderDark
+            radius: 6
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 10
+
+            Text {
+                text: "DLL Mods"
+                color: BtDarkStyle.accentColor
+                font.pixelSize: 18
+                font.bold: true
+            }
+            Text {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: BtDarkStyle.textDim
+                font.pixelSize: 12
+                text: "The Blobset Mod Loader (dinput8.dll) loads every .dll / .asi here into the game before it starts, "
+                      + "in name order. They're kept in " + modManager.dllModsFolder + " and copied into "
+                      + modManager.dllModsGameFolder + " by Install DLL Mods or Build. "
+                      + "A DLL mod runs inside the game with full access: only use ones you trust."
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                color: BtDarkStyle.bgDarkest
+                border.color: BtDarkStyle.borderDark
+
+                ListView {
+                    id: dllList
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    clip: true
+                    model: modManager.dllMods
+                    delegate: Rectangle {
+                        id: dllRow
+                        required property var modelData
+                        required property int index
+                        width: dllList.width
+                        height: 30
+                        color: dllModsPopup.selected === index ? BtDarkStyle.bgMedium
+                               : (dllRowArea.containsMouse ? BtDarkStyle.bgHover : "transparent")
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
+                            spacing: 10
+                            Text {
+                                Layout.fillWidth: true
+                                text: dllRow.modelData.name
+                                color: dllRow.modelData.loads ? BtDarkStyle.textMain : BtDarkStyle.textDim
+                                font.family: "Consolas"
+                                font.pixelSize: 13
+                                elide: Text.ElideMiddle
+                            }
+                            Text {
+                                text: dllRow.modelData.size
+                                color: BtDarkStyle.textDim
+                                font.pixelSize: 12
+                            }
+                            Text {
+                                Layout.preferredWidth: 110
+                                horizontalAlignment: Text.AlignRight
+                                text: dllRow.modelData.installed ? "Installed" : "Not installed"
+                                color: dllRow.modelData.installed ? "#66bb6a" : BtDarkStyle.accentColor
+                                font.pixelSize: 12
+                            }
+                        }
+                        MouseArea {
+                            id: dllRowArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: dllModsPopup.selected = dllRow.index
+                        }
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        visible: dllList.count === 0
+                        text: "No DLL mods yet. Add some, or drop them into the library folder."
+                        color: BtDarkStyle.textDim
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                SmallButton {
+                    text: "Add DLL…"
+                    implicitHeight: 28
+                    tip: "Copy .dll / .asi files (and their .ini or other files) into the DLL mods library"
+                    onClicked: dllFileDialog.open()
+                }
+                SmallButton {
+                    text: "Remove"
+                    implicitHeight: 28
+                    enabled: dllModsPopup.selected >= 0 && dllModsPopup.selected < modManager.dllMods.length
+                    tip: "Move the selected file to the Recycle Bin; Install DLL Mods takes it out of the game"
+                    onClicked: {
+                        modManager.removeDllMod(modManager.dllMods[dllModsPopup.selected].name)
+                        dllModsPopup.selected = -1
+                    }
+                }
+                SmallButton {
+                    text: "Open Folder"
+                    implicitHeight: 28
+                    tip: "Open the DLL mods library folder"
+                    onClicked: modManager.openDllModsFolder()
+                }
+                Item { Layout.fillWidth: true }
+                SmallButton {
+                    text: "Install DLL Mods"
+                    implicitHeight: 28
+                    tip: "Copy the library into <game>\\DLL_Mods now (with the loader), and take out removed ones"
+                    enabled: !appOrchestrator.workerRunning
+                    onClicked: modManager.installDllMods()
+                }
+                SmallButton {
+                    text: "Close"
+                    implicitHeight: 28
+                    onClicked: dllModsPopup.close()
+                }
+            }
         }
     }
 

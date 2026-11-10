@@ -122,13 +122,13 @@ int RestoreWorker::restoreV3V4() {
         // Assets Modify added (hashes the original header doesn't have) are deleted.
         const BlobsetFile original = readHeader(headerBackup, layout, m_isBigEndian);
         QSet<quint64> originalHashes;
-        for (const BlobsetEntry& entry : original.entries)
+        for (const BlobsetEntry& entry : std::as_const(original.entries))
             originalHashes.insert(hash64 ? entry.folderFileHash64 : quint64(entry.folderFileHash32));
 
         int removed = 0;
         if (QFile::exists(m_blobsetFile)) {
             const BlobsetFile current = readHeader(m_blobsetFile, layout, m_isBigEndian);
-            for (const BlobsetEntry& entry : current.entries) {
+            for (const BlobsetEntry& entry : std::as_const(current.entries)) {
                 const quint64 hash = hash64 ? entry.folderFileHash64 : quint64(entry.folderFileHash32);
                 if (originalHashes.contains(hash))
                     continue;
@@ -143,10 +143,10 @@ int RestoreWorker::restoreV3V4() {
         // The original assets: backup/<2 hex folder>/<file> -> data/<folder>/<file>.
         static const QRegularExpression hexFolder(u"^[0-9a-fA-F]{2}$"_s);
         QStringList files;
-        for (const QFileInfo& folder : QDir(m_backupDir).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        for (const auto& folderList = QDir(m_backupDir).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot); const QFileInfo& folder : folderList) {
             if (!hexFolder.match(folder.fileName()).hasMatch())
                 continue;
-            for (const QFileInfo& file : QDir(folder.absoluteFilePath()).entryInfoList(QDir::Files))
+            for (const auto& fileList = QDir(folder.absoluteFilePath()).entryInfoList(QDir::Files); const QFileInfo& file : fileList)
                 files.append(folder.fileName() + u'/' + file.fileName());
         }
         for (qsizetype i = 0; i < files.size(); ++i) {
@@ -155,7 +155,7 @@ int RestoreWorker::restoreV3V4() {
             emit progressUpdated(int(20 + 70 * (i + 1) / files.size()));
         }
         // Empty backup asset folders are left over once their files moved back.
-        for (const QFileInfo& folder : QDir(m_backupDir).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot))
+        for (const auto& folderList = QDir(m_backupDir).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot); const QFileInfo& folder : folderList)
             if (hexFolder.match(folder.fileName()).hasMatch())
                 QDir(m_backupDir).rmdir(folder.fileName());
         if (!files.isEmpty())

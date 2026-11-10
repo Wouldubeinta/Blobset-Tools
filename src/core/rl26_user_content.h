@@ -46,11 +46,9 @@ struct Item {
 // The custom logos, in the file's order (empty when there's no DecalData.SAV). Read again when the file changes.
 QList<Item> decals(const QString& savePath);
 QString decalName(const QString& savePath, quint32 id);   // "" when it isn't there.
-// The logo drawn on a transparent square, fitted to what it covers (a null image when it isn't there).
-QImage renderDecal(const QString& savePath, quint32 id, int size);
 // A file:/// URL of the drawn logo (a PNG in the temp folder), for an Image; "" when it isn't there.
 QString decalImageUrl(const QString& savePath, quint32 id, int size = 256);
-// For tests: draw a logo's data (from its u32 size on).
+// The logo drawn on a transparent square, fitted to what it covers, from its data (from its u32 size on).
 QImage renderDecalData(const QByteArray& data, int size);
 
 // The custom stadiums (empty when there's no LevelData.SAV or none have been made).

@@ -12,7 +12,6 @@ Item {
     anchors.fill: parent
 
     readonly property string iconDir: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/"
-    readonly property string kind: "M3MP"
     readonly property string listName: "M3MP_List.xml"
     readonly property color okColor: "#5cb85c"
     readonly property color errorColor: Material.color(Material.Red)

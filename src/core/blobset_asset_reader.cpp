@@ -78,7 +78,7 @@ QByteArray readZstdChunks(PackageStream& in, qint64 maxBytes) {
 QString BlobsetAssetReader::dataFilePath(const QString& headerPath, const BlobsetEntry& entry) {
     const QString relative = entry.folderHashName + u'/' + entry.fileHashName;
     const QDir headerDir = QFileInfo(headerPath).absoluteDir();
-    const QString path = headerDir.filePath(relative);
+    QString path = headerDir.filePath(relative);
     if (QFile::exists(path))
         return path;
 

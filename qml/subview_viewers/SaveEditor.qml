@@ -90,13 +90,16 @@ Item {
                         "contracts": "player_contracts", "retirements": "retired", "competitions": "comp_ladder" })[key]
         return name ? editorIconDir + name + ".png" : ""
     }
+    // A tab's icon (every editor: Save, Career and the Database Editor use the same names).
     function tabIcon(tab) {
-        if (!isCareer)
-            return ""
-        const name = ({ "Settings": "career_settings", "Selection": "team_selection", "Player Status": "player_status",
-                        "Contracts": "player_contracts", "Retirements": "retired", "Ladder": "comp_ladder",
-                        "Fixtures": "team_scores", "Stats": "plus_minus", "Raw": "raw_database", "Roster": "player_selection",
-                        "Lineup": "team_selection" })[tab]
+        const name = ({ "Teams": "teams_32", "Players": "players_32", "Career": "career_32",
+                        "Details": "details_32", "Identity": "details_32", "Stadiums": "stadium_32",
+                        "Feeder Clubs": "teams_32", "Roster": "roster_32", "Squad": "roster_32",
+                        "Lineup": "lineup_32", "Lineups": "lineup_32", "Jerseys": "jersey_32",
+                        "Ratings": "player_stats_32", "Appearance": "appearance_32", "Stats": "team_scores",
+                        "Career Stats": "team_scores", "Raw": "raw", "Settings": "career_settings",
+                        "Selection": "team_selection", "Player Status": "player_status", "Contracts": "player_contracts",
+                        "Retirements": "retired", "Ladder": "comp_ladder", "Fixtures": "team_scores" })[tab]
         return name ? editorIconDir + name + ".png" : ""
     }
     // Player status (0 available, injured, suspended, retired, NSW / QLD Origin camp).
@@ -1648,14 +1651,20 @@ Item {
 
                 EditorTabs {
                     id: listTabs
-                    EditorTab { text: "Teams (" + editorRoot.teamRowsModel.length + ")" }
-                    EditorTab { text: "Players (" + editorRoot.playerRowsModel.length + ")" }
+                    EditorTab {
+                        text: "Teams (" + editorRoot.teamRowsModel.length + ")"
+                        iconUrl: editorRoot.tabIcon("Teams")
+                    }
+                    EditorTab {
+                        text: "Players (" + editorRoot.playerRowsModel.length + ")"
+                        iconUrl: editorRoot.tabIcon("Players")
+                    }
                     Repeater {
                         model: editorRoot.isCareer ? ["Career"] : []
                         EditorTab {
                             required property var modelData
                             text: modelData
-                            iconUrl: editorRoot.editorIconDir + "career_settings.png"
+                            iconUrl: editorRoot.tabIcon("Career")
                         }
                     }
                 }
@@ -2407,11 +2416,25 @@ Item {
                             Layout.margins: 16
                         }
                         // The jersey list | the jersey's fields, with a splitter between them (drag it to widen the list).
+                        // Always in the layout (shown / hidden with opacity): a SplitView that's hidden or sized while
+                        // its tab isn't showing keeps the panes' first sizes until the splitter is moved, so it lays
+                        // them out again whenever its size or visibility changes.
                         SplitView {
-                            visible: editorRoot.kitInfo.ok === true
+                            id: kitSplit
+                            opacity: editorRoot.kitInfo.ok === true ? 1 : 0
+                            enabled: editorRoot.kitInfo.ok === true
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             orientation: Qt.Horizontal
+                            function relayout() {
+                                const w = kitSide.SplitView.preferredWidth
+                                kitSide.SplitView.preferredWidth = w + 1
+                                kitSide.SplitView.preferredWidth = w
+                            }
+                            onWidthChanged: Qt.callLater(relayout)
+                            onHeightChanged: Qt.callLater(relayout)
+                            onVisibleChanged: if (visible) Qt.callLater(relayout)
+                            onOpacityChanged: if (opacity > 0) Qt.callLater(relayout)
                             handle: Rectangle {
                                 implicitWidth: 4
                                 color: kitHandleHover.hovered ? BtDarkStyle.accentColor : BtDarkStyle.borderDark
@@ -2935,7 +2958,7 @@ Item {
                             Layout.margins: 10
                             spacing: 8
                             Image {
-                                readonly property var comp: editorRoot.ladderCompsModel[editorRoot.ladderComp] || ({})
+                                readonly property var comp: editorRoot.ladderCompsModel.find((c) => c.index === editorRoot.ladderComp) || ({})   // ladderComp is the stage index, not the list position
                                 visible: status === Image.Ready
                                 source: comp.logoUrl || ""
                                 asynchronous: true
@@ -3095,7 +3118,7 @@ Item {
                             Layout.margins: 10
                             spacing: 8
                             Image {
-                                readonly property var stage: editorRoot.fixtureStagesModel[editorRoot.fixtureStage] || ({})
+                                readonly property var stage: editorRoot.fixtureStagesModel.find((s) => s.index === editorRoot.fixtureStage) || ({})
                                 visible: status === Image.Ready
                                 source: stage.logoUrl || ""
                                 asynchronous: true

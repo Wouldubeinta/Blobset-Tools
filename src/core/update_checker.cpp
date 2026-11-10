@@ -169,7 +169,7 @@ void UpdateChecker::handleCheckResult(bool userAsked, const QString& error, cons
     m_assetUrl.clear();
     m_assetSize = 0;
     const QString expectedName = u"BlobsetTools-Setup-%1.exe"_s.arg(m_latestVersion);
-    for (const QJsonValue& value : release.value(u"assets"_s).toArray()) {
+    for (const auto& valueList = release.value(u"assets"_s).toArray(); const QJsonValue value : valueList) {
         const QJsonObject asset = value.toObject();
         if (asset.value(u"name"_s).toString().compare(expectedName, Qt::CaseInsensitive) == 0) {
             m_assetUrl = asset.value(u"browser_download_url"_s).toString();

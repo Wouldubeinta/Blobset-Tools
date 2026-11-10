@@ -191,6 +191,17 @@ Files panel scrolls it left / right.
 
 - **Right-click** a file to **Save As...** (DDS or PNG for textures, WEM or WAV for audio).
 
+### Mesh Viewer
+
+- Meshes are shown with their textures (**Textures: On / Off**): each part gets the colour texture of its material
+  (Rugby League Live 3 / 4: the `.material.mat` next to the mesh; Rugby League 26 and the other V4 games: the
+  material inside the mesh). They load in the background with a progress bar in the status bar.
+- **Left drag** orbits, **middle drag** moves, the **wheel** zooms - once you're close it keeps going forward, so you
+  can zoom into a stadium. **Reset View** brings the mesh back.
+- **Extract > Wavefront .obj + textures** writes `<name>.obj`, `<name>.mtl` and the textures each part uses as PNGs
+  in `<name>_textures`, so the model opens textured in Blender and the like. **Extract > Original .mesh** saves the
+  file as it is.
+
 ![Image 4](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/4.jpg?raw=true)
 
 ### Image Preview
@@ -432,6 +443,9 @@ and export / import a list. **Save** writes the M3MP into the mods folder; click
 - **Load order**: mods lower in the list win when two of them have the same file. The **Conflicts** tab lists them.
 - **Build** (the same as **Modify**) puts the `mods` folder and every enabled mod into the game. Mods you disabled
   or removed since the last build are taken out again.
+- **DLL Mods...** (Rugby League 26, Rugby 25, Cricket 24, AFL 23, Tiebreak): `.dll` / `.asi` mods, kept in
+  `games\<game>\pc\mods\dll_mods`. **Install DLL Mods** (or **Build**) copies them into `<game>\DLL_Mods` with the
+  Blobset Mod Loader (`dinput8.dll`), which loads them into the game before it starts. Only use DLL mods you trust.
 
 Mod authors can add a `blobsetmod.json` (name, author, version, description, url, image) and a `preview.png`
 picture to the mod's root folder. The selected mod's picture shows large above its details; click it (or use
@@ -467,7 +481,10 @@ Blobset-Tools.exe --game "Rugby League Live 3" --restore
 
 - **Update File Mapping Data**: Maps all files in the blobset so Blobset Tools knows each file. It runs by itself the
   first time and after a game update.
-- **Resolve File Names**: Works out the names of unknown hashes from the known file names.
+- **Resolve File Names**: Works out the names of unknown (numbered) files from the names the game and its files use,
+  and only renames those; the mapping stays sorted. In Rugby League 26 it also names the players' character parts
+  (heads, hair, hair caps, beards, headwear), helper joint offsets, the static meshes, texture packs / lists and the
+  crowd node files. Add your own names to `games\<game>\<platform>\names.txt` (one per line) to try them too.
 - **Load Game**: When on, the game starts after **Modify** / **Create** succeeds.
 - **Validate Steam Files**: Asks Steam to verify the game's files and download any that changed.
 - **Mod Loader** (V4 games): When on, **Modify** writes the mods to `<game>\BlobsetMods` for the Blobset Mod Loader
@@ -476,7 +493,8 @@ Blobset-Tools.exe --game "Rugby League Live 3" --restore
   game sees them. Turning it off shows the game's own files again. The game's files are shown while there's no build
   yet, or when the game was updated since the last Modify (run Modify again).
 - **Open Data Folder**: Opens `Documents\Blobset Tools`.
-- **Restore Backup Files**: Puts back every original file that was replaced by mods.
+- **Restore Backup Files**: Puts back every original file that was replaced by mods, then reloads the game's files
+  and the folders and files.
 - **Check for Updates** (About): Looks for a newer release on GitHub. Blobset Tools also checks by itself once a day
   when it starts; **Download and Install** gets the new setup, closes Blobset Tools and runs it (your games, settings
   and mods are kept). **Skip This Version** stops the reminder for that release.

@@ -244,6 +244,22 @@ QVariantMap FileMappingEditorModel::searchInfo(const QString& query, int row) co
     return {{u"count"_s, total}, {u"position"_s, position}};
 }
 
+int FileMappingEditorModel::removeEntry(int row) {
+    if (row < 0 || row >= count()) {
+        emit errorOccurred(u"Select a row to delete."_s);
+        return -1;
+    }
+    const FileMappingWorker::MappingEntry removed = m_entries[size_t(row)];
+    beginRemoveRows(QModelIndex(), row, row);
+    m_entries.erase(m_entries.begin() + row);
+    endRemoveRows();
+    setModified(true);
+    emit countChanged();
+    emit actionCompleted(u"Deleted %1 (%2). Click Save Changes to write the mapping."_s
+                             .arg(removed.path, u"0x"_s + formatHash(removed.hash).toUpper()));
+    return std::min(row, count() - 1);
+}
+
 void FileMappingEditorModel::reload() {
     if (m_filePath.isEmpty()) {
         emit errorOccurred(u"No File Mapping table is loaded."_s);

@@ -3,6 +3,7 @@
 #include "bsb_file.h"
 #include "compression_io.h"
 #include "core_defs.h"
+#include "dll_mod_installer.h"
 #include "file_mapping_worker.h"
 #include "hash_utility.h"
 #include "mini_txpk_file.h"
@@ -292,10 +293,14 @@ QList<ModifyWorker::ModFile> ModifyWorker::collectModFiles(const QStringList& ex
     QStringList order = extensions;
     {
         QSet<QString> others;
-        for (const QString& source : sources) {
+        for (const QString& source : std::as_const(sources)) {
+            const QDir root(source);
             QDirIterator it(source, QDir::Files, QDirIterator::Subdirectories);
             while (it.hasNext()) {
-                const QString suffix = QFileInfo(it.next()).suffix().toLower();
+                const QString path = it.next();
+                if (DllModInstaller::isLibraryPath(root.relativeFilePath(path)))
+                    continue;   // DLL mods (Mod Manager > DLL Mods), not blobset files.
+                const QString suffix = QFileInfo(path).suffix().toLower();
                 if (!suffix.isEmpty() && !extensions.contains(suffix))
                     others.insert(suffix);
             }
@@ -311,7 +316,7 @@ QList<ModifyWorker::ModFile> ModifyWorker::collectModFiles(const QStringList& ex
         // Same path in two sources: the later source wins (it keeps the position the first one had).
         QHash<QString, qsizetype> byKey;
         QList<ModFile> group;
-        for (const QString& source : sources) {
+        for (const QString& source : std::as_const(sources)) {
             const QDir sourceDir(source);
             if (!sourceDir.exists())
                 continue;
@@ -332,6 +337,8 @@ QList<ModifyWorker::ModFile> ModifyWorker::collectModFiles(const QStringList& ex
                 }
                 if (info.fileName().compare(u"blobsetmod.json"_s, Qt::CaseInsensitive) == 0)
                     continue;   // A mod's details (Mod Manager).
+                if (DllModInstaller::isLibraryPath(sourceDir.relativeFilePath(path)))
+                    continue;   // DLL mods, installed into <game>\DLL_Mods instead.
                 const ModFile file{path, sourceDir.relativeFilePath(path), extension, generic};
                 const QString key = normalizedKey(file.relativePath);
                 const auto existing = byKey.constFind(key);
@@ -408,20 +415,22 @@ ModifyWorker::ModJob ModifyWorker::resolveJob(const ModFile& file, const QHash<Q
             const quint64 hash = mapped != mapping.constEnd()
                                      ? mapped.value()
                                      : BlobsetHash::hashForFile(m_version, file.relativePath, m_platform, m_gameKey);
-            if (!indexByHash.contains(hash))
+            const auto found = indexByHash.constFind(hash);
+            if (found == indexByHash.constEnd())
                 fail(u"%1 - a .dat file has to be named after its blobset index (e.g. 123.dat) or a mapped name; "
                      u"new assets need a known type (e.g. .dds)."_s.arg(file.relativePath));
-            job.headerIndex = indexByHash.value(hash);
+            job.headerIndex = found.value();
         }
     } else {
         // Everything else is located through the file mapping, or by the hash of its name.
         const auto mapped = mapping.constFind(normalizedKey(file.relativePath));
-        if (mapped != mapping.constEnd() && indexByHash.contains(mapped.value())) {
-            job.headerIndex = indexByHash.value(mapped.value());
+        const auto byMapping = mapped != mapping.constEnd() ? indexByHash.constFind(mapped.value()) : indexByHash.constEnd();
+        if (byMapping != indexByHash.constEnd()) {
+            job.headerIndex = byMapping.value();
         } else {
             const quint64 hash = BlobsetHash::hashForFile(m_version, file.relativePath, m_platform, m_gameKey);
-            if (indexByHash.contains(hash)) {
-                job.headerIndex = indexByHash.value(hash);   // An existing asset, named the way the game names it.
+            if (const auto byName = indexByHash.constFind(hash); byName != indexByHash.constEnd()) {
+                job.headerIndex = byName.value();   // An existing asset, named the way the game names it.
             } else {
                 // A new asset: it gets its own header entry (and V3 / V4 its own physical file).
                 job.isNew = true;
@@ -459,7 +468,7 @@ QList<ModifyWorker::ModJob> ModifyWorker::planJobs(const QStringList& extensions
     QHash<quint64, QString> newClaimedBy;
     QStringList notInBlobset;   // Other file types that don't replace a file of the game (readmes, pictures, ...).
 
-    for (const ModFile& file : collectModFiles(extensions)) {
+    for (const auto& fileList = collectModFiles(extensions); const ModFile& file : fileList) {
         ModJob job = resolveJob(file, mapping, indexByHash, blobset);
 
         if (file.generic) {
@@ -647,7 +656,7 @@ ModifyWorker::Section ModifyWorker::writeLzma(QIODevice& out, const QByteArray& 
     payloads.reserve(chunkSizes.size());
 
     qint64 offset = 0;
-    for (const qint64 size : chunkSizes) {
+    for (const qint64 size : std::as_const(chunkSizes)) {
         const QByteArray chunk = data.mid(offset, size);
         offset += size;
 
@@ -698,7 +707,7 @@ ModifyWorker::Section ModifyWorker::writeZstd(QIODevice& out, const QByteArray& 
     const QList<qint64> chunkSizes = Utilities::ChunkSizes(data.size(), chunkCount, kZstdChunkSize);
 
     qint64 offset = 0;
-    for (const qint64 size : chunkSizes) {
+    for (const qint64 size : std::as_const(chunkSizes)) {
         const QByteArray chunk = data.mid(offset, size);
         offset += size;
 
@@ -811,7 +820,7 @@ void ModifyWorker::writeHeaderV1(const QList<HeaderUpdate>& updates, qsizetype h
     header.seek(hashSize + 4);
     out << static_cast<quint32>(modBlobsetNumber + 1);
 
-    for (const HeaderUpdate& update : updates) {
+    for (const HeaderUpdate& update : std::as_const(updates)) {
         header.seek(hashSize + kV1HeaderSize + kV1EntrySize * static_cast<qint64>(update.index));
 
         out << update.mainPart.offset << update.mainPart.compressedSize << update.mainPart.uncompressedSize
@@ -1114,7 +1123,7 @@ void ModifyWorker::writeHeaderV4(const QList<HeaderUpdate>& updates, quint32 fil
                                             : kV4PreambleSize + kV4HashSize * static_cast<qint64>(filesCount);
     const qint64 entrySize = m_lzmaV3 ? kV3EntrySize : kV4EntrySize;
 
-    for (const HeaderUpdate& update : updates) {
+    for (const HeaderUpdate& update : std::as_const(updates)) {
         header.seek(sizeTableOffset + entrySize * static_cast<qint64>(update.index));
 
         out << update.mainPart.compressedSize << update.mainPart.uncompressedSize
@@ -1301,15 +1310,15 @@ void ModifyWorker::writeFullHeaderV1(const QByteArray& originalHeader, const Blo
 
     std::vector<Row> rows;
     rows.reserve(size_t(original.entries.size() + added.size()));
-    for (const BlobsetEntry& e : original.entries)
+    for (const BlobsetEntry& e : std::as_const(original.entries))
         rows.push_back({e.mainFinalOffset, e.mainCompressedSize, e.mainUnCompressedSize, e.vramFinalOffset,
                         e.vramCompressedSize, e.vramUnCompressedSize, e.folderFileHash32, e.blobSetNumber});
-    for (const HeaderUpdate& u : updates) {
+    for (const HeaderUpdate& u : std::as_const(updates)) {
         Row& r = rows[u.index];
         r = {u.mainPart.offset, u.mainPart.compressedSize, u.mainPart.uncompressedSize,
              u.vram.offset, u.vram.compressedSize, u.vram.uncompressedSize, r.hash, modBlobsetNumber};
     }
-    for (const NewEntry& n : added)
+    for (const NewEntry& n : std::as_const(added))
         rows.push_back({n.mainPart.offset, n.mainPart.compressedSize, n.mainPart.uncompressedSize,
                         n.vram.offset, n.vram.compressedSize, n.vram.uncompressedSize, n.hash, modBlobsetNumber});
     std::stable_sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) { return a.hash < b.hash; });
@@ -1323,7 +1332,7 @@ void ModifyWorker::writeFullHeaderV1(const QByteArray& originalHeader, const Blo
         out.setByteOrder(streamOrder());
         out.writeRawData(originalHeader.constData(), int(hashSize + 4));   // SHA1 slot + magic
         out << static_cast<quint32>(modBlobsetNumber + 1) << static_cast<quint32>(rows.size());
-        for (const Row& r : rows)
+        for (const Row& r : std::as_const(rows))
             out << r.mainOffset << r.mainCompressed << r.mainUncompressed << r.vramOffset << r.vramCompressed
                 << r.vramUncompressed << r.hash << r.blob;
         if (out.status() != QDataStream::Ok)
@@ -1403,7 +1412,7 @@ quint32 ModifyWorker::appendHeaderEntriesV4(const BlobsetFile& blobset, QList<Mo
 /// New assets go into the file mapping too, so the browser shows them and later runs find them by name.
 void ModifyWorker::addNewFilesToMapping(const QList<ModJob>& jobs) {
     QList<std::pair<QString, quint64>> added;
-    for (const ModJob& job : jobs)
+    for (const ModJob& job : std::as_const(jobs))
         if (job.isNew)
             added.append({job.relativePath, job.newHash});
     if (added.isEmpty())
@@ -1414,7 +1423,7 @@ void ModifyWorker::addNewFilesToMapping(const QList<ModJob>& jobs) {
             QFile::exists(m_mappingFile) ? FileMappingWorker::readMappingFile(m_mappingFile)
                                          : std::vector<FileMappingWorker::MappingEntry>();
         QSet<quint64> known;
-        for (const auto& e : entries)
+        for (const auto& e : std::as_const(entries))
             known.insert(e.hash);
         for (const auto& [path, hash] : std::as_const(added)) {
             if (known.contains(hash))

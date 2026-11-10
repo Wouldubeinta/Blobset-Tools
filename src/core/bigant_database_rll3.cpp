@@ -87,14 +87,14 @@ void teamSchema(Schema& s) {
     for (int j = 1; j <= 64; ++j)
         b.add(u"player%1"_s.arg(j), ValueType::Int, 4);
     b.beginList(u"LeagueMatch"_s, 5);
-    for (const QString& r : kRoles)
+    for (const QString& r : std::as_const(kRoles))
         b.add(r, ValueType::Int, 4);
-    for (const QString& p : kLineup)
+    for (const QString& p : std::as_const(kLineup))
         b.add(p, ValueType::Int, 4);
     b.beginList(u"NinesMatch"_s, 5);
-    for (const QString& r : kRoles)
+    for (const QString& r : std::as_const(kRoles))
         b.add(r, ValueType::Int, 4);
-    for (const QString& p : kNines)
+    for (const QString& p : std::as_const(kNines))
         b.add(p, ValueType::Int, 4);
 }
 
@@ -248,11 +248,11 @@ QString Table::readRll3(const QByteArray& data, bool teams) {
             }
             for (int j = 1; j <= 64; ++j)
                 roster << u"roster.player%1"_s.arg(j);
-            for (const QString& p : kLineup)
+            for (const QString& p : std::as_const(kLineup))
                 lineup << u"LeagueMatch."_s + p;
-            for (const QString& p : kNines)
+            for (const QString& p : std::as_const(kNines))
                 nines << u"NinesMatch."_s + p;
-            for (const QString& p : kRoles) {
+            for (const QString& p : std::as_const(kRoles)) {
                 roles << u"LeagueMatch."_s + p;
                 ninesRoles << u"NinesMatch."_s + p;
             }
@@ -261,11 +261,11 @@ QString Table::readRll3(const QByteArray& data, bool teams) {
             const int squad = readArray(roster, 64, "squad");
             readArray(lineup, 17, "lineup");
             if (squad != 0)
-                for (const QString& k : roles)
+                for (const QString& k : std::as_const(roles))
                     read(k);
             const int ninesCount = readArray(nines, 14, "Nines lineup");
             if (squad != 0 && ninesCount != 0)
-                for (const QString& k : ninesRoles)
+                for (const QString& k : std::as_const(ninesRoles))
                     read(k);
         } else {
             for (int f = 0; f < s.fields.size(); ++f)
@@ -293,7 +293,7 @@ QByteArray Table::writeRll3() const {
     const Schema& s = m_schema;
     out.append(static_cast<char>(s.rll3Version));
     putUInt(out, static_cast<quint32>(m_records.size()), 4);
-    for (const Record& rec : m_records) {
+    for (const Record& rec : std::as_const(m_records)) {
         const auto field = [&s](const QString& k) { return s.byKey.value(k, -1); };
         const auto write = [&](const QString& k) {
             const int f = field(k);
@@ -311,7 +311,7 @@ QByteArray Table::writeRll3() const {
         };
         const auto writeArray = [&](const QStringList& keys) {
             putUInt(out, static_cast<quint32>(keys.size()), 4);
-            for (const QString& k : keys)
+            for (const QString& k : std::as_const(keys))
                 write(k);
         };
         if (s.format == Format::Rll3Teams) {
@@ -322,7 +322,7 @@ QByteArray Table::writeRll3() const {
             if (stadiums.isEmpty())
                 stadiums << u"homeGrounds#0:stadium"_s;   // There's always one (the count is one less).
             putUInt(out, static_cast<quint32>(stadiums.size() - 1), 4);
-            for (const QString& k : stadiums)
+            for (const QString& k : std::as_const(stadiums))
                 write(k);
             writeArray(present(u"feederClubs#"_s, 0, 6));
             writeArray(present(u"fedFromClubs#"_s, 0, 6));
@@ -330,7 +330,7 @@ QByteArray Table::writeRll3() const {
             writeArray(squad);
             const auto listKeys = [&](const QString& list, const QStringList& names) {
                 QStringList keys;
-                for (const QString& n : names) {
+                for (const QString& n : std::as_const(names)) {
                     const int f = field(list + u'.' + n);
                     if (rec.values[f].flag)
                         keys << s.fields[f].key;
@@ -339,12 +339,12 @@ QByteArray Table::writeRll3() const {
             };
             writeArray(listKeys(u"LeagueMatch"_s, kLineup));
             if (!squad.isEmpty())
-                for (const QString& r : kRoles)
+                for (const QString& r : std::as_const(kRoles))
                     write(u"LeagueMatch."_s + r);
             const QStringList nines = listKeys(u"NinesMatch"_s, kNines);
             writeArray(nines);
             if (!squad.isEmpty() && !nines.isEmpty())
-                for (const QString& r : kRoles)
+                for (const QString& r : std::as_const(kRoles))
                     write(u"NinesMatch."_s + r);
         } else {
             for (int f = 0; f < s.fields.size(); ++f)

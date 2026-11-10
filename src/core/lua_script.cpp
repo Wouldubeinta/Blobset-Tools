@@ -61,14 +61,6 @@ bool isBytecode(const QByteArray& data) {
     return data.size() >= 5 && data.startsWith("\x1BLJ");
 }
 
-quint8 builtVersion() {
-    return builtHeader().version;
-}
-
-quint8 builtFlags() {
-    return builtHeader().flags;
-}
-
 Decompiled decompile(const QByteArray& data, const QString& name) {
     Decompiled out;
     if (!isBytecode(data)) {

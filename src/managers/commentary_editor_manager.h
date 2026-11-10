@@ -109,8 +109,6 @@ public:
     //  conditions: ["0x0000000000000000" x 8]}
     Q_INVOKABLE QVariantMap line(int speaker, int category, int index) const;
     Q_INVOKABLE QStringList subcategories(int speaker, int category) const;
-    // Every category name this file uses (for "c:" parts).
-    Q_INVOKABLE QStringList allCategoryNames() const;
 
     Q_INVOKABLE bool setLineText(int speaker, int category, int index, const QString& text);
     Q_INVOKABLE bool setLineParts(int speaker, int category, int index, const QStringList& parts);

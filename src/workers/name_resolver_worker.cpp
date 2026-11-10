@@ -14,12 +14,12 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
+#include <QRegularExpression>
 #include <QSaveFile>
 #include <QtEndian>
 
 #include <algorithm>
 #include <exception>
-#include <stdexcept>
 
 using namespace Qt::StringLiterals;
 
@@ -29,6 +29,8 @@ constexpr qsizetype kMinStringLength = 4;
 constexpr qsizetype kMaxStringLength = 240;
 constexpr qint64 kMaxExecutableBytes = 256LL * 1024 * 1024;
 constexpr quint32 kMaxAssetMainBytes = 1024 * 1024;   // Larger assets are geometry / pixels, not names.
+// Unnamed files are read up to this: the big V4 meshes keep their material (texture paths -> model folders) at the end.
+constexpr quint32 kMaxUnnamedAssetMainBytes = 16 * 1024 * 1024;
 constexpr int kMaxHarvestedAssets = 40000;
 
 /// Which mapped file kinds a type can be. A guessed type is only accepted when the file's current extension is listed;
@@ -36,7 +38,12 @@ constexpr int kMaxHarvestedAssets = 40000;
 const QHash<QString, QStringList>& compatibleExtensions() {
     static const QHash<QString, QStringList> table = {
         {u"texture"_s, {u"dds"_s, u"txpk"_s}},
-        {u"texpack"_s, {u"txpk"_s}},
+        {u"texpack"_s, {u"txpk"_s, u"txpl"_s}},   // A texture pack, or (V4) the list of a model's textures.
+        {u"modelcomponent"_s, {u"mdl"_s}},         // V4 character parts (heads, hair, beards, ...).
+        {u"blendshapes"_s, {u"mdat"_s}},           // ... and their blend shapes.
+        {u"hjoffsets"_s, {u"hjo"_s}},
+        {u"nodefile"_s, {u"crowd"_s, u"dat"_s}},
+        {u"collision"_s, {u"col"_s}},
         {u"model"_s, {u"mesh"_s, u"mdl"_s, u"mdat"_s, u"idx"_s}},
         {u"mempack"_s, {u"m3mp"_s}},
         {u"material"_s, {u"mat"_s}},
@@ -57,7 +64,10 @@ const QHash<QString, QStringList>& compatibleExtensions() {
 bool worthScanning(const QString& extension) {
     static const QStringList kinds = {u"mat"_s, u"mesh"_s, u"mdl"_s, u"mdat"_s, u"luadata"_s, u"str"_s,
                                       u"names"_s, u"txt"_s, u"xml"_s, u"animset"_s, u"obj"_s, u"dat"_s,
-                                      u"anims"_s, u"mob"_s, u"col"_s, u"glyphs"_s};
+                                      u"anims"_s, u"mob"_s, u"col"_s, u"glyphs"_s,
+                                      // Texture lists / packs name their textures ("<model>/textures/..."), and
+                                      // the V4 helper joint offsets, crowd nodes and body shapes their own names.
+                                      u"txpl"_s, u"txpk"_s, u"hjo"_s, u"crowd"_s, u"bshp"_s};
     return kinds.contains(extension);
 }
 
@@ -82,9 +92,9 @@ bool isUnnamed(const QString& mappedPath) {
 }
 
 bool isTypeWord(const QString& word) {
-    if (word.size() < 2 || word.size() > 12)
+    if (word.size() < 2 || word.size() > 16)   // "modelcomponent"
         return false;
-    for (const QChar c : word)
+    for (const QChar c : std::as_const(word))
         if (c < u'a' || c > u'z')
             return false;
     return true;
@@ -181,7 +191,7 @@ void NameResolverWorker::harvestExecutables() {
     QFileInfoList executables;
     for (int level = 0; level < 3; ++level) {
         const QFileInfoList files = dir.entryInfoList(QDir::Files);
-        for (const QFileInfo& file : files) {
+        for (const QFileInfo& file : std::as_const(files)) {
             const QString suffix = file.suffix().toLower();
             const bool executable = suffix == u"exe"_s || suffix == u"xex"_s || suffix == u"elf"_s
                                     || suffix == u"self"_s || file.fileName().compare(u"EBOOT.BIN"_s, Qt::CaseInsensitive) == 0;
@@ -231,7 +241,7 @@ void NameResolverWorker::harvestUserNames() {
 
 void NameResolverWorker::harvestAssets(const QHash<quint64, QString>& mappedPaths, const QStringList& allPaths) {
     // The names the mapping already has (their folders often name texture packs / models).
-    for (const QString& path : allPaths)
+    for (const QString& path : std::as_const(allPaths))
         if (!isUnnamed(path))
             addString(path);
 
@@ -256,7 +266,8 @@ void NameResolverWorker::harvestAssets(const QHash<quint64, QString>& mappedPath
         const auto mapped = mappedPaths.constFind(hash);
         if (mapped == mappedPaths.constEnd() || !worthScanning(extensionOf(mapped.value())))
             continue;
-        if (entry.mainUnCompressedSize == 0 || entry.mainUnCompressedSize > kMaxAssetMainBytes)
+        if (entry.mainUnCompressedSize == 0
+            || entry.mainUnCompressedSize > (isUnnamed(mapped.value()) ? kMaxUnnamedAssetMainBytes : kMaxAssetMainBytes))
             continue;
         targets.append(&entry);
         if (targets.size() >= kMaxHarvestedAssets)
@@ -360,7 +371,7 @@ void NameResolverWorker::harvestSound(const QHash<quint64, QString>& mappedPaths
         if (entry == byHash.constEnd())
             continue;
         const QList<quint32> ids = bankMediaIds(read(entry.value()));
-        for (const quint32 id : ids)
+        for (const quint32 id : std::as_const(ids))
             addString(u"sound/%1.wem"_s.arg(id));
         mediaIds += int(ids.size());
         ++banks;
@@ -373,7 +384,7 @@ void NameResolverWorker::harvestSound(const QHash<quint64, QString>& mappedPaths
         if (entry == byHash.constEnd())
             continue;
         const QStringList names = CommentaryEditorManager::soundNames(read(entry.value()));
-        for (const QString& name : names) {
+        for (const QString& name : std::as_const(names)) {
             QString path = name;
             path.replace(u'/', u'\\');
             direct.insert(fnv1a64Raw(name), path + u".wem"_s);
@@ -383,6 +394,84 @@ void NameResolverWorker::harvestSound(const QHash<quint64, QString>& mappedPaths
     if (banks > 0 || sounds > 0)
         emit updateConsole(u"Sound: %1 media id(s) from %2 sound bank(s), %3 commentary / referee sound(s)."_s
                                .arg(mediaIds).arg(banks).arg(sounds));
+}
+
+void NameResolverWorker::deriveCharacterNames(const QStringList& allPaths) {
+    static const QRegularExpression helperJoints(u"^hj_offsets_([a-z0-9_]+)\\.lua$"_s);
+    static const QRegularExpression crowdNodes(u"^([a-z0-9_]+_crowdnodes)$"_s);
+    static const QRegularExpression trophy(u"^([a-z0-9_]+_trophy)_(?:male|female)\\.lua$"_s);
+    static const QRegularExpression beardTexture(
+        u"^characters/hair/textures/beardcap_([a-z0-9_]+?)(?:_(?:col|mat|nrm|dir|msk|ao|alpha)(?:_\\d+)?)?\\.pc\\.dds$"_s);
+
+    QStringList found;
+    const auto addPart = [&](const QString& folder, const QString& name) {
+        found << u"characters/%1/models/%2/%2.modelcomponent"_s.arg(folder, name)
+              << u"characters/%1/models/%2/%2.blendshapes"_s.arg(folder, name);
+    };
+
+    int players = 0;
+    const QStringList strings(m_strings.cbegin(), m_strings.cend());
+    for (const QString& s : strings) {
+        if (const auto m = helperJoints.match(s); m.hasMatch()) {
+            // A player: "characters/helperjoints/<player>.hjoffsets" and the parts the character manager loads
+            // ("<folder>/models/<part>/<part>.modelcomponent", with its .blendshapes).
+            const QString player = m.captured(1);
+            found << u"characters/helperjoints/%1.hjoffsets"_s.arg(player);
+            addPart(u"heads"_s, player);
+            addPart(u"hair"_s, player);
+            addPart(u"hair"_s, player + u"_side"_s);
+            addPart(u"haircap"_s, player + u"_haircap"_s);
+            addPart(u"beards"_s, player + u"_moustache"_s);
+            addPart(u"beards"_s, player + u"_sideburns"_s);
+            addPart(u"helmets"_s, player + u"_headwear"_s);
+            ++players;
+        } else if (const auto c = crowdNodes.match(s); c.hasMatch()) {
+            found << u"crowd/nodefiles/%1.nodefile"_s.arg(c.captured(1));
+        } else if (const auto t = trophy.match(s); t.hasMatch()) {
+            addPart(u"trophies"_s, t.captured(1));
+        }
+    }
+
+    // The generic beards, named like their textures ("beardcap_chin_anchor01_col" -> chin_anchor01), plus the
+    // numbered variants of each style and its words combined ("moustache_pencil_handlebar02", ...).
+    QSet<QString> styles;
+    for (const QString& path : allPaths) {
+        const auto m = beardTexture.match(QString(path).toLower().replace(u'\\', u'/'));
+        if (m.hasMatch())
+            styles.insert(m.captured(1));
+    }
+    static const QRegularExpression digits(u"\\d+$"_s);
+    QSet<QString> words;
+    for (const QString& style : std::as_const(styles))
+        for (QString word : style.split(u'_'))
+            words.insert(word.remove(digits));
+    QSet<QString> beards;
+    for (const QString& kind : {u"chin"_s, u"moustache"_s, u"sideburns"_s}) {
+        QStringList names{kind};
+        for (const QString& a : std::as_const(words)) {
+            if (a.isEmpty() || a == kind)
+                continue;
+            names << kind + u'_' + a;
+            for (const QString& b : std::as_const(words))
+                if (!b.isEmpty() && b != a && b != kind)
+                    names << kind + u'_' + a + u'_' + b;
+        }
+        for (const QString& name : std::as_const(names)) {
+            beards.insert(name);
+            for (int n = 1; n <= 5; ++n)
+                beards.insert(name + u"%1"_s.arg(n, 2, 10, QLatin1Char('0')));
+        }
+    }
+    for (const QString& style : std::as_const(styles))
+        beards.insert(style);
+    for (const QString& beard : std::as_const(beards))
+        addPart(u"beards"_s, beard);
+
+    for (const QString& name : std::as_const(found))
+        addString(name);
+    if (players > 0)
+        emit updateConsole(u"Characters: %1 player(s) from the helper joint offsets, %2 beard style name(s)."_s
+                               .arg(players).arg(beards.size()));
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -425,6 +514,7 @@ void NameResolverWorker::run() {
     harvestAssets(mappedPaths, allPaths);
     QHash<quint64, QString> direct;   // Hash -> mapped path, for names hashed without a type.
     harvestSound(mappedPaths, direct);
+    deriveCharacterNames(allPaths);
     emit updateConsole(u"Collected %1 candidate strings."_s.arg(m_strings.size()));
 
     // Candidate bases (path without type / extension) plus every folder above them; explicit "<base>.<type>" pairs.
@@ -485,7 +575,7 @@ void NameResolverWorker::run() {
         tryName(pair.first, pair.second, true);
     qsizetype done = 0;
     for (const QString& base : std::as_const(bases)) {
-        for (const QString& type : guessedTypes)
+        for (const QString& type : std::as_const(guessedTypes))
             tryName(base, type, false);
         ++done;
         const int percent = 70 + int(25 * done / std::max<qsizetype>(1, bases.size()));
@@ -572,7 +662,7 @@ void NameResolverWorker::run() {
         out.commit();
     }
 
-    for (const QString& line : report.mid(0, 50))
+    for (const auto& lineList = report.mid(0, 50); const QString& line : lineList)
         emit updateConsole(line);
     if (report.size() > 50)
         emit updateConsole(u"... and %1 more (see resolved_names.txt)."_s.arg(report.size() - 50));

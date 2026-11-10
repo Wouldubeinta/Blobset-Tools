@@ -87,7 +87,7 @@ namespace Utilities {
     QString getSteamGamesLocation(quint32 steamGameId) {
         if (steamGameId == 0)
             return {};
-        for (const QString& library : steamLibraries())
+        for (const auto& libraryList = steamLibraries(); const QString& library : libraryList)
             if (QFileInfo::exists(QDir(library).filePath(QStringLiteral("steamapps/appmanifest_%1.acf").arg(steamGameId))))
                 return library;
         return {};

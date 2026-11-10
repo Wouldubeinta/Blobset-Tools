@@ -47,9 +47,7 @@ public:
 
     const QList<Type>& types() const { return m_types; }
     int root() const { return m_root; }
-    int typeByName(const QString& name) const;
     const Member* member(int type, const QString& name) const;
-    const Member* memberByHash(int type, quint32 hash) const;
 
     QByteArray& data() { return m_data; }
     const QByteArray& data() const { return m_data; }

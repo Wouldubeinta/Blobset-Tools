@@ -76,7 +76,7 @@ QVariantMap infoRow(const QString& label, const QString& value) {
 QString safeFileName(const QString& name) {
     QString result;
     result.reserve(name.size());
-    for (const QChar c : name) {
+    for (const QChar c : std::as_const(name)) {
         const bool invalid = c.unicode() < 0x20 || QStringView(u"<>:\"/\\|?*").contains(c);
         result.append(invalid ? QChar(u'_') : c);
     }
@@ -427,7 +427,7 @@ void FmodToolManager::startExtraction(const QList<int>& entries, const QString& 
     jobs.reserve(entries.size());
     QSet<QString> used;
 
-    for (const int entry : entries) {
+    for (const int entry : std::as_const(entries)) {
         const QString base = safeFileName(m_file.samples[entry].name);
         QString name = base + u".wav"_s;
         for (int n = 2; used.contains(name.toLower()); ++n)

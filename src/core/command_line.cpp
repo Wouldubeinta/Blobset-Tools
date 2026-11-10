@@ -213,11 +213,11 @@ int installVortexExtensions(Output& out, const QString& pluginsIn) {
 
     // Only the games picked in setup (GameSelectionInfo.xml); each extension says its game in blobset_game.json.
     QSet<QString> games;
-    for (const QString& folder : AppPaths::selectedGameFolders())
+    for (const auto& folderList = AppPaths::selectedGameFolders(); const QString& folder : folderList)
         games.insert(folder.toLower());
 
     int installed = 0, skipped = 0;
-    for (const QString& extension : QDir(source).entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name)) {
+    for (const auto& extensionList = QDir(source).entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name); const QString& extension : extensionList) {
         const QString from = QDir(source).filePath(extension);
         QFile gameFile(QDir(from).filePath(u"blobset_game.json"_s));
         if (!games.isEmpty() && gameFile.open(QIODevice::ReadOnly)) {
@@ -263,7 +263,7 @@ bool requested(int argc, char* argv[]) {
 
 int run(bool guiRunning, const QStringList& startupLog) {
     Output out;
-    for (const QString& line : startupLog)
+    for (const QString& line : std::as_const(startupLog))
         out.line(line);
 
     QCommandLineParser parser;
@@ -356,7 +356,7 @@ int run(bool guiRunning, const QStringList& startupLog) {
 
     const QList<QCommandLineOption> tasks = {build, modify, restore, extract, updateMapping};
     int taskCount = 0;
-    for (const QCommandLineOption& task : tasks)
+    for (const QCommandLineOption& task : std::as_const(tasks))
         taskCount += parser.isSet(task) ? 1 : 0;
     if (taskCount > 1) {
         out.line(u"Error: give one task per run (--build, --restore, --extract or --update-mapping)."_s);
@@ -399,14 +399,14 @@ int run(bool guiRunning, const QStringList& startupLog) {
 
     if (parser.isSet(install)) {
         const QSet<QString> mapped = orchestrator.mappedPaths();
-        for (const QString& source : parser.values(install)) {
+        for (const auto& sourceList = parser.values(install); const QString& source : sourceList) {
             if (!library.install(source, mapped, &error, [&out](const QString& line) { out.line(line); })) {
                 out.line(u"Error: "_s + error);
                 return kExitFailed;
             }
         }
     }
-    for (const QString& name : parser.values(uninstall)) {
+    for (const auto& nameList = parser.values(uninstall); const QString& name : nameList) {
         const ModLibrary::Mod* mod = library.find(name);
         if (!mod || !library.uninstall(mod->id, &error)) {
             out.line(u"Error: "_s + (mod ? error : u"there's no mod called \"%1\"."_s.arg(name)));
@@ -415,7 +415,7 @@ int run(bool guiRunning, const QStringList& startupLog) {
         out.line(u"Removed %1."_s.arg(name));
     }
     for (const auto& [option, value] : {std::pair{&enable, true}, std::pair{&disable, false}}) {
-        for (const QString& name : parser.values(*option)) {
+        for (const auto& nameList = parser.values(*option); const QString& name : nameList) {
             const ModLibrary::Mod* mod = library.find(name);
             if (!mod) {
                 out.line(u"Error: there's no mod called \"%1\" (see --list-mods)."_s.arg(name));
@@ -435,7 +435,7 @@ int run(bool guiRunning, const QStringList& startupLog) {
         library.load();
         out.line(u"Load order (later entries win when two mods have the same file):"_s);
         int position = 1;
-        for (const ModLibrary::Mod& mod : library.mods()) {
+        for (const auto& modList = library.mods(); const ModLibrary::Mod& mod : modList) {
             out.line(u"%1. [%2] %3%4 - %5 file(s)%6"_s.arg(position++, 2)
                          .arg(mod.enabled ? u"x"_s : u" "_s, mod.name,
                               mod.version.isEmpty() ? QString() : u" "_s + mod.version)

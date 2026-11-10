@@ -4,21 +4,18 @@
 #include "app_orchestrator.h"
 #include "blobset_asset_reader.h"
 #include "blobset_entry_registry.h"
-#include "core_defs.h"
-#include "utilities.h"
 
 #include <QAudioDevice>
 #include <QAudioFormat>
 #include <QAudioSink>
 #include <QFile>
 #include <QFileInfo>
-#include <QFutureWatcher>
+#include <QFuture>
 #include <QMediaDevices>
 #include <QtConcurrent>
 #include <QtEndian>
 
 #include <cstring>
-#include <stdexcept>
 
 namespace {
 
@@ -273,11 +270,9 @@ void AudioPlayer::playAudioData(const QByteArray& data, const QString& virtualNa
 void AudioPlayer::startDecode(const QFuture<WemDecodeResult>& future) {
     const quint64 generation = m_generation;
 
-    auto* watcher = new QFutureWatcher<WemDecodeResult>(this);
-    connect(watcher, &QFutureWatcher<WemDecodeResult>::finished, this, [this, watcher, generation]() {
-        const WemDecodeResult result = watcher->result();
-        watcher->deleteLater();
-
+    // Runs on this object's thread when the decode finishes (and not at all if the player is gone by then): no
+    // QFutureWatcher to own and delete.
+    QFuture<void> done = QFuture<WemDecodeResult>(future).then(this, [this, generation](const WemDecodeResult& result) {
         // The user moved on (another file, stop, view change) while this was decoding.
         if (generation != m_generation)
             return;
@@ -289,8 +284,7 @@ void AudioPlayer::startDecode(const QFuture<WemDecodeResult>& future) {
 
         startPlayback(result.pcm, result.sampleRate, result.channels);
     });
-
-    watcher->setFuture(future);
+    Q_UNUSED(done);
 }
 
 void AudioPlayer::startPlayback(const QByteArray& pcm, int sampleRate, int channels) {

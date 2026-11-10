@@ -52,8 +52,7 @@ constexpr int kLineupsOffset = 0x2732;
 constexpr int kLineupSize = 139;
 constexpr int kLineupMax = 8;
 constexpr int kLineupSlots = 19;
-constexpr int kLineupIds = 2, kLineupRoleCount = 78, kLineupRoles = 80, kLineupName = 100, kLineupShirtCount = 118,
-              kLineupShirts = 120;
+constexpr int kLineupIds = 2, kLineupRoles = 80, kLineupName = 100, kLineupShirts = 120;
 // The game's team / player database M3MP (defaultdata/defaultdata_players), for the roster's player names.
 const char* const kDatabaseHash = "2BE30C8187CABAF6";
 // Which uniform the game uses where (the Database Editor's names).
@@ -644,7 +643,7 @@ bool SaveEditorManager::setField(const QString& kind, int index, const QString& 
         if (hex.startsWith(u'#'))
             hex.remove(0, 1);
         bool ok = false;
-        const uint rgb = hex.left(6).toUInt(&ok, 16);
+        const uint rgb = QStringView(hex).left(6).toUInt(&ok, 16);
         if (!ok || hex.size() < 6)
             return false;
         data[p] = static_cast<char>(rgb >> 16);
@@ -1073,7 +1072,7 @@ qsizetype SaveEditorManager::lineupAt(int team, const QString& list) const {
     const qsizetype at = recordAt(u"team"_s, team);
     if (at < 0 || !list.startsWith(u'L'))
         return -1;
-    const int i = list.mid(1).toInt();
+    const int i = QStringView(list).mid(1).toInt();
     const int count = qMin<int>(readU16(m_data, at + kLineupsOffset), kLineupMax);
     return i >= 0 && i < count ? at + kLineupsOffset + 2 + qsizetype(i) * kLineupSize : -1;
 }
@@ -1630,7 +1629,7 @@ QString SaveEditorManager::rawGet(const QString& kind, int index, const QString&
     if (key == u"#rosterCount"_s)
         return QString::number(readU16(m_data, at + kRosterOffset));
     if (key.startsWith(u"#roster"_s))
-        return QString::number(readU32(m_data, at + kRosterOffset + 2 + 4 * key.mid(7).toInt()));
+        return QString::number(readU32(m_data, at + kRosterOffset + 2 + 4 * QStringView(key).mid(7).toInt()));
     const qsizetype bar = key.indexOf(u'|');
     const FieldDef* d = defFor(kind, bar < 0 ? key : key.left(bar));
     if (!d)
@@ -1675,7 +1674,7 @@ bool SaveEditorManager::rawSet(const QString& kind, int index, const QString& ke
     if (key.startsWith(u"#roster"_s)) {
         if (!number(0, 0xFFFFFFFFLL))
             return false;
-        qToLittleEndian<quint32>(static_cast<quint32>(v), m_data.data() + at + kRosterOffset + 2 + 4 * key.mid(7).toInt());
+        qToLittleEndian<quint32>(static_cast<quint32>(v), m_data.data() + at + kRosterOffset + 2 + 4 * QStringView(key).mid(7).toInt());
         edited();
         return true;
     }
@@ -1690,7 +1689,7 @@ bool SaveEditorManager::rawSet(const QString& kind, int index, const QString& ke
         const int part = QStringLiteral("rgb").indexOf(key.back());
         QString hex = readField(m_data, at, *d).toString();
         bool okHex = false;
-        uint rgb = hex.mid(1).toUInt(&okHex, 16);
+        uint rgb = QStringView(hex).mid(1).toUInt(&okHex, 16);
         const int shift = part == 0 ? 16 : part == 1 ? 8 : 0;
         rgb = (rgb & ~(0xFFu << shift)) | (uint(v) << shift);
         return setField(kind, index, name, u"#%1"_s.arg(rgb, 6, 16, QChar(u'0')));
@@ -1746,7 +1745,7 @@ QString SaveEditorManager::applyRawTable(RawTableModel* model) {
     // One refresh at the end, not one per cell.
     m_rawBatch = true;
     m_rawEdited = false;
-    const QString errors = model->apply(
+    QString errors = model->apply(
         [model, count](int r) { return model->recordOfRow(r, count); },
         [this, &kind](int rec, const QString& key) { return rawGet(kind, rec, key); },
         [this, &kind](int rec, const QString& key, const QString& text, QString* error) {

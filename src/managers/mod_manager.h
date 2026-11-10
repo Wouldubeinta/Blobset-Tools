@@ -21,6 +21,11 @@ class ModManager : public QObject {
     Q_PROPERTY(int enabledFileCount READ enabledFileCount NOTIFY modsChanged)
     Q_PROPERTY(QString libraryPath READ libraryPath NOTIFY modsChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)                     // An install is running.
+    // DLL mods (V4 PC games, see DllModInstaller): the library's files [{ name, size, loads, installed }].
+    Q_PROPERTY(QVariantList dllMods READ dllMods NOTIFY dllModsChanged)
+    Q_PROPERTY(bool dllModsSupported READ dllModsSupported NOTIFY dllModsChanged)
+    Q_PROPERTY(QString dllModsFolder READ dllModsFolder NOTIFY dllModsChanged)   // The library folder.
+    Q_PROPERTY(QString dllModsGameFolder READ dllModsGameFolder NOTIFY dllModsChanged)   // <game>\DLL_Mods
 
 public:
     explicit ModManager(AppOrchestrator* orchestrator, QObject* parent = nullptr);
@@ -30,6 +35,10 @@ public:
     int enabledFileCount() const { return m_enabledFileCount; }
     QString libraryPath() const { return m_libraryPath; }
     bool busy() const { return m_busy; }
+    QVariantList dllMods() const { return m_dllMods; }
+    bool dllModsSupported() const { return m_dllModsSupported; }
+    QString dllModsFolder() const { return m_dllModsFolder; }
+    QString dllModsGameFolder() const { return m_dllModsGameFolder; }
 
     Q_INVOKABLE void reload();
     // A folder, an archive or a file:// URL (drag and drop / file dialog). Runs in the background.
@@ -54,9 +63,19 @@ public:
     // --install-vortex-extensions) and reports the result with message().
     Q_INVOKABLE void installVortexExtensions();
 
+    // ---- DLL mods ----
+    Q_INVOKABLE void reloadDllMods();
+    // Files (.dll / .asi and anything they need, e.g. .ini) or folders, as paths or file:// URLs: copied into the
+    // library. Build / installDllMods() puts them into the game.
+    Q_INVOKABLE void addDllMods(const QStringList& pathsOrUrls);
+    Q_INVOKABLE void removeDllMod(const QString& name);   // To the Recycle Bin; taken out of the game on install.
+    Q_INVOKABLE void openDllModsFolder() const;
+    Q_INVOKABLE void installDllMods();                    // Library -> <game>\DLL_Mods now (no Build needed).
+
 signals:
     void modsChanged();
     void busyChanged();
+    void dllModsChanged();
     void message(bool ok, const QString& text);
 
 private:
@@ -66,6 +85,10 @@ private:
     int m_enabledFileCount = 0;
     QString m_libraryPath;
     bool m_busy = false;
+    QVariantList m_dllMods;
+    bool m_dllModsSupported = false;
+    QString m_dllModsFolder;
+    QString m_dllModsGameFolder;
 
     void setBusy(bool busy);
     void report(bool ok, const QString& text);

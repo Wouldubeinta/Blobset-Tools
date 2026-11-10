@@ -1489,7 +1489,7 @@ template <size_t N>
 QStringList strings(const char* const (&list)[N]) {
     QStringList out;
     out.reserve(N);
-    for (const char* s : list)
+    for (const char* s : std::as_const(list))
         out << QString::fromUtf8(s);
     return out;
 }
@@ -1539,7 +1539,7 @@ const QStringList& customLogos() {
 const QList<Choice>& faceMeshes() {
     static const QList<Choice> list = [] {
         QList<Choice> out;
-        for (const Choice& c : kFaceMeshes)
+        for (const Choice& c : std::as_const(kFaceMeshes))
             out << c;
         return out;
     }();

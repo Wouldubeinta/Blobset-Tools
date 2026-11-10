@@ -4,6 +4,7 @@
 #include "bsb_file.h"
 #include "compression_io.h"
 #include "core_defs.h"
+#include "dll_mod_installer.h"
 #include "file_mapping_worker.h"
 #include "hash_utility.h"
 #include "mini_txpk_file.h"
@@ -201,7 +202,10 @@ QList<CreateWorker::ModFile> CreateWorker::collectModFiles(const QStringList& ex
         QSet<QString> others;
         QDirIterator it(modsDir.absolutePath(), QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
         while (it.hasNext()) {
-            const QString suffix = QFileInfo(it.next()).suffix().toLower();
+            const QString path = it.next();
+            if (DllModInstaller::isLibraryPath(modsDir.relativeFilePath(path)))
+                continue;   // DLL mods, not blobset files.
+            const QString suffix = QFileInfo(path).suffix().toLower();
             if (!suffix.isEmpty() && !extensions.contains(suffix))
                 others.insert(suffix);
         }
@@ -230,6 +234,8 @@ QList<CreateWorker::ModFile> CreateWorker::collectModFiles(const QStringList& ex
                     continue;
             }
             if (info.fileName().compare(u"blobsetmod.json"_s, Qt::CaseInsensitive) == 0)
+                continue;
+            if (DllModInstaller::isLibraryPath(modsDir.relativeFilePath(path)))
                 continue;
             files.append(ModFile{path, modsDir.relativeFilePath(path), extension, generic});
         }
@@ -274,7 +280,7 @@ QList<CreateWorker::ModJob> CreateWorker::planJobs(const QStringList& extensions
 
     QStringList notInBlobset;   // Other file types that don't replace a file of the game (readmes, pictures, ...).
 
-    for (const ModFile& file : collectModFiles(extensions)) {
+    for (const auto& fileList = collectModFiles(extensions); const ModFile& file : fileList) {
         ModJob job;
         job.absolutePath = file.absolutePath;
         job.relativePath = file.relativePath;
@@ -505,7 +511,7 @@ CreateWorker::Section CreateWorker::writeLzma(PackageStream& out, const QByteArr
     payloads.reserve(chunkSizes.size());
 
     qint64 offset = 0;
-    for (const qint64 size : chunkSizes) {
+    for (const qint64 size : std::as_const(chunkSizes)) {
         const QByteArray chunk = data.mid(offset, size);
         offset += size;
 
@@ -745,7 +751,7 @@ void CreateWorker::createV1() {
 /// New assets go into the file mapping too, so the browser shows them and later runs find them by name.
 void CreateWorker::addNewFilesToMapping(const QList<ModJob>& jobs) {
     QList<std::pair<QString, quint64>> added;
-    for (const ModJob& job : jobs)
+    for (const ModJob& job : std::as_const(jobs))
         if (job.isNew)
             added.append({job.relativePath, job.pathHash});
     if (added.isEmpty())
@@ -756,7 +762,7 @@ void CreateWorker::addNewFilesToMapping(const QList<ModJob>& jobs) {
             QFile::exists(m_mappingFile) ? FileMappingWorker::readMappingFile(m_mappingFile)
                                          : std::vector<FileMappingWorker::MappingEntry>();
         QSet<quint64> known;
-        for (const auto& e : entries)
+        for (const auto& e : std::as_const(entries))
             known.insert(e.hash);
         for (const auto& [path, hash] : std::as_const(added)) {
             if (known.contains(hash))

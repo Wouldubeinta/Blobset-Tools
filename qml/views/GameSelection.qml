@@ -9,23 +9,6 @@ Item {
     id: gameSelectionView
     anchors.fill: parent
 
-    // Declare the UI warning dialogue component
-    MessageDialog {
-        id: metadataErrorDialog
-        buttons: MessageDialog.Ok
-    }
-
-    // Attach a listener to your AppOrchestrator object context
-    Connections {
-        target: appOrchestrator
-
-        function onMissingMetadataError(title, message) {
-            metadataErrorDialog.title = title;
-            metadataErrorDialog.text = message;
-            metadataErrorDialog.open(); // Display the warning overlay modally
-        }
-    }
-
     Image {
         id: backgroundImage
         anchors.fill: parent

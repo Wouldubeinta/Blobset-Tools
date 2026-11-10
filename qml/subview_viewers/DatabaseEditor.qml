@@ -10,8 +10,16 @@ Item {
     anchors.fill: parent
 
     readonly property string iconDir: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/"
+    // The editors' tab icons (same as the Save / Career Editors): assets/editors/<name>.png.
+    readonly property string editorIconDir: "qrc:/qt/qml/com/wouldymods/blobset/assets/editors/"
+    function tabIcon(tab) {
+        const name = ({ "Teams": "teams_32", "Players": "players_32", "Details": "details_32",
+                        "Identity": "details_32", "Stadiums": "stadium_32", "Feeder Clubs": "teams_32",
+                        "Squad": "roster_32", "Lineups": "lineup_32", "Jerseys": "jersey_32",
+                        "Ratings": "player_stats_32", "Career Stats": "team_scores", "Appearance": "appearance_32" })[tab]
+        return name ? editorIconDir + name + ".png" : ""
+    }
     readonly property color errorColor: Material.color(Material.Red)
-    readonly property color goodColor: "#5cb85c"
 
     // What the right hand side shows: "", "team" or "player".
     property string mode: ""
@@ -64,7 +72,6 @@ Item {
     // ------------------------------------------------------------------------------------------------
     function hasT(key) { return db.teamFieldTypes[key] !== undefined }
     function typeT(key) { return db.teamFieldTypes[key] || "" }
-    function typeP(key) { return db.playerFieldTypes[key] || "" }
     function hasP(key) { return db.playerFieldTypes[key] !== undefined }
     readonly property bool isRl26: db.game === "rl26"
     readonly property bool isRll3: db.game === "rll3"
@@ -706,16 +713,26 @@ Item {
     }
     component EditorTab: TabButton {
         id: tabButton
+        property string iconUrl: ""
         width: implicitWidth
         leftPadding: 16
         rightPadding: 16
-        contentItem: Text {
-            text: tabButton.text
-            color: tabButton.checked ? BtDarkStyle.accentColor : BtDarkStyle.textDim
-            font.pixelSize: 13
-            font.bold: true
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+        contentItem: Row {
+            spacing: 6
+            Image {
+                visible: tabButton.iconUrl !== ""
+                source: tabButton.iconUrl
+                width: 16
+                height: 16
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Text {
+                text: tabButton.text
+                color: tabButton.checked ? BtDarkStyle.accentColor : BtDarkStyle.textDim
+                font.pixelSize: 13
+                font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+            }
         }
     }
 
@@ -901,8 +918,8 @@ Item {
 
                 EditorTabs {
                     id: listTabs
-                    EditorTab { text: "Teams (" + editorRoot.teamRowsModel.length + ")" }
-                    EditorTab { text: "Players (" + editorRoot.playerRowsModel.length + ")" }
+                    EditorTab { text: "Teams (" + editorRoot.teamRowsModel.length + ")"; iconUrl: editorRoot.tabIcon("Teams") }
+                    EditorTab { text: "Players (" + editorRoot.playerRowsModel.length + ")"; iconUrl: editorRoot.tabIcon("Players") }
                 }
 
                 StackLayout {
@@ -1234,12 +1251,12 @@ Item {
 
                     EditorTabs {
                         id: teamTabs
-                        EditorTab { text: "Details" }
-                        EditorTab { text: "Stadiums" }
-                        EditorTab { text: "Squad" }
-                        EditorTab { text: "Lineups" }
-                        EditorTab { text: "Jerseys" }
-                        EditorTab { text: "Feeder Clubs" }
+                        EditorTab { text: "Details"; iconUrl: editorRoot.tabIcon("Details") }
+                        EditorTab { text: "Stadiums"; iconUrl: editorRoot.tabIcon("Stadiums") }
+                        EditorTab { text: "Squad"; iconUrl: editorRoot.tabIcon("Squad") }
+                        EditorTab { text: "Lineups"; iconUrl: editorRoot.tabIcon("Lineups") }
+                        EditorTab { text: "Jerseys"; iconUrl: editorRoot.tabIcon("Jerseys") }
+                        EditorTab { text: "Feeder Clubs"; iconUrl: editorRoot.tabIcon("Feeder Clubs") }
                     }
 
                     StackLayout {
@@ -2005,10 +2022,10 @@ Item {
 
                     EditorTabs {
                         id: playerTabs
-                        EditorTab { text: "Identity" }
-                        EditorTab { text: "Ratings" }
-                        EditorTab { text: "Career Stats" }
-                        EditorTab { text: "Appearance" }
+                        EditorTab { text: "Identity"; iconUrl: editorRoot.tabIcon("Identity") }
+                        EditorTab { text: "Ratings"; iconUrl: editorRoot.tabIcon("Ratings") }
+                        EditorTab { text: "Career Stats"; iconUrl: editorRoot.tabIcon("Career Stats") }
+                        EditorTab { text: "Appearance"; iconUrl: editorRoot.tabIcon("Appearance") }
                     }
 
                     StackLayout {

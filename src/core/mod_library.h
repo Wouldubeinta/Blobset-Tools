@@ -56,7 +56,6 @@ public:
     ModLibrary(const QString& platformDir, const QString& externalDir, const QStringList& supportedExtensions);
 
     QString libraryDir() const { return m_libraryDir; }
-    QString workspaceDir() const { return m_workspaceDir; }
     QString externalDir() const { return m_externalDir; }
 
     /// Reads modlist.json and the mod folders (new folders are added enabled, at the end of the load order).

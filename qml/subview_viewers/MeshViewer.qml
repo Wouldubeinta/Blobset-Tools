@@ -129,14 +129,26 @@ Item {
                     checkable: true
                 }
 
+                HeaderButton {
+                    tip: meshManager.textureInfo !== "" ? "Show the mesh with its textures (" + meshManager.textureInfo + ")"
+                                                        : "Show the mesh with its textures"
+                    id: texturesButton
+                    text: checked ? "Textures: On" : "Textures: Off"
+                    iconSource: meshViewRoot.iconDir + "dds_32.png"
+                    enabled: meshManager.loaded
+                    checkable: true
+                    checked: true
+                }
+
                 Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 28; Layout.alignment: Qt.AlignVCenter; color: BtDarkStyle.borderDark }
 
                 HeaderButton {
-                    tip: "Extract the mesh as the original .mesh or as a Wavefront .obj"
+                    tip: meshManager.busy ? "Exporting the OBJ and its textures..."
+                                          : "Extract the mesh as the original .mesh or as a Wavefront .obj with its textures"
                     id: extractButton
                     text: "Extract ▾"
                     iconSource: meshViewRoot.iconDir + "extract_32.png"
-                    enabled: meshManager.loaded
+                    enabled: meshManager.loaded && !meshManager.busy
                     onClicked: extractMenu.popup(extractButton, 0, extractButton.height)
                 }
 
@@ -187,8 +199,11 @@ Item {
 
                     PerspectiveCamera {
                         id: camera
-                        clipNear: Math.max(0.001, meshManager.radius * 0.005)
-                        clipFar: meshManager.radius * 100
+                        // Clip planes follow the camera, so zooming right in (or flying into a stadium) doesn't
+                        // cut away what is in front of it.
+                        clipNear: Math.max(meshManager.radius * 0.00005, Math.abs(camera.z) * 0.01)
+                        clipFar: Math.abs(camera.z) + orbitOrigin.position.minus(meshManager.center).length()
+                                 + meshManager.radius * 4
 
                         // Key light from the viewer, so the visible side is always lit.
                         DirectionalLight {
@@ -204,17 +219,34 @@ Item {
                     brightness: 0.35
                 }
 
-                Model {
-                    geometry: meshManager.geometry
-                    materials: PrincipledMaterial {
-                        baseColor: "#c9c9cf"
-                        roughness: 0.75
-                        metalness: 0.0
-                        cullMode: PrincipledMaterial.NoCulling
-                        lighting: PrincipledMaterial.FragmentLighting
+                // The mesh: one model per part (the whole mesh until its textures are in, then one per material).
+                // The models stay when Textures is switched: only their material changes.
+                Repeater3D {
+                    model: meshManager.parts
+                    delegate: Model {
+                        id: partModel
+                        required property var modelData
+                        readonly property bool textured: texturesButton.checked && modelData.texture !== ""
+                        geometry: modelData.geometry
+                        Texture {
+                            id: partTexture
+                            source: partModel.modelData.texture
+                            generateMipmaps: true
+                            mipFilter: Texture.Linear
+                        }
+                        materials: PrincipledMaterial {
+                            baseColor: partModel.textured ? "white" : "#c9c9cf"
+                            baseColorMap: partModel.textured ? partTexture : null
+                            alphaMode: partModel.textured && partModel.modelData.transparent ? PrincipledMaterial.Mask
+                                                                                             : PrincipledMaterial.Opaque
+                            alphaCutoff: 0.5
+                            roughness: 0.75
+                            metalness: 0.0
+                            cullMode: PrincipledMaterial.NoCulling
+                            lighting: PrincipledMaterial.FragmentLighting
+                        }
                     }
                 }
-
             }
 
             OrbitCameraController {
@@ -228,6 +260,8 @@ Item {
             }
 
             // Middle mouse button: moves the mesh with the cursor (pans the orbit centre in the view plane).
+            // Wheel: zooms towards the orbit centre; once close, it keeps going forward (the centre moves along), so
+            // you can zoom into a stadium instead of stopping at its middle.
             MouseArea {
                 anchors.fill: view3d
                 enabled: meshManager.loaded
@@ -236,6 +270,19 @@ Item {
                 property real lastX: 0
                 property real lastY: 0
                 onPressed: (mouse) => { lastX = mouse.x; lastY = mouse.y }
+                onWheel: (wheel) => {
+                    const steps = wheel.angleDelta.y / 120
+                    if (steps === 0)
+                        return
+                    const closest = meshManager.radius * 0.02
+                    const distance = camera.z * Math.pow(0.85, steps)
+                    if (steps > 0 && distance < closest) {
+                        orbitOrigin.position = orbitOrigin.position.plus(camera.forward.times(meshManager.radius * 0.03 * steps))
+                        camera.z = Math.max(camera.z, closest)
+                    } else {
+                        camera.z = Math.min(Math.max(distance, closest), meshManager.radius * 20)
+                    }
+                }
                 onPositionChanged: (mouse) => {
                     // World units per screen pixel at the orbit centre's distance.
                     var distance = camera.position.length()
@@ -268,7 +315,7 @@ Item {
                 anchors.top: parent.top
                 anchors.margins: 10
                 visible: meshManager.loaded
-                text: "Left drag: orbit   |   Middle drag: move   |   Wheel: zoom"
+                text: "Left drag: orbit   |   Middle drag: move   |   Wheel: zoom (keeps going in once close)"
                 color: BtDarkStyle.textDim
                 font.pixelSize: 11
             }
@@ -323,7 +370,52 @@ Item {
                     elide: Text.ElideMiddle
                     font.pointSize: 9
                     color: meshManager.statusOk ? BtDarkStyle.textDim : "#ef5350"
-                    text: "Status: Ready | Blobset Tools Mesh Viewer"
+                    // What the last action said (an extract, an error); the loaded mesh's info is in the strip above.
+                    text: meshManager.statusText !== "" && meshManager.statusText !== meshManager.infoLine
+                          ? "Status: " + meshManager.statusText
+                          : "Status: " + (meshManager.textureInfo !== "" ? meshManager.textureInfo : "Ready")
+                            + " | Blobset Tools Mesh Viewer"
+                }
+
+                // Textures loading in the background.
+                RowLayout {
+                    visible: meshManager.texturesLoading
+                    spacing: 10
+                    Layout.alignment: Qt.AlignVCenter
+
+                    Text {
+                        text: meshManager.textureStage + "  " + Math.round(meshManager.textureProgress * 100) + "%"
+                        color: BtDarkStyle.textDim
+                        font.pointSize: 9
+                    }
+
+                    ProgressBar {
+                        id: textureProgressBar
+                        from: 0
+                        to: 1
+                        value: meshManager.textureProgress
+                        implicitWidth: 150
+                        implicitHeight: 6
+                        Layout.alignment: Qt.AlignVCenter
+
+                        background: Rectangle {
+                            implicitWidth: textureProgressBar.implicitWidth
+                            implicitHeight: textureProgressBar.implicitHeight
+                            color: BtDarkStyle.bgMedium
+                            radius: 3
+                        }
+                        contentItem: Item {
+                            implicitWidth: textureProgressBar.implicitWidth
+                            implicitHeight: textureProgressBar.implicitHeight
+
+                            Rectangle {
+                                width: textureProgressBar.visualPosition * parent.width
+                                height: parent.height
+                                radius: 3
+                                color: BtDarkStyle.accentColor
+                            }
+                        }
+                    }
                 }
 
                 Text {
@@ -345,7 +437,7 @@ Item {
             onTriggered: extractDialog.start("mesh")
         }
         MenuItem {
-            text: "Wavefront .obj..."
+            text: "Wavefront .obj + textures..."
             icon.source: meshViewRoot.iconDir + "obj_32.png"
             icon.color: "transparent"
             onTriggered: extractDialog.start("obj")

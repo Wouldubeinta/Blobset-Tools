@@ -13,7 +13,6 @@ Item {
 
     // Optional: open a standalone .bsb from disk instead of one from the loaded blobset.
     property string targetFilePath: ""
-    property bool isBigEndian: false
 
     // Path hash of the BSB opened from the blobset (set by AppOrchestrator::openBsbViewerByHash).
     property string activeHashString: ""

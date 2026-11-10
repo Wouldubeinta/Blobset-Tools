@@ -137,7 +137,7 @@ QStringList prepare() {
     // The old layout kept everything next to the exe: carry it over once (backups, mappings, mods, settings).
     const QString oldGames = install.filePath(u"games"_s);
     const QString newGames = QDir(data).filePath(u"games"_s);
-    if (!sameFolder && QFileInfo(oldGames).isDir() && !QFileInfo(newGames).exists()) {
+    if (!sameFolder && QFileInfo(oldGames).isDir() && !QFileInfo::exists(newGames)) {
         const int copied = copyMissing(oldGames, newGames, true, &failures);
         log.append(u"Moved the game profiles, mappings, mods and backups (%1 file(s)) from %2 to %3. "
                    u"Extracted blobsets were left behind (run Extract again if you need them)."_s
@@ -152,7 +152,7 @@ QStringList prepare() {
     const QString defaults = install.filePath(u"defaults"_s);
     if (QFileInfo(defaults).isDir()) {
         QSet<QString> games;
-        for (const QString& folder : selectedGameFolders())
+        for (const auto& folderList = selectedGameFolders(); const QString& folder : folderList)
             games.insert(folder.toLower());
         const int copied = copyMissing(defaults, data, false, &failures, games);
         if (copied > 0)

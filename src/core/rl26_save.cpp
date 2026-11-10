@@ -38,7 +38,7 @@ const std::array<quint32, 256>& crcTable() {
 quint32 crc32(const QByteArray& data) {
     const auto& table = crcTable();
     quint32 c = 0xFFFFFFFFu;
-    for (const char ch : data)
+    for (const char ch : std::as_const(data))
         c = table[(c ^ static_cast<quint8>(ch)) & 0xFFu] ^ (c >> 8);
     return c ^ 0xFFFFFFFFu;
 }

@@ -68,7 +68,7 @@ inline double rating(const Player& p, int margin, bool rll3) {
 
 inline int sum(const Team& t, const char* key) {
     int n = 0;
-    for (const Player& p : t.players)
+    for (const Player& p : std::as_const(t.players))
         n += p.s.value(QString::fromLatin1(key));
     return n;
 }

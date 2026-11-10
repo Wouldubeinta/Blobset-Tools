@@ -66,7 +66,7 @@ const FormatInfo kFormats[] = {
 };
 
 const FormatInfo* findFormat(quint32 format) {
-    for (const FormatInfo& info : kFormats)
+    for (const FormatInfo& info : std::as_const(kFormats))
         if (info.format == format)
             return &info;
     return nullptr;
@@ -399,7 +399,7 @@ void TextureHeader::read(PackageStream& in) {
 
 void TextureHeader::write(PackageStream& out) const {
     out.setEndianness(PackageStream::Big);
-    for (const quint32 dword : dwords)
+    for (const quint32 dword : std::as_const(dwords))
         out.writeUInt32(dword);
 }
 
@@ -448,13 +448,13 @@ std::optional<QByteArray> toDds(const TextureHeader& header, const QByteArray& d
     QByteArray out = ddsHeader(*info, width, height, levels, faces == 6);
     const qsizetype levelsStart = out.size();
     qsizetype total = 0;
-    for (const Placement& p : layout.levels)
+    for (const Placement& p : std::as_const(layout.levels))
         total += qsizetype(p.widthBlocks) * p.heightBlocks * bpb;
     out.resize(levelsStart + total);   // Blocks outside the stored data stay zero.
     std::memset(out.data() + levelsStart, 0, total);
 
     char* dst = out.data() + levelsStart;
-    for (const Placement& p : layout.levels) {
+    for (const Placement& p : std::as_const(layout.levels)) {
         for (quint32 y = 0; y < p.heightBlocks; ++y) {
             for (quint32 x = 0; x < p.widthBlocks; ++x, dst += bpb) {
                 const quint32 at = blockAddress(p, x, y, bpb, header.isTiled());
@@ -485,7 +485,7 @@ std::optional<ImportedTexture> fromDds(const QByteArray& dds, QString* error) {
 
     const quint32 bpb = info.bytesPerBlock;
     const char* src = in->data.constData();
-    for (const Placement& p : layout.levels) {
+    for (const Placement& p : std::as_const(layout.levels)) {
         for (quint32 y = 0; y < p.heightBlocks; ++y) {
             for (quint32 x = 0; x < p.widthBlocks; ++x, src += bpb) {
                 const quint32 at = blockAddress(p, x, y, bpb, true);

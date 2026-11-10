@@ -75,6 +75,10 @@ public:
     /// Reads the current file again (edits are dropped).
     Q_INVOKABLE void reload();
 
+    // Removes a row (its path and hash) from the table; Save writes the mapping without it. Returns the row to
+    // select next (-1 when the table is empty).
+    Q_INVOKABLE int removeEntry(int row);
+
 signals:
     void actionCompleted(const QString& message);
     void errorOccurred(const QString& message);

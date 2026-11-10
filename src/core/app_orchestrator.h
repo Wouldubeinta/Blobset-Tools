@@ -200,6 +200,10 @@ public:
     // ---- Mod Manager / command line -------------------------------------------------------------------------
     // games/<game>/<platform> and the game's own folder (where the exe lives), empty when unknown.
     QString platformDirPath() const;
+    // DLL mods (see DllModInstaller): V4 PC games only.
+    bool dllModsSupported() const;
+    // Installs the DLL mods library into <game>\DLL_Mods (Modify / Build do it first). False when something failed.
+    bool syncDllMods();
     QString gameRootPath() const;
     // <game>\BlobsetToolsMods: the folder Vortex deploys into (an extra, highest priority mod source).
     QString externalModsPath() const;
@@ -207,6 +211,9 @@ public:
     ModLibrary modLibrary() const;
     // Lower case, '/' separated paths of the loaded game's mapping (finding a mod's root folder on install).
     QSet<QString> mappedPaths() const;
+    // The blobset keys (BlobsetEntryRegistry::makeKey) of the mapped files whose name ends with `suffix` (any case),
+    // e.g. every ".txpk". The mapping's own hashes, so files it only has numbered names for are included.
+    QStringList mappedKeysWithSuffix(const QString& suffix) const;
 
     // Command line: selects a game without loading the workspace or showing any view. False (and a console
     // message) when the game has no file mapping / GameInfo.ini yet.
@@ -248,7 +255,6 @@ signals:
     void profileLoaded(int gameId, int platformId, const QString& modGameFolderName, const QString& gameFolderName);
     void gameSelectionInfoLoaded(const QVariantList& gameSelectedInfo);
     void currentFolderFilesChanged();
-    void missingMetadataError(const QString& title, const QString& message);
     void gameLocationRequiredChanged();
     void fileMappingMissingChanged();
     void modFilesChanged();

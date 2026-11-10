@@ -454,7 +454,7 @@ inline std::optional<Match> identifyV1(const QByteArray& data) {
         return std::nullopt;
 
     const quint32 magics[] = {qFromBigEndian<quint32>(data.constData()), qFromLittleEndian<quint32>(data.constData())};
-    for (const quint32 magic : magics) {
+    for (const quint32 magic : std::as_const(magics)) {
         switch (magic) {
         case kSkinnedModel:
             return Match{QStringLiteral("model\\skinned"), QStringLiteral("mdl")};

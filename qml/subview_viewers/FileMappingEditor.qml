@@ -159,10 +159,36 @@ Item {
     Shortcut { sequences: ["F3"]; onActivated: editorRoot.find(false, false) }
     Shortcut { sequences: ["Shift+F3"]; onActivated: editorRoot.find(true, false) }
     Shortcut { sequences: [StandardKey.Save]; enabled: mappingModel.modified; onActivated: mappingModel.saveMapping() }
+    // Delete: the selected row (not while a cell or the search box is being edited).
+    Shortcut {
+        sequences: [StandardKey.Delete]
+        enabled: editorRoot.currentRow >= 0 && !(editorRoot.Window.activeFocusItem
+                                                 && editorRoot.Window.activeFocusItem.hasOwnProperty("cursorPosition"))
+        onActivated: editorRoot.deleteRow(editorRoot.currentRow)
+    }
+
+    function deleteRow(row) {
+        if (row < 0)
+            return
+        const next = mappingModel.removeEntry(row)
+        editorRoot.selectRow(next)
+        editorRoot.updateMatches()
+    }
 
     // ------------------------------------------------------------------------------------------------
     // Components
     // ------------------------------------------------------------------------------------------------
+    Menu {
+        id: rowMenu
+        property int row: -1
+        MenuItem {
+            text: "Delete Row"
+            icon.source: editorRoot.iconDir + "close_32.png"
+            icon.color: "transparent"
+            onTriggered: editorRoot.deleteRow(rowMenu.row)
+        }
+    }
+
     component HeaderButton: AbstractButton {
         id: headerButton
         property url iconSource: ""
@@ -382,6 +408,14 @@ Item {
                 Rectangle { width: 1; Layout.preferredHeight: 28; color: BtDarkStyle.borderDark }
 
                 HeaderButton {
+                    text: "Delete Row"
+                    tip: "Delete the selected file path / hash from the mapping (Delete). Save Changes writes it"
+                    iconSource: editorRoot.iconDir + "close_32.png"
+                    enabled: editorRoot.currentRow >= 0
+                    onClicked: editorRoot.deleteRow(editorRoot.currentRow)
+                }
+
+                HeaderButton {
                     text: "Reload"
                     tip: "Read the mapping file again (unsaved edits are dropped)"
                     iconSource: editorRoot.iconDir + "reset_32.png"
@@ -561,7 +595,13 @@ Item {
                         id: cellArea
                         anchors.fill: parent
                         hoverEnabled: true
-                        acceptedButtons: Qt.NoButton   // Clicks go to the TableView (selection / editing).
+                        // Left clicks go to the TableView (selection / editing); right click: the row's menu.
+                        acceptedButtons: Qt.RightButton
+                        onClicked: {
+                            editorRoot.selectRow(cell.row)
+                            rowMenu.row = cell.row
+                            rowMenu.popup()
+                        }
                     }
 
                     Text {

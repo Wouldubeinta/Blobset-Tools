@@ -166,7 +166,7 @@ QString Table::read(const QByteArray& data) {
             rec.listPresent[l] = r.u8();
             if (!rec.listPresent[l])
                 continue;
-            for (int f : m_schema.lists[l].fields) {
+            for (int f : std::as_const(m_schema.lists[l].fields)) {
                 const Field& field = m_schema.fields[f];
                 if (field.type == ValueType::Derived)
                     continue;
@@ -209,7 +209,7 @@ QByteArray Table::write() const {
     out.reserve(m_schema.header.size() + m_records.size() * 1024);
     out.append(m_schema.header);
     putU32(out, static_cast<quint32>(m_records.size()));
-    for (const Record& rec : m_records) {
+    for (const Record& rec : std::as_const(m_records)) {
         putU32(out, rec.identifier);
         if (m_schema.blobBeforeLists) {
             putU32(out, static_cast<quint32>(rec.blob.size()));
@@ -219,7 +219,7 @@ QByteArray Table::write() const {
             out.append(static_cast<char>(rec.listPresent[l]));
             if (!rec.listPresent[l])
                 continue;
-            for (int f : m_schema.lists[l].fields) {
+            for (int f : std::as_const(m_schema.lists[l].fields)) {
                 const Field& field = m_schema.fields[f];
                 if (field.type == ValueType::Derived)
                     continue;

@@ -1,9 +1,13 @@
 cmake_minimum_required(VERSION 3.21)
-project(Blobset-Tools VERSION 2.1.10.70 LANGUAGES CXX)
+project(Blobset-Tools VERSION 2.1.10.73 LANGUAGES CXX)
 
 if(WIN32)
-    enable_language(RC) #
-    set(WIN32_EXE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/windows_assets.rc")
+    enable_language(RC)
+    # The exe's version info and icon: windows_assets.rc.in with this project's version filled in.
+    string(TIMESTAMP BT_COPYRIGHT_YEAR "%Y")
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/windows_assets.rc.in"
+                   "${CMAKE_CURRENT_BINARY_DIR}/windows_assets.rc" @ONLY NEWLINE_STYLE CRLF)
+    set(WIN32_EXE_ICON "${CMAKE_CURRENT_BINARY_DIR}/windows_assets.rc")
 endif()
 
 # Enforce C++20 standard
@@ -80,6 +84,8 @@ qt_add_executable(Blobset-Tools
     src/core/txpk_file.cpp
     src/core/x360_texture.h
     src/core/x360_texture.cpp
+    src/core/dll_mod_installer.h
+    src/core/dll_mod_installer.cpp
     src/core/mod_library.h
     src/core/mod_library.cpp
     src/core/command_line.h
@@ -182,6 +188,8 @@ qt_add_executable(Blobset-Tools
     src/managers/m3mp_tool_manager.cpp
     src/managers/mesh_tool_manager.h
     src/managers/mesh_tool_manager.cpp
+    src/managers/mesh_texture_export.h
+    src/managers/mesh_texture_export.cpp
     src/managers/mod_manager.h
     src/managers/mod_manager.cpp
     src/managers/database_manager.h
@@ -259,29 +267,39 @@ qt_add_qml_module(Blobset-Tools
         assets/rll3_save/NewTeam.tem
         assets/rll3_save/NewPlayer.ply
         assets/blackorchid.png
+        assets/editors/appearance_32.png
         assets/editors/available.png
         assets/editors/blue_arrow.png
+        assets/editors/career_32.png
         assets/editors/career_settings.png
         assets/editors/comp_ladder.png
+        assets/editors/details_32.png
         assets/editors/female.png
         assets/editors/good.png
         assets/editors/green_arrow.png
         assets/editors/injured.png
+        assets/editors/jersey_32.png
         assets/editors/light_blue_arrow.png
+        assets/editors/lineup_32.png
         assets/editors/male.png
         assets/editors/nsw_camp.png
         assets/editors/orange_arrow.png
         assets/editors/player_contracts.png
         assets/editors/player_selection.png
+        assets/editors/player_stats_32.png
         assets/editors/player_status.png
-        assets/editors/plus_minus.png
+        assets/editors/players_32.png
         assets/editors/qld_camp.png
+        assets/editors/raw.png
         assets/editors/raw_database.png
         assets/editors/red_arrow.png
         assets/editors/retired.png
+        assets/editors/roster_32.png
+        assets/editors/stadium_32.png
         assets/editors/suspended.png
         assets/editors/team_scores.png
         assets/editors/team_selection.png
+        assets/editors/teams_32.png
         assets/ext/alpha_32.png
         assets/ext/alpha_checked_32.png
         assets/ext/bank_32.png

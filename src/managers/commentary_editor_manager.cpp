@@ -88,7 +88,7 @@ QString toLocalPath(const QString& path) {
 
 quint32 fnv1a(const QByteArray& text) {
     quint32 h = 0x811c9dc5u;
-    for (const char c : text) {
+    for (const char c : std::as_const(text)) {
         h ^= static_cast<quint8>(c);
         h *= 0x01000193u;
     }
@@ -149,14 +149,14 @@ QByteArray nameTable(const QList<QByteArray>& names) {
     QByteArray table;
     const quint32 n = quint32(names.size());
     put32(table, n);
-    for (const QByteArray& name : names)
+    for (const QByteArray& name : std::as_const(names))
         put32(table, fnv1a(name));
     quint32 at = 4 + 8 * n;
-    for (const QByteArray& name : names) {
+    for (const QByteArray& name : std::as_const(names)) {
         put32(table, at);
         at += quint32(name.size()) + 1;
     }
-    for (const QByteArray& name : names) {
+    for (const QByteArray& name : std::as_const(names)) {
         table += name;
         table.append('\0');
     }
@@ -175,7 +175,8 @@ QString speakerName(const QByteArray& folder, const QByteArray& bank) {
     while (f.endsWith(u'/'))
         f.chop(1);
     f = f.mid(f.lastIndexOf(u'/') + 1);
-    f.remove(QRegularExpression(u"^id\\d+_"_s));
+    static const QRegularExpression idPrefix(u"^id\\d+_"_s);
+    f.remove(idPrefix);
     QStringList words = f.split(u'_', Qt::SkipEmptyParts);
     for (QString& w : words)
         w[0] = w[0].toUpper();
@@ -196,7 +197,7 @@ bool CommentaryEditorManager::isCommentaryHash(const QString& hexHash) {
     const quint64 value = hexHash.trimmed().toULongLong(&ok, 16);
     if (!ok)
         return false;
-    for (const KnownFile& f : kFiles)
+    for (const KnownFile& f : std::as_const(kFiles))
         if (QString::fromLatin1(f.hash).toULongLong(nullptr, 16) == value)
             return true;
     return false;
@@ -275,7 +276,7 @@ QList<CommentaryEditorManager::SpeakerCategories> CommentaryEditorManager::speak
             const QByteArray bank = r.bytes(at + 16 + folderLength, bankLength);
             SpeakerCategories sp;
             sp.name = speakerName(folder, bank);
-            for (const QByteArray& name : r.names(table + 4))
+            for (const auto& nameList = r.names(table + 4); const QByteArray& name : nameList)
                 sp.categories.insert(QString::fromLatin1(name));
             out << sp;
         }
@@ -310,7 +311,7 @@ void CommentaryEditorManager::edited() {
 
 QVariantList CommentaryEditorManager::blobsetFiles() const {
     QVariantList out;
-    for (const KnownFile& f : kFiles) {
+    for (const KnownFile& f : std::as_const(kFiles)) {
         BlobsetEntry entry;
         const bool available = BlobsetEntryRegistry::findEntry(QString::fromLatin1(f.hash), entry);
         out << QVariantMap{{u"name"_s, QString::fromLatin1(f.name)}, {u"path"_s, QString::fromLatin1(f.path)},
@@ -340,7 +341,7 @@ bool CommentaryEditorManager::loadFromBlobset(const QString& hexHash, const QStr
     }
     // The four files' own paths (what the mods folder needs), else the one given.
     QString path = workspacePathIn;
-    for (const KnownFile& f : kFiles)
+    for (const KnownFile& f : std::as_const(kFiles))
         if (QString::fromLatin1(f.hash).toULongLong(nullptr, 16) == hexHash.toULongLong(nullptr, 16))
             path = QString::fromLatin1(f.path);
     path.replace(u'\\', u'/');
@@ -410,7 +411,7 @@ bool CommentaryEditorManager::parse(const QByteArray& dataIn, const QString& sou
     if (m_kind == u"lines"_s) {
         int lineCount = 0;
         for (const Speaker& s : std::as_const(m_speakers))
-            for (const Category& c : s.cats)
+            for (const Category& c : std::as_const(s.cats))
                 lineCount += int(c.lines.size());
         setStatus(true, u"Loaded %1: %2 speakers, %3 lines."_s.arg(sourceName).arg(m_speakers.size()).arg(lineCount));
     } else {
@@ -510,7 +511,7 @@ QByteArray CommentaryEditorManager::serializeLines() const {
     const qsizetype offsetsAt = out.size();
     for (qsizetype i = 0; i < count; ++i)
         put32(out, 0);
-    for (const Speaker& sp : m_speakers)
+    for (const Speaker& sp : std::as_const(m_speakers))
         put32(out, sp.id);
     for (qsizetype si = 0; si < count; ++si) {
         const Speaker& sp = m_speakers.at(si);
@@ -525,7 +526,7 @@ QByteArray CommentaryEditorManager::serializeLines() const {
         put32(out, quint32(sp.bank.size()));
         out += sp.bank;
         QList<QByteArray> names;
-        for (const Category& c : sp.cats)
+        for (const Category& c : std::as_const(sp.cats))
             names << c.name;
         const QByteArray tableBytes = nameTable(names);
         put32(out, quint32(table + 4 + tableBytes.size()));
@@ -534,14 +535,14 @@ QByteArray CommentaryEditorManager::serializeLines() const {
         out.append(QByteArray(12 * sp.cats.size(), '\0'));
         align16(out);
         QList<qsizetype> firsts;
-        for (const Category& c : sp.cats) {
+        for (const Category& c : std::as_const(sp.cats)) {
             firsts << (c.lines.isEmpty() ? 0 : out.size());
-            for (const Line& line : c.lines) {
+            for (const Line& line : std::as_const(c.lines)) {
                 out += line.conditions;
                 QByteArray id = line.idBlock;
                 id[11] = char(quint8(line.parts.size()));
                 out += id;
-                for (const QByteArray& part : line.parts) {
+                for (const QByteArray& part : std::as_const(line.parts)) {
                     out += part;
                     out.append('\0');
                 }
@@ -567,14 +568,14 @@ QByteArray CommentaryEditorManager::serializeLines() const {
 
 QByteArray CommentaryEditorManager::serializeInfo() const {
     QList<QByteArray> names;
-    for (const InfoCategory& c : m_info)
+    for (const InfoCategory& c : std::as_const(m_info))
         names << c.name;
     const QByteArray table = nameTable(names);
     QByteArray out;
     put32(out, quint32(m_info.size()));
     put32(out, quint32(8 + table.size()));
     out += table;
-    for (const InfoCategory& c : m_info)
+    for (const InfoCategory& c : std::as_const(m_info))
         out += c.record;
     return out;
 }
@@ -605,7 +606,7 @@ QString CommentaryEditorManager::saveToMods() {
         setStatus(false, u"No game is loaded, so there's no mods folder."_s);
         return {};
     }
-    const QString path = QDir::cleanPath(QDir(mods).filePath(m_workspacePath));
+    QString path = QDir::cleanPath(QDir(mods).filePath(m_workspacePath));
     QByteArray bytes;
     try {
         bytes = serialize();
@@ -689,7 +690,7 @@ QString CommentaryEditorManager::lineId(const Line& line) {
 bool CommentaryEditorManager::lineMatches(const Line& line, const QString& query) {
     if (QString::fromUtf8(line.text).contains(query, Qt::CaseInsensitive) || lineId(line).contains(query))
         return true;
-    for (const QByteArray& part : line.parts)
+    for (const QByteArray& part : std::as_const(line.parts))
         if (QString::fromUtf8(part).contains(query, Qt::CaseInsensitive))
             return true;
     return false;
@@ -700,7 +701,7 @@ QVariantList CommentaryEditorManager::speakers() const {
     for (int i = 0; i < m_speakers.size(); ++i) {
         const Speaker& s = m_speakers.at(i);
         int lineCount = 0;
-        for (const Category& c : s.cats)
+        for (const Category& c : std::as_const(s.cats))
             lineCount += int(c.lines.size());
         out << QVariantMap{{u"index"_s, i}, {u"id"_s, s.id}, {u"name"_s, speakerName(s.folder, s.bank)},
                            {u"folder"_s, QString::fromUtf8(s.folder)}, {u"bank"_s, QString::fromUtf8(s.bank)},
@@ -720,7 +721,7 @@ QVariantList CommentaryEditorManager::categories(int speaker, const QString& fil
         const QString name = QString::fromUtf8(c.name);
         int matches = 0;
         if (!filter.isEmpty()) {
-            for (const Line& line : c.lines)
+            for (const Line& line : std::as_const(c.lines))
                 if (lineMatches(line, filter))
                     ++matches;
             if (matches == 0 && !name.contains(filter, Qt::CaseInsensitive))
@@ -740,7 +741,7 @@ QVariantList CommentaryEditorManager::lines(int speaker, int category) const {
     for (int i = 0; i < c->lines.size(); ++i) {
         const Line& line = c->lines.at(i);
         QStringList parts;
-        for (const QByteArray& p : line.parts)
+        for (const QByteArray& p : std::as_const(line.parts))
             parts << QString::fromUtf8(p);
         out << QVariantMap{{u"index"_s, i}, {u"soundId"_s, lineId(line)}, {u"text"_s, QString::fromUtf8(line.text)},
                            {u"parts"_s, parts.join(u"  +  "_s)}, {u"gender"_s, static_cast<quint8>(line.idBlock.at(12))},
@@ -756,7 +757,7 @@ QVariantMap CommentaryEditorManager::line(int speaker, int category, int index) 
     if (!line)
         return {};
     QStringList parts;
-    for (const QByteArray& p : line->parts)
+    for (const QByteArray& p : std::as_const(line->parts))
         parts << QString::fromUtf8(p);
     QStringList conditions;
     for (int f = 0; f < kConditionBytes / 8; ++f)
@@ -776,7 +777,7 @@ QVariantMap CommentaryEditorManager::line(int speaker, int category, int index) 
 QStringList CommentaryEditorManager::subcategories(int speaker, int category) const {
     QStringList out;
     if (const Category* c = categoryAt(speaker, category))
-        for (const QByteArray& s : c->subs)
+        for (const QByteArray& s : std::as_const(c->subs))
             out << QString::fromUtf8(s);
     return out;
 }
@@ -795,7 +796,7 @@ QString speakerFolder(const QByteArray& folder) {
 
 quint64 soundHash(const QString& sound) {
     quint64 h = 0xCBF29CE484222325ull;
-    for (const char c : sound.toLower().replace(u'\\', u'/').toLatin1()) {
+    for (const auto& cList = sound.toLower().replace(u'\\', u'/').toLatin1(); const char c : cList) {
         h ^= static_cast<unsigned char>(c);
         h *= 0x100000001B3ull;
     }
@@ -832,9 +833,9 @@ QString CommentaryEditorManager::checkSoundName(int speaker, const QString& name
     if (!valid.match(name).hasMatch())
         return u"Use lower case letters, digits and _ (up to 60)."_s;
     const QByteArray bytes = name.toLatin1();
-    for (const Category& c : m_speakers.at(speaker).cats)
-        for (const Line& l : c.lines)
-            for (const QByteArray& part : l.parts)
+    for (const auto& cList = m_speakers.at(speaker).cats; const Category& c : cList)
+        for (const Line& l : std::as_const(c.lines))
+            for (const QByteArray& part : std::as_const(l.parts))
                 if (part == bytes)
                     return u"A line of %1's (%2) already plays %3."_s
                         .arg(speakerName(m_speakers.at(speaker).folder, m_speakers.at(speaker).bank), QString::fromUtf8(c.name), name);
@@ -849,8 +850,10 @@ QString CommentaryEditorManager::suggestSoundName(int speaker, const QString& wa
     if (speaker < 0 || speaker >= m_speakers.size())
         return {};
     QString base = QFileInfo(toLocalPath(wavPathOrUrl)).completeBaseName().toLower();
-    base.replace(QRegularExpression(u"[^a-z0-9_]+"_s), u"_"_s);
-    base.replace(QRegularExpression(u"_+"_s), u"_"_s);
+    static const QRegularExpression notNameChars(u"[^a-z0-9_]+"_s);
+    static const QRegularExpression underscores(u"_+"_s);
+    base.replace(notNameChars, u"_"_s);
+    base.replace(underscores, u"_"_s);
     while (base.startsWith(u'_'))
         base.remove(0, 1);
     while (base.endsWith(u'_'))
@@ -931,9 +934,9 @@ int CommentaryEditorManager::addLineFromWav(int speaker, int category, const QSt
     const Speaker& sp = m_speakers.at(speaker);
     const QString folder = speakerFolder(sp.folder);
     QByteArray templateWem;
-    for (const Category& cat : sp.cats) {
-        for (const Line& l : cat.lines) {
-            for (const QByteArray& part : l.parts) {
+    for (const Category& cat : std::as_const(sp.cats)) {
+        for (const Line& l : std::as_const(cat.lines)) {
+            for (const QByteArray& part : std::as_const(l.parts)) {
                 if (part.startsWith("c:"))
                     continue;
                 BlobsetEntry entry;
@@ -970,8 +973,8 @@ int CommentaryEditorManager::addLineFromWav(int speaker, int category, const QSt
     // The line: the category's first line's conditions, a new sound id (unused by this file's lines).
     QSet<QString> ids;
     for (const Speaker& s : std::as_const(m_speakers))
-        for (const Category& cat : s.cats)
-            for (const Line& l : cat.lines)
+        for (const Category& cat : std::as_const(s.cats))
+            for (const Line& l : std::as_const(cat.lines))
                 ids.insert(lineId(l));
     quint32 id = quint32(soundHash(info.value(u"sound"_s).toString()) & 0xFFFFFFFFu);
     while (ids.contains(QString::number(id).rightJustified(10, u'0')) || id == 0)
@@ -1001,16 +1004,6 @@ int CommentaryEditorManager::addLineFromWav(int speaker, int category, const QSt
     return index;
 }
 
-QStringList CommentaryEditorManager::allCategoryNames() const {
-    QStringList out;
-    for (const Speaker& s : m_speakers)
-        for (const Category& c : s.cats)
-            out << QString::fromUtf8(c.name);
-    out.removeDuplicates();
-    out.sort();
-    return out;
-}
-
 bool CommentaryEditorManager::setLineText(int speaker, int category, int index, const QString& text) {
     Line* line = lineAt(speaker, category, index);
     if (!line)
@@ -1029,7 +1022,7 @@ bool CommentaryEditorManager::setLineParts(int speaker, int category, int index,
     if (!line)
         return false;
     QList<QByteArray> parts;
-    for (const QString& p : partsIn) {
+    for (const QString& p : std::as_const(partsIn)) {
         const QString t = p.trimmed();
         if (!t.isEmpty())
             parts << t.toUtf8();
@@ -1103,7 +1096,7 @@ bool CommentaryEditorManager::setLineCondition(int speaker, int category, int in
         return false;
     QString value = valueIn.trimmed();
     bool ok = false;
-    const quint64 v = value.startsWith(u"0x"_s, Qt::CaseInsensitive) ? value.mid(2).toULongLong(&ok, 16) : value.toULongLong(&ok, 10);
+    const quint64 v = value.startsWith(u"0x"_s, Qt::CaseInsensitive) ? QStringView(value).mid(2).toULongLong(&ok, 16) : value.toULongLong(&ok, 10);
     if (!ok) {
         setStatus(false, u"A condition is a 64 bit mask (hex as 0x..., or decimal)."_s);
         return false;
@@ -1221,7 +1214,7 @@ bool CommentaryEditorManager::setSubcategories(int speaker, int category, const 
     if (!c)
         return false;
     QList<QByteArray> names;
-    for (const QString& n : namesIn) {
+    for (const QString& n : std::as_const(namesIn)) {
         const QString t = n.trimmed();
         if (t.isEmpty())
             continue;
@@ -1288,9 +1281,9 @@ int CommentaryEditorManager::countMatches(const QString& queryIn) const {
     if (query.isEmpty())
         return 0;
     int n = 0;
-    for (const Speaker& s : m_speakers)
-        for (const Category& c : s.cats)
-            for (const Line& line : c.lines)
+    for (const Speaker& s : std::as_const(m_speakers))
+        for (const Category& c : std::as_const(s.cats))
+            for (const Line& line : std::as_const(c.lines))
                 if (lineMatches(line, query))
                     ++n;
     return n;
@@ -1343,11 +1336,11 @@ bool CommentaryEditorManager::exportCsv(const QString& pathOrUrl) {
         return false;
     QString csv = u"Speaker,Category,Line,Id,Sub-categories,Parts,Text\r\n"_s;
     for (const Speaker& s : std::as_const(m_speakers))
-        for (const Category& c : s.cats)
+        for (const Category& c : std::as_const(s.cats))
             for (int i = 0; i < c.lines.size(); ++i) {
                 const Line& line = c.lines.at(i);
                 QStringList parts;
-                for (const QByteArray& p : line.parts)
+                for (const QByteArray& p : std::as_const(line.parts))
                     parts << QString::fromUtf8(p);
                 csv += csvField(QString::fromUtf8(s.folder)) + u',' + csvField(QString::fromUtf8(c.name)) + u','
                        + QString::number(i + 1) + u',' + csvField(lineId(line)) + u','
@@ -1411,7 +1404,7 @@ bool CommentaryEditorManager::importCsv(const QString& pathOrUrl) {
         }
         if (colParts >= 0 && colParts < f.size()) {
             QList<QByteArray> parts;
-            for (const QString& p : f.at(colParts).split(u'|', Qt::SkipEmptyParts))
+            for (const auto& pList = f.at(colParts).split(u'|', Qt::SkipEmptyParts); const QString& p : pList)
                 parts << p.trimmed().toUtf8();
             if (!parts.isEmpty() && parts != target->parts) {
                 target->parts = parts;

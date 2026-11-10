@@ -2,12 +2,14 @@
 
 #include "app_orchestrator.h"
 #include "app_paths.h"
+#include "dll_mod_installer.h"
 #include "mod_library.h"
 
 #include <QDesktopServices>
 #include <QFile>
 #include <QProcess>
 #include <QDir>
+#include <QDirIterator>
 #include <QFileInfo>
 #include <QCoreApplication>
 #include <QHash>
@@ -21,7 +23,7 @@ using namespace Qt::StringLiterals;
 namespace {
 
 QString toLocal(const QString& pathOrUrl) {
-    const QString trimmed = pathOrUrl.trimmed();
+    QString trimmed = pathOrUrl.trimmed();
     if (trimmed.startsWith(u"file:"_s, Qt::CaseInsensitive))
         return QUrl(trimmed).toLocalFile();
     return trimmed;
@@ -63,14 +65,14 @@ void ModManager::reload() {
     QHash<QString, int> wins, loses;
     const QList<ModLibrary::Conflict> conflicts = library.conflicts();
     m_conflictCount = static_cast<int>(conflicts.size());
-    for (const ModLibrary::Conflict& conflict : conflicts) {
+    for (const ModLibrary::Conflict& conflict : std::as_const(conflicts)) {
         wins[conflict.ids.last()] += 1;
         for (qsizetype i = 0; i + 1 < conflict.ids.size(); ++i)
             loses[conflict.ids[i]] += 1;
     }
     m_enabledFileCount = library.enabledFileCount();
 
-    for (const ModLibrary::Mod& mod : library.mods()) {
+    for (const auto& modList = library.mods(); const ModLibrary::Mod& mod : modList) {
         m_mods.append(QVariantMap{
             {u"id"_s, mod.id},
             {u"name"_s, mod.name},
@@ -92,6 +94,87 @@ void ModManager::reload() {
         });
     }
     emit modsChanged();
+    reloadDllMods();
+}
+
+// ---- DLL mods --------------------------------------------------------------------------------------------------
+
+void ModManager::reloadDllMods() {
+    m_dllModsSupported = m_orchestrator && m_orchestrator->dllModsSupported();
+    m_dllModsFolder = m_dllModsSupported ? DllModInstaller::libraryDir(m_orchestrator->platformDirPath()) : QString();
+    m_dllModsGameFolder = m_dllModsSupported ? DllModInstaller::gameDir(m_orchestrator->gameLocation()) : QString();
+    m_dllMods = m_dllModsSupported ? DllModInstaller::list(m_dllModsFolder, m_dllModsGameFolder) : QVariantList();
+    emit dllModsChanged();
+}
+
+void ModManager::addDllMods(const QStringList& pathsOrUrls) {
+    if (!m_dllModsSupported)
+        return;
+    const QDir library(DllModInstaller::libraryDir(m_orchestrator->platformDirPath(), true));
+    int added = 0;
+    QStringList failed;
+    const auto copyFile = [&](const QString& source, const QString& relative) {
+        const QString target = library.filePath(relative);
+        QDir().mkpath(QFileInfo(target).absolutePath());
+        if (QFile::exists(target))
+            QFile::remove(target);   // Adding it again replaces it.
+        if (QFile::copy(source, target))
+            ++added;
+        else
+            failed << relative;
+    };
+    for (const QString& item : pathsOrUrls) {
+        const QString source = toLocal(item);
+        const QFileInfo info(source);
+        if (info.isDir()) {
+            // A folder: its files (keeping its sub folders), not the folder itself.
+            const QDir root(source);
+            QDirIterator it(source, QDir::Files | QDir::Hidden | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+            while (it.hasNext()) {
+                const QString file = it.next();
+                copyFile(file, root.relativeFilePath(file));
+            }
+        } else if (info.isFile()) {
+            copyFile(source, info.fileName());
+        }
+    }
+    reloadDllMods();
+    if (!failed.isEmpty())
+        report(false, u"DLL mods: could not add %1."_s.arg(failed.join(u", "_s)));
+    else if (added > 0)
+        report(true, u"DLL mods: added %1 file(s). Click Install DLL Mods (or Build) to put them into the game."_s.arg(added));
+}
+
+void ModManager::removeDllMod(const QString& name) {
+    if (!m_dllModsSupported || name.isEmpty() || name.contains(u".."_s))
+        return;
+    const QString path = QDir(m_dllModsFolder).filePath(name);
+    if (!QFile::exists(path))
+        return;
+    if (!QFile::moveToTrash(path) && !QFile::remove(path)) {
+        report(false, u"DLL mods: could not remove %1."_s.arg(name));
+        return;
+    }
+    reloadDllMods();
+    report(true, u"DLL mods: removed %1. Click Install DLL Mods (or Build) to take it out of the game."_s.arg(name));
+}
+
+void ModManager::openDllModsFolder() const {
+    if (!m_dllModsSupported)
+        return;
+    const QString dir = DllModInstaller::libraryDir(m_orchestrator->platformDirPath(), true);
+    QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
+}
+
+void ModManager::installDllMods() {
+    if (!m_dllModsSupported)
+        return;
+    bool ok = true;
+    const QStringList lines = DllModInstaller::sync(m_dllModsFolder, m_orchestrator->gameLocation(), &ok);
+    for (const QString& line : lines)
+        emit m_orchestrator->uiConsoleUpdate(line);
+    reloadDllMods();
+    emit message(ok, lines.isEmpty() ? u"DLL mods: nothing to install."_s : lines.first());
 }
 
 void ModManager::install(const QString& pathOrUrl) {
@@ -121,7 +204,7 @@ void ModManager::install(const QString& pathOrUrl) {
         QMetaObject::invokeMethod(qApp, [self, mod, error, log]() {
             if (!self)
                 return;
-            for (const QString& line : log)
+            for (const QString& line : std::as_const(log))
                 if (self->m_orchestrator)
                     emit self->m_orchestrator->uiConsoleUpdate(u"Mod Manager: "_s + line);
             self->setBusy(false);
@@ -225,11 +308,11 @@ QVariantList ModManager::conflictsFor(const QString& id) const {
         const ModLibrary::Mod* mod = library.find(modId);
         return mod ? mod->name : modId;
     };
-    for (const ModLibrary::Conflict& conflict : library.conflicts()) {
+    for (const auto& conflictList = library.conflicts(); const ModLibrary::Conflict& conflict : conflictList) {
         if (!conflict.ids.contains(id))
             continue;
         QStringList others;
-        for (const QString& other : conflict.ids)
+        for (const QString& other : std::as_const(conflict.ids))
             if (other != id)
                 others.append(nameOf(other));
         result.append(QVariantMap{{u"path"_s, conflict.path},

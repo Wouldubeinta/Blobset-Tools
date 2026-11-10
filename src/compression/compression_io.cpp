@@ -2,7 +2,6 @@
 #include <zstd.h>
 #include <lzma.h>
 #include <QByteArray>
-#include <vector>
 #include <algorithm>
 #include <stdexcept>
 #include <QtEndian>

@@ -104,7 +104,7 @@ quint32 detectAlignment(const QList<QPair<qint64, qint64>>& blocks, quint32 fall
     quint32 alignment = maxAlignment;
     while (alignment > 1) {
         bool all = true;
-        for (const auto& block : blocks) {
+        for (const auto& block : std::as_const(blocks)) {
             if (block.first % alignment != 0) {
                 all = false;
                 break;

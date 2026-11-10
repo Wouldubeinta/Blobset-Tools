@@ -72,7 +72,7 @@ inline std::uint32_t murmur2(std::string_view data, std::uint32_t seed = 0xDEADB
 
 /// FNV-1a 32. `state` lets a hash continue from another (V3 starts from the hash of the game key).
 inline std::uint32_t fnv1a32(std::string_view data, std::uint32_t state = 0x811C9DC5u) {
-    for (const char c : data) {
+    for (const char c : std::as_const(data)) {
         state ^= std::uint32_t(std::int32_t(static_cast<signed char>(c)));   // The engine sign extends the bytes.
         state *= 0x01000193u;
     }
@@ -81,7 +81,7 @@ inline std::uint32_t fnv1a32(std::string_view data, std::uint32_t state = 0x811C
 
 /// FNV-1a 64.
 inline std::uint64_t fnv1a64(std::string_view data, std::uint64_t state = 0xCBF29CE484222325ull) {
-    for (const char c : data) {
+    for (const char c : std::as_const(data)) {
         state ^= static_cast<unsigned char>(c);
         state *= 0x100000001B3ull;
     }

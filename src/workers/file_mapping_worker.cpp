@@ -368,7 +368,7 @@ void FileMappingWorker::writeMappingFile(const QString& file, const std::vector<
     PackageStream out(&buffer, PackageStream::Little);
     out.writeUInt32(static_cast<quint32>(entries.size()));
 
-    for (const MappingEntry& entry : entries) {
+    for (const MappingEntry& entry : std::as_const(entries)) {
         const QString problem = validatePath(entry.path);
         if (!problem.isEmpty())
             fail(u"Can't store '%1': %2"_s.arg(entry.path, problem)); // A truncated length byte would corrupt the table.
@@ -502,7 +502,7 @@ void FileMappingWorker::addTxpkList(FileLists& lists, const QByteArray& header, 
             TXPK txpk;
             txpk.deserialize(stream, m_isBigEndian);
 
-            for (const TXPK::Entry& e : txpk.getEntries()) {
+            for (const auto& eList = txpk.getEntries(); const TXPK::Entry& e : eList) {
                 QString path = e.DDSFilePath;
                 path.replace(u'/', u'\\');
                 if (m_gameId > 15)
@@ -528,7 +528,7 @@ void FileMappingWorker::addM3mpList(FileLists& lists, PackageStream& in, int ind
         M3MP m3mp;
         m3mp.deserialize(in, m_isBigEndian);
 
-        for (const M3MP::UnCompressedEntry& e : m3mp.getUnCompressedEntries()) {
+        for (const auto& eList = m3mp.getUnCompressedEntries(); const M3MP::UnCompressedEntry& e : eList) {
             QString path = e.filePath;
             path.replace(u'/', u'\\');
             paths.append(path);
@@ -1137,7 +1137,7 @@ void FileMappingWorker::createModFolders(const std::vector<MappingEntry>& entrie
     const QString root = QDir::cleanPath(modsDir.absolutePath()) + u"/"_s;
 
     QSet<QString> created;
-    for (const MappingEntry& entry : entries) {
+    for (const MappingEntry& entry : std::as_const(entries)) {
         QString relative = entry.path;
         relative.replace(u'\\', u'/');
 
