@@ -68,6 +68,13 @@ public:
     static std::vector<MappingEntry> readMappingFile(const QString& file);
     static void writeMappingFile(const QString& file, const std::vector<MappingEntry>& entries); // Atomic (QSaveFile).
     static void sortEntries(std::vector<MappingEntry>& entries);                                 // Alphabetical, like the C# OrderBy.
+    // A name the mapping made up for a file it couldn't name ("model\static\123.mesh", "unknown\...").
+    static bool isUnnamedPath(const QString& path);
+    // A newer mapping (installed with Blobset Tools) with the user's names kept: where the newer one only has a
+    // made-up name for a file the user's copy names, and the files only the user's copy has (their mods' files,
+    // entries they added). `kept`: how many names came from the user's copy. Sorted.
+    static std::vector<MappingEntry> mergeMappings(const std::vector<MappingEntry>& newer,
+                                                   const std::vector<MappingEntry>& user, int* kept = nullptr);
     static QString normalizePath(const QString& path);                                           // Trimmed, '\' separators.
     static QString validatePath(const QString& path);                                            // Empty when it can be stored.
 

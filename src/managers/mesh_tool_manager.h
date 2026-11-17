@@ -33,6 +33,9 @@ public:
     // The mesh's display vertices with V flipped: the meshes' UVs are top-left based (Direct3D), Qt Quick 3D's
     // bottom-left based (OpenGL).
     static QByteArray quick3DVertices(const MeshFile& mesh);
+    // The decal layer's vertices: the mesh's second UV set (V flipped the same way) in place of the first, the
+    // positions pushed a hair out along the normals so the layer draws over the surface (empty when there is none).
+    static QByteArray decalVertices(const MeshFile& mesh);
 };
 
 /// MeshViewer.qml: loads a .mesh out of the loaded blobset, shows it in 3D and extracts it (original or OBJ).
@@ -124,8 +127,9 @@ private:
     void clearParts();
     // groups: material index (-1 = none) -> submeshes ({-1, {}}: the whole mesh, untextured); files: each
     // material's texture PNG.
+    // decals: each material's decal texture PNG (drawn as an extra, alpha tested part over its submeshes).
     void setParts(const QMap<int, QList<int>>& groups, const QStringList& files, const QList<bool>& transparent,
-                  const MeshFile& mesh);
+                  const MeshFile& mesh, const QStringList& decals = {});
     void setTextureProgress(bool loading, double progress, const QString& stage);
     std::shared_ptr<std::atomic<int>> m_currentLoad = std::make_shared<std::atomic<int>>(0);   // Read by the job.
     bool m_texturesLoading = false;

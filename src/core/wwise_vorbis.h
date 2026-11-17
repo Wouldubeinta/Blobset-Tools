@@ -41,9 +41,10 @@ struct Stream {
 };
 
 // `pcm`: interleaved 16 bit samples, `channels` of them a frame, at `sampleRate`; encoded as `targetChannels` (1 or 2,
-// downmixed / doubled) at 44100 Hz (resampled). `layout`: the "fmt " channel layout to store.
+// downmixed / doubled) at `targetRate` (resampled; the sound it replaces: Rugby 25's and Tiebreak's are 48000 Hz,
+// with the same quality and lowpass, as theirs are). `layout`: the "fmt " channel layout to store.
 bool encode(const QByteArray& pcm, int channels, quint32 sampleRate, int targetChannels, quint32 layout, Stream* out,
-            QString* error);
+            QString* error, quint32 targetRate = 44100);
 
 } // namespace WwiseVorbis
 

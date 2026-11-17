@@ -28,6 +28,7 @@
 #include <QAbstractTableModel>
 #include <QQmlEngine>
 #include <QString>
+#include <QStringList>
 #include <QVariantMap>
 
 #include <vector>
@@ -41,6 +42,9 @@ class FileMappingEditorModel : public QAbstractTableModel {
     Q_PROPERTY(int count READ count NOTIFY countChanged FINAL)
     Q_PROPERTY(bool modified READ isModified NOTIFY modifiedChanged FINAL)
     Q_PROPERTY(QString filePath READ filePath NOTIFY filePathChanged FINAL)
+    // Where Save as Default writes (the project's defaults folder, on the machine Blobset Tools is built on); empty
+    // when there's nowhere to (an installed copy).
+    Q_PROPERTY(QStringList defaultTargets READ defaultTargets NOTIFY filePathChanged FINAL)
 
 public:
     enum MappingRoles {
@@ -65,6 +69,10 @@ public:
 
     Q_INVOKABLE void loadMapping(const QString& filePath);
     Q_INVOKABLE void saveMapping();
+    /// Saves, then writes the mapping into the defaults the next release ships (the project's defaults\games\...,
+    /// and the build's copy next to the exe), so new installs and updates get it.
+    Q_INVOKABLE void saveAsDefault();
+    QStringList defaultTargets() const;
 
     /// Case insensitive search of the paths ('/' finds '\') and hashes, wrapping around. Returns the row or -1.
     Q_INVOKABLE int search(const QString& query, int startIndex, bool backward = false);

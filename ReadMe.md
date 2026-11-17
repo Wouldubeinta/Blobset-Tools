@@ -51,20 +51,22 @@ Manager, Vortex support, a command line, a Mesh Viewer, Xbox 360 textures and mu
 ## Features
 
 - **Browse and preview** every file in a blobset: DDS textures (PC, PS3 and Xbox 360), TXPK / TXPL texture packs,
-  M3MP packages, meshes (3D Mesh Viewer), BSB Flash UI screens, WEM / BNK / FSB / FMOD audio, string tables, Lua,
+  M3MP packages, meshes (3D Mesh Viewer, skinned models and PSSG scenes too), BSB Flash UI screens, WEM / BNK / FSB / FMOD audio, string tables, Lua,
   text and a Hex Viewer for everything else.
 - **Extract** a whole blobset or **Save As** single files (DDS or PNG, WEM or WAV, ...).
 - **Modify** the game with your mods (the originals are backed up first) and **Restore** them any time.
 - **Creators**: TXPK Creator, M3MP Creator and BSB Creator to rebuild packs from extracted files.
-- **Editors**: File Mapping Editor, String Editor (the game's text, one table per language), the Database Editor
-  (teams, players and jerseys of Rugby League 26, Rugby League Live 4, Rugby League Live 3 and Rugby 25), the
+- **Editors**: File Mapping Editor, String Editor (the game's text, every table in every language), the Database
+  Editor (teams, players and jerseys of Rugby League 26, Rugby League Live 4, Rugby League Live 3 and Rugby 25), the
   **Save Editor** and **Career Editor** (Academy and career saves of Rugby League 26, Rugby League Live 4 and Rugby
-  League Live 3), the **Commentary Editor** and **Dialogue Editor** (Rugby League 26's commentary lines and the names
-  it can say) and the Lua editor (the games' LuaJIT scripts, decompiled to edit and compiled back).
+  League Live 3), the **3D Appearance Editor** (Rugby League 26 and Rugby League Live 4 players built in 3D), the
+  **Commentary Editor** and **Dialogue Editor** (the commentary lines and the names it can say in Rugby League 26,
+  Rugby 25, AFL 23, Cricket 24 and Tiebreak) and the Lua editor (the games' LuaJIT scripts, decompiled to edit and
+  compiled back).
 - **Raw Databases** in the Database, Save and Career Editors: every player, team, roster, lineup, ... as a table to
   edit, with CSV export / import (the C# editors' CSV files import too).
-- **Replace files** by drag and drop (files, whole folders, a `.wav` for a sound), and edit inside TXPK, M3MP and BNK
-  files: the changes go into the mods folder.
+- **Replace files** by drag and drop (files, whole folders, a `.wav` for any sound, also inside sound banks), and
+  edit inside TXPK, M3MP and BNK files: the changes go into the mods folder.
 - **New sounds from WAVs** (Rugby League 26): new WEMs with a new id, encoded as Wwise Vorbis like the game's own
   sounds by the built-in encoder (no Wwise needed), and new commentary lines that play them.
 - **Mod Manager**: install mods from .zip / .7z / .rar or folders, enable / disable them, set the load order, see
@@ -193,6 +195,9 @@ Files panel scrolls it left / right.
 
 ### Mesh Viewer
 
+- Besides the static `.mesh` files it shows Rugby League 26's skinned models (`.modelcomponent.mdl` with their
+  `.blendshapes.mdat`), Rugby League Live 3 / 4's skinned parts, and Rugby League Live 2 / AFL Live models (PSSG
+  scenes in `.model.m3mp`: stadiums, props, generated heads) with their decal layers (logos, numbers).
 - Meshes are shown with their textures (**Textures: On / Off**): each part gets the colour texture of its material
   (Rugby League Live 3 / 4: the `.material.mat` next to the mesh; Rugby League 26 and the other V4 games: the
   material inside the mesh). They load in the background with a progress bar in the status bar.
@@ -249,12 +254,13 @@ The replacement is copied into the mods folder at the same path
 to put it into the game. Right-click > **Remove Replacement** takes it out of the mods folder again. The replacement
 needs the same file type (a `.dds` for a `.dds`, ...).
 
-**Sounds (V4 games)**: a `.wav` can replace a `.wem` - drop it onto the WEM, or drop `<id>.wav` onto the Files panel.
-It's converted to a WEM that keeps the original's id and header (its `hash` chunk), so the game finds it like the
-original. When the original is Wwise Vorbis (all of Rugby League 26's commentary) the WAV is encoded as Vorbis exactly
-like the game's own sounds (mono / stereo, 44100 Hz) by the built-in encoder, so no Wwise install is needed; other
-sounds become PCM. A `.wem` you drop is used as it is. In the **BNK viewer** you can do the same for the WEMs inside a
-sound bank, then **Save Changes** rebuilds the bank into the mods folder.
+**Sounds (V4 games)**: a `.wav` can replace any `.wem` - drop it onto the WEM, or drop `<id>.wav` onto the Files
+panel. It's encoded as **Wwise Vorbis** by the built-in encoder (no Wwise install needed), exactly like the game's own
+sounds: mono or stereo, at the sample rate of the sound it replaces (8,000 - 48,000 Hz; a WAV at another rate is
+resampled). The new WEM keeps the original's id and header (its `hash` chunk), so the game finds it like the original.
+A `.wem` you drop is used as it is. When the sound is streamed, its start (the prefetch copy the sound banks keep) is
+replaced in those banks too, so the new sound plays from the first moment. In the **BNK viewer** you can do the same
+for the WEMs inside a sound bank, then **Save Changes** rebuilds the bank into the mods folder.
 
 **New sounds (Rugby League 26)**: drop `.wav` files into a sound folder where no sound has their name:
 
@@ -354,7 +360,8 @@ Database Editor reads it.
   headwear. Export / Import copies a team's whole set of jerseys to another team.
 - **Players**: identity (names, jersey name and number, date of birth, height, weight, club, positions, countries,
   State of Origin / City v Country / All Stars, contract, commentary name), the ratings, personality and perk,
-  career numbers and match stats, and the **Appearance** (face, hair, body, gear, tattoos).
+  career numbers and match stats, and the **Appearance** (face, hair, body, gear, tattoos), also in 3D with the
+  [3D Appearance Editor](#3d-appearance-editor).
   **Randomize** rolls star, average or rookie stats for the player's position (rugby league games). Overall
   ratings (OVR) are worked out the same way as the original RL26 Database Editor.
 - Search and filter teams and players (by name, id, gender, position or a team's squad), and export both lists
@@ -402,6 +409,18 @@ Selection**, **Player Status** (injuries, suspensions, Origin camps), **Contract
 
 Based on Wouldy's RLL3 and RLL4 Career Save Editors (C#).
 
+### 3D Appearance Editor
+
+Rugby League 26 and Rugby League Live 4: the **3D Appearance Editor** button on the Appearance tab of the Database,
+Save and Career Editors builds the player in 3D from their appearance, the way the game does: the head, hair, beard,
+body, kit and boots models, with the skin, eyes, hair, beard and cap textures made like the game's character creator
+makes them (RLL4 players wear their team's kit). The appearance fields are beside the player (sliders and the game's
+lists of heads, hair styles, beards, boots, ...), and every change shows straight away.
+
+- **Whole Body** / **Face** views, **Textures** and **Wireframe** on / off.
+- **Left drag** orbits, **middle drag** moves, the **wheel** zooms.
+- The edits go into the editor that opened it, so they're saved with it. **Back** (or Esc) returns to the editor.
+
 ### Raw Databases
 
 The **Raw Databases** button in the Database, Save and Career Editors shows the data as tables, like the C#
@@ -418,18 +437,31 @@ player status, retirements, referees, feeder clubs and match stats, depending on
 
 ### Commentary Editor
 
-Rugby League 26: **Tools > Commentary Editor** (or double click `sound\lines.commentary.cmtry` /
-`sound\lines.referee.dat`) edits the commentators' and referees' lines: each speaker's categories and
-sub-categories, and every line's sounds, parts, subtitle text, pronoun and "whole sentence" flag. Add, copy, move and
-remove lines and categories, search them, and make new lines from WAVs (**New Line From WAV**). **Save** writes the
-file into the mods folder; click **Modify**.
+**Tools > Commentary Editor** (or double click a lines file) edits the commentators', announcers', umpires' and
+referees' lines:
+
+| Game | Lines files |
+|---|---|
+| Rugby League 26 | `sound\lines.commentary.cmtry`, `sound\lines.referee.dat`, ... |
+| Rugby 25 | commentary, announcer, TMO referee |
+| AFL 23 | `sound\lines.commentary.dat` |
+| Cricket 24 | commentary, announcer, career, ftue |
+| Tiebreak | announcers, chair umpires, career |
+
+Each speaker's categories and sub-categories, and every line's sounds, parts, subtitle text, pronoun and "whole
+sentence" flag. **Sub-categories (conditions)** shows the game's dialogue conditions a line needs (it's only said
+when every one holds) and what each one tests; pick from the game's conditions to add one. Add, copy, move and remove
+lines and categories, search them, and make new lines from WAVs (**New Line From WAV**). **Save** writes the file into
+the mods folder; click **Modify**.
 
 ### Dialogue Editor
 
-Rugby League 26 and Rugby 25: **Tools > Dialogue Editor** (or double click `sound\dialogue.mempack.m3mp`) edits the
-names the commentary can say: player surnames, team locations and team mascots. A player's or team's commentary
-name in the database is one of these names. Add, remove and edit names (new names are kept in alphabetical order),
-and export / import a list. **Save** writes the M3MP into the mods folder; click **Modify**.
+Rugby League 26, Rugby 25, AFL 23, Cricket 24 and Tiebreak: **Tools > Dialogue Editor** (or double click
+`sound\dialogue.mempack.m3mp` / `sound\ui.mempack.m3mp`) edits the names the commentary can say: player surnames,
+team locations, team mascots and the team intro names (whichever lists the game has, from both mem packs). A
+player's or team's commentary name in the database is one of these names. Add, remove and edit names (new names are
+kept in alphabetical order), and export / import a list. **Save** writes each changed M3MP into the mods folder;
+click **Modify**.
 
 ---
 
@@ -480,11 +512,12 @@ Blobset-Tools.exe --game "Rugby League Live 3" --restore
 ![Image 13](https://github.com/Wouldubeinta/Blobset-Tools/blob/qt6_master/readme/13.jpg?raw=true)
 
 - **Update File Mapping Data**: Maps all files in the blobset so Blobset Tools knows each file. It runs by itself the
-  first time and after a game update.
+  first time and after a game update. When Blobset Tools is updated, the newer file mappings it ships are merged in,
+  keeping the names you gave (File Mapping Editor, Resolve File Names).
 - **Resolve File Names**: Works out the names of unknown (numbered) files from the names the game and its files use,
-  and only renames those; the mapping stays sorted. In Rugby League 26 it also names the players' character parts
-  (heads, hair, hair caps, beards, headwear), helper joint offsets, the static meshes, texture packs / lists and the
-  crowd node files. Add your own names to `games\<game>\<platform>\names.txt` (one per line) to try them too.
+  and only renames those; the mapping stays sorted. It knows each game's own naming: the players' character parts,
+  texture packs, animation sets, sound banks, commentary sounds, videos and more, from Rugby League Live 2 and AFL
+  Live to Rugby League 26. Names one game has are tried in the other games of the same hash scheme. Add your own names to `games\<game>\<platform>\names.txt` (one per line) to try them too.
 - **Load Game**: When on, the game starts after **Modify** / **Create** succeeds.
 - **Validate Steam Files**: Asks Steam to verify the game's files and download any that changed.
 - **Mod Loader** (V4 games): When on, **Modify** writes the mods to `<game>\BlobsetMods` for the Blobset Mod Loader

@@ -3,6 +3,9 @@
 #include "app_orchestrator.h"
 #include "blobset_asset_reader.h"
 #include "blobset_entry_registry.h"
+#include "compression_io.h"
+#include "core_defs.h"
+#include "hash_utility.h"
 #include "mesh_texture_export.h"
 
 #include <QCoreApplication>
@@ -14,6 +17,7 @@
 #include <QSaveFile>
 #include <QUrl>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QtEndian>
 
 #include <algorithm>
 #include <atomic>
@@ -33,6 +37,25 @@ QByteArray MeshGeometry::quick3DVertices(const MeshFile& mesh) {
     const qsizetype count = vertices.size() / MeshFile::kDisplayStride;
     for (qsizetype k = 0; k < count; ++k)
         v[k * 8 + 7] = 1.0f - v[k * 8 + 7];
+    return vertices;
+}
+
+QByteArray MeshGeometry::decalVertices(const MeshFile& mesh) {
+    const qsizetype count = mesh.displayVertices.size() / MeshFile::kDisplayStride;
+    if (count == 0 || mesh.displayUv2.size() != count * 2 * qsizetype(sizeof(float)))
+        return {};
+    QByteArray vertices = mesh.displayVertices;
+    auto* v = reinterpret_cast<float*>(vertices.data());
+    const auto* uv = reinterpret_cast<const float*>(mesh.displayUv2.constData());
+    // About half a millimetre on a player (1.8 m), more on bigger meshes: over the surface, not floating off it.
+    const float offset = std::max(1e-5f, (mesh.boundsMax - mesh.boundsMin).length() * 0.0003f);
+    for (qsizetype k = 0; k < count; ++k) {
+        float* p = v + k * 8;
+        for (int j = 0; j < 3; ++j)
+            p[j] += p[3 + j] * offset;
+        p[6] = uv[k * 2];
+        p[7] = 1.0f - uv[k * 2 + 1];
+    }
     return vertices;
 }
 
@@ -77,6 +100,98 @@ void MeshGeometry::clearMesh() {
 // ==============================================================================================================
 // MeshToolManager
 // ==============================================================================================================
+
+namespace {
+
+// The .blendshapes.mdat entries that may belong to a skinned model: by name ("<part>.modelcomponent.mdl" ->
+// "<part>.blendshapes"), then its neighbours in the blobset (V4 headers are sorted by name, so the part's
+// ".blendshapes" comes right before its ".modelcomponent"). MeshFile::parseSkinned checks the vertex count.
+QList<QByteArray> blendshapeCandidates(const BlobsetEntry& model, const QString& sourceName,
+                                       const AppOrchestrator* orchestrator) {
+    QList<BlobsetEntry> entries;
+    const QString suffix = u".modelcomponent.mdl"_s;
+    if (sourceName.endsWith(suffix, Qt::CaseInsensitive)) {
+        const QString base = sourceName.chopped(suffix.size()).toLower();
+        BlobsetEntry entry;
+        if (BlobsetEntryRegistry::findEntry(BlobsetEntryRegistry::makeKey(BlobsetHash::hashV4(base, u"blendshapes"_s)),
+                                            entry))
+            entries.append(entry);
+    }
+    for (const qint64 index : {qint64(model.fileIndex) - 1, qint64(model.fileIndex) + 1}) {
+        BlobsetEntry entry;
+        if (index >= 0 && BlobsetEntryRegistry::findByIndex(quint32(index), entry)
+            && std::none_of(entries.cbegin(), entries.cend(),
+                            [&](const BlobsetEntry& e) { return e.fileIndex == entry.fileIndex; }))
+            entries.append(entry);
+    }
+
+    QList<QByteArray> out;
+    for (const BlobsetEntry& entry : std::as_const(entries)) {
+        try {
+            qint64 mainSize = -1;
+            const QByteArray data = BlobsetAssetReader::read(entry, orchestrator->assetLocation(),
+                                                             orchestrator->blobsetVersion(), orchestrator->platform(),
+                                                             &mainSize, true);
+            if (data.size() >= 16 && qFromLittleEndian<quint32>(data.constData()) == 0x2480137Fu)
+                out.append(data);
+        } catch (const std::exception&) {
+        }
+    }
+    return out;
+}
+
+// The first file of an M3MP ("stadiums\\nrl_aami\\stadium_t1.model.m3mp" holds "stadium_t1.gz.ps3", a PSSG):
+// "M3MP" (or "PM3M" big endian), file and chunk counts, the file table {offset, size, path offset, 0}, the paths,
+// then the chunk table {offset, compressed size, size}; the files are at their offsets in the decompressed chunks
+// (or right after the tables when there are none). Empty when it isn't an M3MP.
+QByteArray firstMemPackFile(const QByteArray& data, int version) {
+    if (data.size() < 16)
+        return {};
+    const bool big = data.startsWith("PM3M");
+    if (!big && !data.startsWith("M3MP"))
+        return {};
+    const auto u32 = [&](qint64 at) -> quint32 {
+        if (at < 0 || at + 4 > data.size())
+            return 0;
+        return big ? qFromBigEndian<quint32>(data.constData() + at) : qFromLittleEndian<quint32>(data.constData() + at);
+    };
+    const quint32 files = u32(4), chunks = u32(8);
+    if (files == 0 || 16 + qint64(files) * 16 + qint64(chunks) * 12 > data.size())
+        return {};
+    const quint32 offset = u32(16), size = u32(20);
+
+    // The chunk table: at its header offset (it follows the paths).
+    const qint64 tableEnd = u32(12);
+    if (tableEnd < 16 + qint64(files) * 16 || tableEnd + qint64(chunks) * 12 > data.size())
+        return {};
+    QByteArray payload;
+    if (chunks == 0) {
+        payload = data.mid(tableEnd);
+    } else {
+        const bool lzma = version == static_cast<int>(CoreDefs::BlobsetVersion::V1)
+                          || version == static_cast<int>(CoreDefs::BlobsetVersion::V2);
+        for (quint32 c = 0; c < chunks; ++c) {
+            const qint64 at = tableEnd + qint64(c) * 12;
+            const quint32 chunkOffset = u32(at), packed = u32(at + 4), unpacked = u32(at + 8);
+            if (qint64(chunkOffset) + packed > data.size())
+                return {};
+            const QByteArray chunk = data.mid(chunkOffset, packed);
+            if (packed == unpacked)
+                payload += lzma ? CompressionIO::decodeV1Chunk(chunk, unpacked) : chunk;
+            else if (lzma)
+                payload += CompressionIO::decompressLzma(chunk, unpacked);
+            else
+                return {};   // Other games' compressed mem packs: not meshes this decodes.
+            if (qint64(payload.size()) >= qint64(offset) + size)
+                break;   // The first file is complete.
+        }
+    }
+    if (qint64(offset) + size > payload.size())
+        return {};
+    return payload.mid(offset, size);
+}
+
+} // namespace
 
 MeshToolManager::MeshToolManager(QObject* parent) : QObject(parent), m_geometry(new MeshGeometry()) {
     m_geometry->setParent(this);
@@ -147,8 +262,31 @@ void MeshToolManager::loadMeshFromBlobset(const QString& hexHash, const QString&
         return finish(false, QString::fromUtf8(ex.what()));
     }
 
+    // Rugby League Live 2 / AFL Live models: a mem pack holding the model's PSSG ("<model>.model.m3mp").
+    if (const QByteArray inner = firstMemPackFile(m_raw, orchestrator->blobsetVersion()); MeshFile::isPssg(inner))
+        m_raw = inner;
+
     QString error;
-    if (!m_mesh.parse(m_raw, &error, mainSize)) {
+    bool parsed = false;
+    if (MeshFile::isPssg(m_raw)) {
+        parsed = m_mesh.parsePssg(m_raw, &error);
+    } else if (MeshFile::isSkinnedModel(m_raw)) {
+        // RL26 skinned model: the positions come from its .blendshapes.mdat.
+        const QList<QByteArray> candidates = blendshapeCandidates(entry, m_sourceName, orchestrator);
+        if (candidates.isEmpty())
+            parsed = m_mesh.parseSkinned(m_raw, QByteArray(), &error);
+        for (const QByteArray& blendshapes : candidates) {
+            QString candidateError;
+            parsed = m_mesh.parseSkinned(m_raw, blendshapes, &candidateError);
+            if (error.isEmpty())
+                error = candidateError;
+            if (parsed)
+                break;
+        }
+    } else {
+        parsed = m_mesh.parse(m_raw, &error, mainSize);
+    }
+    if (!parsed) {
         m_mesh = MeshFile();
         return finish(false, error);
     }
@@ -161,7 +299,7 @@ void MeshToolManager::loadMeshFromBlobset(const QString& hexHash, const QString&
 }
 
 void MeshToolManager::setParts(const QMap<int, QList<int>>& groups, const QStringList& files,
-                               const QList<bool>& transparent, const MeshFile& mesh) {
+                               const QList<bool>& transparent, const MeshFile& mesh, const QStringList& decals) {
     // The models showing the old parts go when QML sees the new list; their geometries after that.
     const QList<MeshGeometry*> old = m_partGeometries;
     m_partGeometries.clear();
@@ -180,6 +318,27 @@ void MeshToolManager::setParts(const QMap<int, QList<int>>& groups, const QStrin
         parts.append(QVariantMap{{u"geometry"_s, QVariant::fromValue(geometry)},
                                  {u"texture"_s, file.isEmpty() ? QString() : QUrl::fromLocalFile(file).toString()},
                                  {u"transparent"_s, it.key() >= 0 && transparent.value(it.key())}});
+    }
+    // The decal layers (PSSG uniforms: logos, numbers): the same submeshes drawn again with the second UV set and
+    // the decal texture, alpha tested, just over the surface. Each triangle shows only its own decals (the front and
+    // back of a shirt can share the colour texture's area, so the decals can't be painted into it).
+    QByteArray decalLayer;
+    for (auto it = groups.cbegin(); it != groups.cend(); ++it) {
+        const QString decal = it.key() >= 0 ? decals.value(it.key()) : QString();
+        if (decal.isEmpty() || it.value().isEmpty())
+            continue;
+        if (decalLayer.isEmpty())
+            decalLayer = MeshGeometry::decalVertices(mesh);
+        if (decalLayer.isEmpty())
+            break;
+        auto* geometry = new MeshGeometry();
+        geometry->setParent(this);
+        geometry->setPart(mesh, decalLayer, it.value());
+        m_partGeometries.append(geometry);
+        parts.append(QVariantMap{{u"geometry"_s, QVariant::fromValue(geometry)},
+                                 {u"texture"_s, QUrl::fromLocalFile(decal).toString()},
+                                 {u"transparent"_s, true},
+                                 {u"overlay"_s, true}});
     }
     m_parts = parts;
     emit partsChanged();
@@ -252,7 +411,7 @@ void MeshToolManager::loadTextures() {
                 QMap<int, QList<int>> groups;
                 for (qsizetype s = 0; s < mesh.submeshes.size(); ++s)
                     groups[look.submeshMaterial.value(s, -1)].append(int(s));
-                self->setParts(groups, look.files, look.transparent, mesh);
+                self->setParts(groups, look.files, look.transparent, mesh, look.decalFiles);
             }
             self->m_textureInfo = look.found == 0 && look.missing.isEmpty()
                                       ? u"No textures (no material found)"_s
@@ -283,8 +442,12 @@ void MeshToolManager::extract(const QString& outDirPath, const QString& format) 
 
     const bool asObj = format.compare(u"obj"_s, Qt::CaseInsensitive) == 0;
     QString baseName = QFileInfo(m_sourceName).completeBaseName();
+    if (baseName.endsWith(u".model"_s, Qt::CaseInsensitive) && m_mesh.formatName == u"PSSG"_s)
+        baseName.chop(6);   // "stadium_t1.model.m3mp" -> stadium_t1.pssg / .obj
     if (asObj && baseName.endsWith(u".model"_s, Qt::CaseInsensitive))
         baseName.chop(6);   // "ball.model.mesh" -> ball.obj, ball.mtl, ball_textures.
+    if (asObj && baseName.endsWith(u".modelcomponent"_s, Qt::CaseInsensitive))
+        baseName.chop(15);  // "head.modelcomponent.mdl" -> head.obj
     if (baseName.isEmpty())
         baseName = u"mesh"_s;
 
@@ -325,7 +488,10 @@ void MeshToolManager::extract(const QString& outDirPath, const QString& format) 
         return;
     }
 
-    const QString path = QDir(outDir).filePath(baseName + u".mesh"_s);
+    // The original file: skinned models keep their extension (their .blendshapes.mdat is a file of its own).
+    const QString path = QDir(outDir).filePath(baseName + (m_mesh.formatName == u"PSSG"_s ? u".pssg"_s
+                                                           : m_mesh.skinned               ? u".mdl"_s
+                                                                                          : u".mesh"_s));
     const QByteArray& data = m_raw;
 
     QSaveFile out(path);

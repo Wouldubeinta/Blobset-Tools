@@ -26,17 +26,19 @@ class M3mpToolManager;
 // ==========================================
 // QML Bridge Manager
 // ==========================================
-// DialogueEditor.qml: the names the commentary can say, in Rugby League 26's / Rugby 25's
-// sound\dialogue.mempack.m3mp (0x83AF3201ED1AE751). The M3MP holds one list per kind:
+// DialogueEditor.qml: the names the commentary can say, in two mem packs:
 //
-//   sound/dialogue_wildcardhash_surnames       player surnames (commentary: surname_n_<name>, surname_e_<name>)
-//   sound/dialogue_wildcardhash_teamslocation  team locations  (team_mid_<name>, team_and_<name>, team_excited_<name>)
-//   sound/dialogue_wildcardhash_teamsmascot    team mascots     (the same team_ categories)
+//   sound\dialogue.mempack.m3mp (0x83AF3201ED1AE751: Rugby League 26, Rugby 25, Cricket 24), lists
+//     "sound/dialogue_wildcardhash_<kind>": u32 count, then per name u32 FNV-1a 32 hash of the name, u32 length, the name.
+//   sound\ui.mempack.m3mp (0x53788874DB133F91: AFL 23, Cricket 24, Tiebreak), lists "sound/ui_<kind>": u32 count,
+//     then per name u32 length, the name (no hash).
 //
-// A list: u32 count, then per name u32 FNV-1a 32 hash of the name, u32 length, the name (lower case a-z, no
-// terminator). The first is "none". The database stores a player's / team's commentary name as the hash, and the
-// commentary plays the line of the category named after it. Saving writes the M3MP into the mods folder (like the
-// Database Editor's save), ready for Modify.
+// The kinds: surnames, teamslocation / teamsmascot (RL26, AFL 23), teams (Rugby 25), teamsintro / teamsshort (Cricket
+// 24). The names are lower case (a-z, and ' in Cricket 24's / AFL 23's: "o'donnell"), no terminator; the first is
+// "none". The database stores a player's / team's commentary name (the hash), and the commentary plays the lines of
+// the categories named after it (surname_mid_<name>, team_mid_<name>, ...). Cricket 24 has both packs: its ui lists
+// hold the same names as its dialogue ones (in their own order). Saving writes each changed M3MP into the mods folder
+// (like the Database Editor's save), ready for Modify.
 class DialogueEditorManager : public QObject {
     Q_OBJECT
     QML_ELEMENT
@@ -47,6 +49,7 @@ class DialogueEditorManager : public QObject {
     Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
     Q_PROPERTY(QString sourceText READ sourceText NOTIFY loadedChanged)
     Q_PROPERTY(QString modsTarget READ modsTarget NOTIFY loadedChanged)
+    Q_PROPERTY(QString packText READ packText NOTIFY loadedChanged)   // "sound\\ui.mempack.m3mp", ...
     Q_PROPERTY(bool hasCommentary READ hasCommentary NOTIFY loadedChanged)
     Q_PROPERTY(QString statusText READ statusText NOTIFY statusChanged)
     Q_PROPERTY(bool statusOk READ statusOk NOTIFY statusChanged)
@@ -54,7 +57,8 @@ class DialogueEditorManager : public QObject {
 public:
     explicit DialogueEditorManager(QObject* parent = nullptr);
 
-    static constexpr const char* kHash = "83af3201ed1ae751";
+    static constexpr const char* kHash = "83af3201ed1ae751";     // sound\dialogue.mempack.m3mp
+    static constexpr const char* kUiHash = "53788874db133f91";   // sound\ui.mempack.m3mp
     static bool isDialogueHash(const QString& hexHash);
     static quint32 nameHash(const QByteArray& name);   // FNV-1a 32.
 
@@ -64,6 +68,7 @@ public:
     int revision() const { return m_revision; }
     QString sourceText() const { return m_sourceText; }
     QString modsTarget() const;
+    QString packText() const;
     bool hasCommentary() const { return !m_speakers.isEmpty(); }
     QString statusText() const { return m_statusText; }
     bool statusOk() const { return m_statusOk; }
@@ -97,7 +102,8 @@ public:
     Q_INVOKABLE bool exportList(int list, const QString& pathOrUrl);
     Q_INVOKABLE bool importList(int list, const QString& pathOrUrl);
 
-    // For tests / other loaders: the lists by M3MP path, and lines.commentary's data (may be empty).
+    // For tests / other loaders: the lists by M3MP path ("sound/dialogue_wildcardhash_<kind>" or "sound/ui_<kind>"),
+    // and lines.commentary's data (may be empty).
     bool loadFromEntries(const QList<QPair<QString, QByteArray>>& entries, const QByteArray& commentary);
     QByteArray listData(int list) const;
 
@@ -117,6 +123,7 @@ private:
     struct List {
         QString path;
         QString key;               // "surnames", "teamslocation", "teamsmascot", ...
+        int pack = 0;              // 0: dialogue.mempack (hashed names), 1: ui.mempack (names only).
         QList<Name> names;
         QByteArray originalData;
     };
@@ -125,7 +132,8 @@ private:
         QSet<QString> categories;
     };
 
-    M3mpToolManager* m_m3mp = nullptr;
+    M3mpToolManager* m_packs[2] = {nullptr, nullptr};
+    QList<int> m_saveQueue;        // The packs still to save.
     QList<List> m_lists;
     QList<Speaker> m_speakers;
     QString m_sourceText;
@@ -139,7 +147,9 @@ private:
     void setStatus(bool ok, const QString& text);
     void setBusy(bool busy);
     void edited();
-    static QList<Name> parseList(const QByteArray& data, bool* ok);
+    static QList<Name> parseList(const QByteArray& data, bool hashed, bool* ok);
+    bool loadLists(const QList<QPair<QString, QByteArray>>& entries);
+    void saveNext();
     int sortedPosition(int list, const QByteArray& name) const;
     QStringList prefixes(int list) const;          // The commentary categories a name of this list plays.
     QStringList voicesFor(int list, const QString& name) const;

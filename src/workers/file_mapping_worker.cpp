@@ -14,6 +14,7 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QList>
 #include <QSaveFile>
 #include <QSet>
@@ -335,6 +336,59 @@ void FileMappingWorker::sortEntries(std::vector<MappingEntry>& entries) {
     });
 }
 
+bool FileMappingWorker::isUnnamedPath(const QString& path) {
+    if (path.startsWith(u"unknown\\"_s, Qt::CaseInsensitive))
+        return true;
+    QString name = path.mid(path.lastIndexOf(u'\\') + 1);
+    name = name.left(name.indexOf(u'.'));
+    if (name.isEmpty())
+        return false;
+    for (const QChar c : std::as_const(name))
+        if (!c.isDigit())
+            return false;
+    return true;
+}
+
+std::vector<FileMappingWorker::MappingEntry> FileMappingWorker::mergeMappings(const std::vector<MappingEntry>& newer,
+                                                                              const std::vector<MappingEntry>& user,
+                                                                              int* kept) {
+    QHash<quint64, QString> userNames;
+    userNames.reserve(qsizetype(user.size()));
+    for (const MappingEntry& e : user)
+        if (!userNames.contains(e.hash))
+            userNames.insert(e.hash, e.path);
+
+    int fromUser = 0;
+    QSet<quint64> seen;
+    seen.reserve(qsizetype(newer.size()));
+    std::vector<MappingEntry> out;
+    out.reserve(newer.size() + user.size() / 16);
+    for (const MappingEntry& e : newer) {
+        if (seen.contains(e.hash))
+            continue;
+        seen.insert(e.hash);
+        MappingEntry m = e;
+        const auto mine = userNames.constFind(e.hash);
+        if (mine != userNames.constEnd() && isUnnamedPath(e.path) && !isUnnamedPath(mine.value())
+            && mine.value() != e.path) {
+            m.path = mine.value();
+            ++fromUser;
+        }
+        out.push_back(m);
+    }
+    for (const MappingEntry& e : user) {
+        if (seen.contains(e.hash))
+            continue;
+        seen.insert(e.hash);
+        out.push_back(e);
+        ++fromUser;
+    }
+    sortEntries(out);
+    if (kept)
+        *kept = fromUser;
+    return out;
+}
+
 std::vector<FileMappingWorker::MappingEntry> FileMappingWorker::readMappingFile(const QString& file) {
     if (!QFile::exists(file))
         fail(u"The file mapping table doesn't exist: %1"_s.arg(file));
@@ -632,9 +686,18 @@ QString FileMappingWorker::resolveV1(PackageStream& in, const BlobsetEntry& entr
                 return indexedPath(u"sound\\fsb"_s, index, u"fsb"_s);
             case CoreDefs::FileType::FEV1_BE:
             case CoreDefs::FileType::FEV1:
+                // AFL Live's is "sound/afl.fev" (hashed "sound/afl.fev.pc", 0xC5458D3C, the name afl.exe loads).
+                if (game == CoreDefs::Game::AFLL)
+                    return u"sound\\afl.fev"_s;
                 return u"sound\\fsb\\"_s + fevFileName(game);
             case CoreDefs::FileType::BANK:
             case CoreDefs::FileType::WAV: {
+                // RLL2's FMOD Designer project is a RIFF "FEV " file too: "sound/rl4.fev" (the name its EBOOT loads).
+                if (game == CoreDefs::Game::RLL2 || game == CoreDefs::Game::RLL2WCE) {
+                    in.seek(mainOffset + 8);
+                    if (in.readBytes(4) == "FEV ")
+                        return u"sound\\rl4.fev"_s;
+                }
                 const QString extension = audioExtension(game);
                 return indexedPath(u"sound\\"_s + extension, index, extension);
             }

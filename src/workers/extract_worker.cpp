@@ -614,9 +614,16 @@ QString ExtractWorker::extractLegacyEntry(PackageStream& in, const BlobsetEntry&
                 return copyMainTo(joinPath(u"sound"_s, u"fsb"_s, entryName(i, u"fsb"_s)));
             case CoreDefs::FileType::FEV1_BE:
             case CoreDefs::FileType::FEV1:
+                if (game == CoreDefs::Game::AFLL)   // Its real name, "sound/afl.fev".
+                    return copyMainTo(joinPath(u"sound"_s, u"afl.fev"_s));
                 return copyMainTo(joinPath(u"sound"_s, u"fsb"_s, fevFileName(game)));
             case CoreDefs::FileType::BANK:
             case CoreDefs::FileType::WAV: {
+                if (game == CoreDefs::Game::RLL2 || game == CoreDefs::Game::RLL2WCE) {   // RLL2's FMOD project.
+                    in.seek(mainOffset + 8);
+                    if (in.readBytes(4) == "FEV ")
+                        return copyMainTo(joinPath(u"sound"_s, u"rl4.fev"_s));
+                }
                 const QString audioType = audioExtension(game);
                 return copyMainTo(joinPath(u"sound"_s, audioType, entryName(i, audioType)));
             }

@@ -144,7 +144,7 @@ Item {
 
                 HeaderButton {
                     tip: meshManager.busy ? "Exporting the OBJ and its textures..."
-                                          : "Extract the mesh as the original .mesh or as a Wavefront .obj with its textures"
+                                          : "Extract the mesh as the original file (.mesh / .mdl) or as a Wavefront .obj with its textures"
                     id: extractButton
                     text: "Extract ▾"
                     iconSource: meshViewRoot.iconDir + "extract_32.png"
@@ -228,6 +228,8 @@ Item {
                         required property var modelData
                         readonly property bool textured: texturesButton.checked && modelData.texture !== ""
                         geometry: modelData.geometry
+                        // Decal layers (logos over a uniform) only show with the textures.
+                        visible: modelData.overlay !== true || textured
                         Texture {
                             id: partTexture
                             source: partModel.modelData.texture
@@ -431,7 +433,7 @@ Item {
         id: extractMenu
 
         MenuItem {
-            text: "Original .mesh..."
+            text: "Original file..."
             icon.source: meshViewRoot.iconDir + "mesh_32.png"
             icon.color: "transparent"
             onTriggered: extractDialog.start("mesh")
@@ -450,7 +452,7 @@ Item {
 
         function start(fmt) {
             format = fmt
-            title = "Extract Mesh as " + (fmt === "obj" ? "OBJ" : "original .mesh") + " to Directory"
+            title = "Extract Mesh as " + (fmt === "obj" ? "OBJ" : "original file") + " to Directory"
             currentFolder = appOrchestrator.workFolderUrl("mesh")   // Documents\Blobset Tools\games\<game>\<platform>\mesh
             open()
         }

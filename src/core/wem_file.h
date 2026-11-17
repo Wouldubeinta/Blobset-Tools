@@ -26,19 +26,18 @@ QList<Chunk> readChunks(const QByteArray& riff, QString* error = nullptr);
 /// The format tag of a WEM / WAV ("fmt " +0x00): 0xFFFF Vorbis, 0xFFFE / 0x0001 PCM, ... 0 when unknown.
 quint16 formatTag(const QByteArray& riff);
 
-/// A WAV as a Wwise PCM WEM (16 bit, WAVE_FORMAT_EXTENSIBLE 0xFFFE, the layout Wwise writes), with the original
-/// WEM's extra chunks (hash, ...) copied in. Chunks tied to the old sound's sample positions (smpl, cue, LIST,
-/// vorb, seek) are left out. 8 / 16 / 24 / 32 bit and float WAVs are converted to 16 bit.
-/// A Vorbis original gets a Wwise Vorbis WEM instead (wwise_vorbis.h: the game's own encoding, mono when the original
-/// is, else stereo, 44100 Hz): Rugby League 26's commentary doesn't play PCM.
-/// Empty + error when the WAV can't be used.
+/// A WAV as a Wwise Vorbis WEM (wwise_vorbis.h: the V4 games' own encoding, mono when the original is, else stereo,
+/// at the original's sample rate: 44100 Hz, Rugby 25's / Tiebreak's 48000 Hz, ...), with the original WEM's extra chunks (hash, ...) copied in. Chunks tied to the old sound's sample
+/// positions (smpl, cue, LIST, vorb, seek) are left out. 8 / 16 / 24 / 32 bit and float WAVs, any rate and 1 - 8
+/// channels, are read. Every WEM of the V4 games is Vorbis, whatever the original was (a sound bank saved with one
+/// gets its sources' codec set to Vorbis). Empty + error when the WAV can't be used.
 QByteArray fromWav(const QByteArray& wav, const QByteArray& originalWem, QString* error = nullptr);
 
 /// A WEM made elsewhere (e.g. with Wwise) with the original's "hash" chunk put in (replaced, or added after
 /// "fmt "). Unchanged when the original has no hash chunk. Empty + error when it isn't a WEM.
 QByteArray withOriginalHash(const QByteArray& wem, const QByteArray& originalWem, QString* error = nullptr);
 
-/// A new WEM from a WAV (no game file it replaces), in the same PCM layout as fromWav(), with `templateWem`'s extra
+/// A new WEM from a WAV (no game file it replaces), Vorbis like fromWav(), with `templateWem`'s extra
 /// chunks (a WEM of the game's from the same folder; empty: just a "hash" chunk) and its "hash" chunk (the 16 bytes
 /// Wwise identifies the source by) set to `hash`. Empty + error when the WAV can't be used.
 QByteArray newFromWav(const QByteArray& wav, const QByteArray& templateWem, const QByteArray& hash, QString* error = nullptr);

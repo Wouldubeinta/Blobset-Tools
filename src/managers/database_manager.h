@@ -157,6 +157,8 @@ public:
 
     // --- A player's appearance (a player's blob) -------------------------------------------------------------
     Q_INVOKABLE QVariantList appearanceFields(int player) const;
+    /// RLL4: the kits of the teams the player is in (the 3D view's default kit): {team, uniform, name, maker, licensed}.
+    Q_INVOKABLE QVariantList playerKits(int player) const;
     Q_INVOKABLE bool setAppearanceField(int player, const QString& key, const QVariant& value);
 
     // --- Drop down lists (RL26) --------------------------------------------------------------------------------

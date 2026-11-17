@@ -709,7 +709,7 @@ Item {
         onValueChanged: sync()
         Component.onCompleted: { combo.model = (choiceEdit.choices || []).map((c) => c.name); sync() }
         FieldLabel { text: choiceEdit.label; Layout.preferredWidth: choiceEdit.labelWidth }
-        ComboBox {
+        BtComboBox {
             id: combo
             Layout.fillWidth: true
             Layout.preferredHeight: 36
@@ -2187,6 +2187,13 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.margins: 8
                                 spacing: 4
+                                SmallButton {
+                                    visible: !editorRoot.isRll3 && editorRoot.lookModel.length > 0   // RL26 and RLL4 (save and career)
+                                    text: "3D Appearance Editor"
+                                    accent: true
+                                    tip: "Edit the player's look with a 3D preview (head, hair, beard, face sliders, body shape)"
+                                    onClicked: appearanceEditor.open(editorRoot.save, editorRoot.recordIndex, "")
+                                }
                                 Repeater {
                                     model: editorRoot.lookGroups
                                     SmallButton {
@@ -2610,7 +2617,7 @@ Item {
                             Layout.margins: 10
                             spacing: 10
                             PanelLabel { text: "Lineup" }
-                            ComboBox {
+                            BtComboBox {
                                 id: lineupKind
                                 Layout.preferredWidth: 200
                                 Layout.preferredHeight: 36
@@ -4411,5 +4418,11 @@ Item {
         anchors.fill: parent
         manager: editorRoot.save
         filePrefix: editorRoot.gameTitle + (editorRoot.isCareer ? " Career" : " Save")
+    }
+    // Rugby League 26: the 3D appearance editor, over the whole editor (the Appearance section's button).
+    AppearanceEditor {
+        id: appearanceEditor
+        anchors.fill: parent
+        onClosed: editorRoot.refreshRecord()
     }
 }

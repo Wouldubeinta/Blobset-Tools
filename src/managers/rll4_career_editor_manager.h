@@ -90,6 +90,8 @@ public:
     Q_INVOKABLE QStringList pageGroups(const QString& kind, const QString& page) const;
 
     Q_INVOKABLE QVariantList appearanceFields(int player) const;
+    /// The kits of the teams the player is in (the 3D view's default kit): {team, uniform, name, maker, licensed, colour}.
+    Q_INVOKABLE QVariantList playerKits(int player) const;
     Q_INVOKABLE bool setAppearanceField(int player, const QString& key, const QVariant& value);
     Q_INVOKABLE int playerRating(int player) const;
     Q_INVOKABLE int teamRating(int team) const;   // The standard lineup's average OVR (as the C# editor shows it).

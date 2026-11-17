@@ -5,10 +5,14 @@ import QtQuick.Dialogs
 import QtCore
 import com.wouldymods.blobset 1.0
 
-// Commentary Editor: Rugby League 26's commentary and referee dialogue (CommentaryEditorManager).
-//   sound\lines.commentary.cmtry / sound\lines.referee.dat: each commentator's / referee's lines by category - the
+// Commentary Editor: Rugby League 26's, Rugby 25's, AFL 23's, Cricket 24's and Tiebreak's commentary, announcer,
+// umpire and referee dialogue (CommentaryEditorManager).
+//   sound\lines.commentary.cmtry / sound\lines.referee.dat (RL26) / sound\lines.announcer.dat,
+//   sound\lines.tmoreferee.dat (Rugby 25): each commentator's / announcer's / referee's lines by category - the
 //     subtitle text, the sound it plays (its id and parts), who it's said about (he / she) and its sub-categories.
 //   sound\categoryinfo.commentary.cmtry / categoryinfo.referee.cmtry: the settings of each category.
+//   AFL 23 (lines.commentary.dat), Cricket 24 (lines.commentary / announcer / career / ftue.dat) and Tiebreak keep the
+//     lines in one flat layout: the speakers are the lines' speaker ids, their folders come from the mapped sounds.
 // Opened by double clicking one of them in the workspace, or from the Commentary Editor menu item (pick a file).
 // Save to Mods writes the file into games\<game>\<platform>\mods at its blobset path, ready for Modify.
 Item {
@@ -36,7 +40,8 @@ Item {
     property int infoSelected: -1
     property var filesModel: []
 
-    readonly property var genders: ["They / them (any player)", "He / him", "She / her"]
+    // RL26: they / he / she; Rugby 25: any / he / she / they (the manager knows which the loaded file is).
+    readonly property var genders: cm.pronouns.length > 0 ? cm.pronouns : ["They / them (any player)", "He / him", "She / her"]
     readonly property var infoValueNames: ["Value 1", "Value 2", "Value 3", "Value 4", "Value 5", "Value 6"]
     readonly property var infoTypes: ["0 - Sequence", "1 - Event", "2 - Reply", "3 - Sub-category"]
 
@@ -350,7 +355,7 @@ Item {
         }
     }
 
-    component DarkCombo: ComboBox {
+    component DarkCombo: BtComboBox {
         id: darkCombo
         implicitHeight: 32
         font.pixelSize: 13
@@ -615,7 +620,8 @@ Item {
                     }
                     Text {
                         Layout.fillWidth: true
-                        text: "Rugby League 26's commentary and referee dialogue. The lines files hold each commentator's and referee's "
+                        text: "Rugby League 26's, Rugby 25's, AFL 23's, Cricket 24's and Tiebreak's commentary, announcer, umpire and referee dialogue. The lines files hold each "
+                              + "commentator's, announcer's and referee's "
                               + "lines (subtitle text, the sound each plays, he / she, sub-categories); the category info files hold "
                               + "each category's settings."
                         color: BtDarkStyle.textDim
@@ -971,7 +977,8 @@ Item {
                                 }
                                 Text {
                                     visible: lineRow.gender > 0
-                                    text: lineRow.gender === 1 ? "he" : lineRow.gender === 2 ? "she" : String(lineRow.gender)
+                                    text: lineRow.gender === 1 ? "he" : lineRow.gender === 2 ? "she"
+                                          : lineRow.gender === 3 && editorRoot.genders.length > 3 ? "they" : String(lineRow.gender)
                                     color: lineRow.gender === 2 ? "#e48ad0" : "#7fb2f0"
                                     font.pixelSize: 11
                                     font.bold: true
@@ -1013,7 +1020,7 @@ Item {
                         lineText.text = hasLine ? editorRoot.lineData.text : ""
                         lineParts.text = hasLine ? editorRoot.lineData.parts.join("\n") : ""
                         lineId.text = hasLine ? editorRoot.lineData.id : ""
-                        genderCombo.currentIndex = hasLine ? Math.min(2, editorRoot.lineData.gender || 0) : 0
+                        genderCombo.currentIndex = hasLine ? Math.min(editorRoot.genders.length - 1, editorRoot.lineData.gender || 0) : 0
                         phraseCheck.checked = hasLine && editorRoot.lineData.flag === true
                         loading = false
                     }
@@ -1229,7 +1236,7 @@ Item {
                                 Layout.leftMargin: 16
                                 Layout.rightMargin: 16
                                 Layout.topMargin: 6
-                                PanelLabel { text: "Sub-categories"; Layout.fillWidth: true }
+                                PanelLabel { text: "Sub-categories (conditions)"; Layout.fillWidth: true }
                                 SmallButton { text: "Edit list..."; onClicked: subsDialog.start() }
                             }
                             Text {
@@ -1245,7 +1252,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.leftMargin: 16
                                 Layout.rightMargin: 16
-                                text: "The situations the line suits (it's picked when they apply)."
+                                text: "The game's dialogue conditions the line needs: it's only said when every ticked one holds."
                                 color: BtDarkStyle.textDim
                                 font.pixelSize: 11
                                 font.italic: true
@@ -1253,17 +1260,33 @@ Item {
                             }
                             Repeater {
                                 model: editorRoot.lineData.subcategories || []
-                                DarkCheck {
+                                RowLayout {
+                                    id: subRow
                                     required property var modelData
                                     required property int index
+                                    readonly property string meaning: (editorRoot.lineData.subTexts || [])[index] || ""
                                     Layout.leftMargin: 16
+                                    Layout.rightMargin: 16
                                     Layout.fillWidth: true
-                                    text: modelData
-                                    font.family: "Consolas"
-                                    checked: (editorRoot.lineData.subFlags || [])[index] === true
-                                    onToggled: {
-                                        cm.setLineSubcategory(editorRoot.speaker, editorRoot.category, editorRoot.lineIndex, index, checked)
-                                        editorRoot.refreshLineRow()
+                                    spacing: 8
+                                    DarkCheck {
+                                        text: subRow.modelData
+                                        font.family: "Consolas"
+                                        checked: (editorRoot.lineData.subFlags || [])[subRow.index] === true
+                                        onToggled: {
+                                            cm.setLineSubcategory(editorRoot.speaker, editorRoot.category, editorRoot.lineIndex, subRow.index, checked)
+                                            editorRoot.refreshLineRow()
+                                        }
+                                    }
+                                    // What the condition tests (from sound/dialogueconditions).
+                                    Text {
+                                        Layout.fillWidth: true
+                                        visible: subRow.meaning !== ""
+                                        text: subRow.meaning
+                                        color: subRow.meaning.startsWith("Unknown") ? BtDarkStyle.accentDim : BtDarkStyle.textDim
+                                        font.pixelSize: 11
+                                        elide: Text.ElideRight
+                                        horizontalAlignment: Text.AlignRight
                                     }
                                 }
                             }
@@ -1274,7 +1297,7 @@ Item {
                                 Layout.leftMargin: 16
                                 Layout.rightMargin: 16
                                 Layout.topMargin: 6
-                                PanelLabel { text: "Conditions"; Layout.fillWidth: true }
+                                PanelLabel { text: "Raw masks"; Layout.fillWidth: true }
                                 SmallButton {
                                     id: conditionsToggle
                                     checkable: true
@@ -1579,10 +1602,14 @@ Item {
         id: openMenu
         width: 320
         onAboutToShow: editorRoot.filesModel = cm.blobsetFiles()
+        // The blobset's commentary files (RL26's four, Rugby 25's six, Cricket 24's four, AFL 23's one; the unused
+        // items hide).
         MenuItem {
             readonly property var file: editorRoot.filesModel[0] || ({})
             text: file.name || ""
             enabled: file.available === true
+            visible: file.name !== undefined
+            height: visible ? implicitHeight : 0
             icon.source: editorRoot.iconDir + "commentary_editor_32.png"
             icon.color: "transparent"
             onTriggered: editorRoot.guarded(() => cm.loadFromBlobset(file.hash, file.path))
@@ -1591,6 +1618,8 @@ Item {
             readonly property var file: editorRoot.filesModel[1] || ({})
             text: file.name || ""
             enabled: file.available === true
+            visible: file.name !== undefined
+            height: visible ? implicitHeight : 0
             icon.source: editorRoot.iconDir + "commentary_editor_32.png"
             icon.color: "transparent"
             onTriggered: editorRoot.guarded(() => cm.loadFromBlobset(file.hash, file.path))
@@ -1599,6 +1628,8 @@ Item {
             readonly property var file: editorRoot.filesModel[2] || ({})
             text: file.name || ""
             enabled: file.available === true
+            visible: file.name !== undefined
+            height: visible ? implicitHeight : 0
             icon.source: editorRoot.iconDir + "commentary_editor_32.png"
             icon.color: "transparent"
             onTriggered: editorRoot.guarded(() => cm.loadFromBlobset(file.hash, file.path))
@@ -1607,6 +1638,28 @@ Item {
             readonly property var file: editorRoot.filesModel[3] || ({})
             text: file.name || ""
             enabled: file.available === true
+            visible: file.name !== undefined
+            height: visible ? implicitHeight : 0
+            icon.source: editorRoot.iconDir + "commentary_editor_32.png"
+            icon.color: "transparent"
+            onTriggered: editorRoot.guarded(() => cm.loadFromBlobset(file.hash, file.path))
+        }
+        MenuItem {
+            readonly property var file: editorRoot.filesModel[4] || ({})
+            text: file.name || ""
+            enabled: file.available === true
+            visible: file.name !== undefined
+            height: visible ? implicitHeight : 0
+            icon.source: editorRoot.iconDir + "commentary_editor_32.png"
+            icon.color: "transparent"
+            onTriggered: editorRoot.guarded(() => cm.loadFromBlobset(file.hash, file.path))
+        }
+        MenuItem {
+            readonly property var file: editorRoot.filesModel[5] || ({})
+            text: file.name || ""
+            enabled: file.available === true
+            visible: file.name !== undefined
+            height: visible ? implicitHeight : 0
             icon.source: editorRoot.iconDir + "commentary_editor_32.png"
             icon.color: "transparent"
             onTriggered: editorRoot.guarded(() => cm.loadFromBlobset(file.hash, file.path))
@@ -1789,18 +1842,22 @@ Item {
     // The category's sub-categories, one per line.
     ThemedDialog {
         id: subsDialog
-        title: "Sub-categories"
-        width: 520
+        title: "Sub-categories (conditions)"
+        width: 620
         function start() {
             subsText.text = cm.subcategories(editorRoot.speaker, editorRoot.category).join("\n")
+            conditionFilter.text = ""
+            conditionPicker.model = cm.conditionsAvailable() ? cm.conditionList("") : []
             open()
         }
         contentItem: ColumnLayout {
             spacing: 8
             Text {
                 Layout.fillWidth: true
-                text: "One per line (up to 64). Each line of the category is ticked for the ones it suits; renaming one here "
-                      + "unticks it on every line, reordering keeps the ticks."
+                text: "One per line (up to 64). Each is one of the game's dialogue conditions (\"!\" first for its opposite). "
+                      + "Each line of the category is ticked for the ones it needs; renaming one here unticks it on every "
+                      + "line, reordering keeps the ticks. A new value of a condition (\"metres_run_#60+\") is added to "
+                      + "sound/dialogueconditions when you Save to Mods."
                 color: BtDarkStyle.textDim
                 font.pixelSize: 11
                 wrapMode: Text.WordWrap
@@ -1830,6 +1887,78 @@ Item {
                         leftInset: 0
                         rightInset: 0
                         background: null
+                    }
+                }
+            }
+            // The game's conditions: click one to add it.
+            DarkField {
+                id: conditionFilter
+                visible: cm.conditionsAvailable()
+                Layout.fillWidth: true
+                placeholderText: "Find a condition (name or meaning)... click one to add it"
+                placeholderTextColor: BtDarkStyle.textDim
+                onTextEdited: conditionFilterDelay.restart()
+                Timer {
+                    id: conditionFilterDelay
+                    interval: 250
+                    onTriggered: conditionPicker.model = cm.conditionList(conditionFilter.text)
+                }
+            }
+            Rectangle {
+                visible: cm.conditionsAvailable()
+                Layout.fillWidth: true
+                Layout.preferredHeight: 170
+                color: BtDarkStyle.bgDarkest
+                radius: 4
+                border.color: BtDarkStyle.borderDark
+                ListView {
+                    id: conditionPicker
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    reuseItems: true
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    delegate: Rectangle {
+                        id: pickRow
+                        required property var modelData
+                        required property int index
+                        width: conditionPicker.width
+                        height: 24
+                        color: pickArea.containsMouse ? BtDarkStyle.bgHover : (index % 2 === 0 ? BtDarkStyle.bgDarkest : BtDarkStyle.bgDark)
+                        MouseArea {
+                            id: pickArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                const names = subsText.text.split("\n").map((s) => s.trim()).filter((s) => s !== "")
+                                if (names.indexOf(pickRow.modelData.name) < 0) {
+                                    names.push(pickRow.modelData.name)
+                                    subsText.text = names.join("\n")
+                                }
+                            }
+                        }
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
+                            spacing: 10
+                            Text {
+                                text: pickRow.modelData.name
+                                color: BtDarkStyle.textMain
+                                font.family: "Consolas"
+                                font.pixelSize: 12
+                                elide: Text.ElideRight
+                                Layout.preferredWidth: parent.width * 0.5
+                            }
+                            Text {
+                                text: pickRow.modelData.text
+                                color: BtDarkStyle.textDim
+                                font.pixelSize: 11
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                        }
                     }
                 }
             }

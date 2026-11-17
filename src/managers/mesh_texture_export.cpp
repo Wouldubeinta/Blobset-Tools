@@ -26,6 +26,7 @@
 #include <QtEndian>
 
 #include <algorithm>
+#include <cmath>
 #include <atomic>
 
 #include <stdexcept>
@@ -379,6 +380,8 @@ bool writeFile(const QString& path, const QByteArray& data, QString* error) {
 // The materials: in the mesh (V4), else the model's .material.mat.
 QList<MeshFile::Material> loadMaterials(const MeshFile& mesh, const QString& base,
                                         const MeshTextureExport::Context& context) {
+    if (!mesh.pssgMaterials.isEmpty())   // PSSG: the shader instances' textures.
+        return mesh.pssgMaterials;
     QList<MeshFile::Material> materials = MeshFile::parseMaterials(mesh.materialBlock);
     if (materials.isEmpty() && context.valid && !base.isEmpty()) {
         QByteArray data;
@@ -414,6 +417,31 @@ QString colourMap(const MeshFile::Material& material) {
 }
 
 } // namespace
+
+bool MeshTextureExport::hasTexture(const Context& context, const QString& path) {
+    BlobsetEntry entry;
+    return context.valid && BlobsetEntryRegistry::findEntry(keyOfAsset(context, normalizeTexturePath(path), u"texture"_s), entry);
+}
+
+QHash<QString, QImage> MeshTextureExport::fetchImages(const QStringList& paths, const Context& context, int maxSize) {
+    QStringList present;
+    for (const QString& path : paths)
+        if (hasTexture(context, path))
+            present.append(normalizeTexturePath(path));   // Missing ones would make it index every TXPK.
+    return fetchTextures(present, context, QString(), maxSize, nullptr, nullptr).images;
+}
+
+QHash<QString, QImage> MeshTextureExport::fetchPackImages(const QStringList& paths, const Context& context, int maxSize) {
+    return fetchTextures(paths, context, QString(), maxSize, nullptr, nullptr).images;
+}
+
+QByteArray MeshTextureExport::readAssetData(const Context& context, const QString& path, const QString& type) {
+    QByteArray data;
+    qint64 mainSize = -1;
+    if (!context.valid || !readAsset(context, keyOfAsset(context, path.toLower(), type), &data, &mainSize, true))
+        return {};
+    return data;
+}
 
 MeshTextureExport::Context MeshTextureExport::currentContext() {
     Context context;
@@ -578,6 +606,7 @@ MeshTextureExport::Look MeshTextureExport::resolveLook(const MeshFile& mesh, con
     const QList<MeshFile::Material> materials = loadMaterials(mesh, base, context);
     look.submeshMaterial = submeshMaterials(mesh, materials);
     look.files.resize(materials.size());
+    look.decalFiles.resize(materials.size());
     look.transparent.resize(materials.size());
 
     // The colour textures of the materials that are drawn. Each one becomes a PNG named after the game and the
@@ -593,12 +622,15 @@ MeshTextureExport::Look MeshTextureExport::resolveLook(const MeshFile& mesh, con
     for (qsizetype i = 0; i < materials.size(); ++i) {
         if (!look.submeshMaterial.contains(int(i)))
             continue;
-        const QString path = normalizeTexturePath(colourMap(materials[i]));
-        if (path.isEmpty() || wanted.contains(path))
-            continue;
-        QMutexLocker locker(&cacheMutex);
-        if (!cached.contains(fileFor(path)) || !QFileInfo::exists(fileFor(path)))
-            wanted.append(path);
+        // The colour texture and the decals drawn over it (PSSG uniforms).
+        for (const QString& path : {normalizeTexturePath(colourMap(materials[i])),
+                                    normalizeTexturePath(materials[i].map(u"decal_map"_s))}) {
+            if (path.isEmpty() || wanted.contains(path))
+                continue;
+            QMutexLocker locker(&cacheMutex);
+            if (!cached.contains(fileFor(path)) || !QFileInfo::exists(fileFor(path)))
+                wanted.append(path);
+        }
     }
     const Fetched fetched = fetchTextures(wanted, context, base, maxSize, progress, cancelled);
     look.missing = fetched.missing;
@@ -623,6 +655,7 @@ MeshTextureExport::Look MeshTextureExport::resolveLook(const MeshFile& mesh, con
         return ok;
     });
     Q_UNUSED(saved)
+
     QMutexLocker locker(&cacheMutex);
     for (qsizetype i = 0; i < materials.size(); ++i) {
         if (!look.submeshMaterial.contains(int(i)))
@@ -634,6 +667,9 @@ MeshTextureExport::Look MeshTextureExport::resolveLook(const MeshFile& mesh, con
         if (!cached.contains(file))
             continue;
         look.files[i] = file;
+        if (const QString decal = normalizeTexturePath(materials[i].map(u"decal_map"_s)); !decal.isEmpty()
+            && cached.contains(fileFor(decal)))
+            look.decalFiles[i] = fileFor(decal);
         // Only alpha tested materials: other textures' alpha holds something else (and would cut holes in them).
         look.transparent[i] = materials[i].punchthrough && cached.value(file);
     }

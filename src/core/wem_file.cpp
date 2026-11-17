@@ -216,62 +216,43 @@ QByteArray fromWav(const QByteArray& wav, const QByteArray& originalWem, QString
     if (pcm.isEmpty())
         return fail(u"The WAV has no audio."_s);
 
-    // Channel layout: the original's when the channel count is the same (newer Wwise stores an AkChannelConfig:
-    // mask << 12 | type << 8 | channels; older ones a plain speaker mask), else the standard one in its style.
+    // The original's channels and layout (newer Wwise stores an AkChannelConfig: mask << 12 | type << 8 | channels;
+    // older ones a plain speaker mask). 0 channels: a stand in with none (newFromWav()).
     const Chunk& wemFmt = *findChunk(wemChunks, "fmt ");
     const int wemChannels = wemFmt.size >= 4 ? u16(originalWem, wemFmt.body + 2) : 0;
     const quint32 originalLayout = wemFmt.size >= 0x18 ? u32(originalWem, wemFmt.body + 0x14) : 0;
-    const bool configStyle = originalLayout != 0 && (originalLayout & 0xFF) == static_cast<quint32>(wemChannels)
-                             && ((originalLayout >> 8) & 0xF) <= 3;
-    quint32 layout;
-    if (originalLayout != 0 && wemChannels == channels)
-        layout = originalLayout;
-    else if (configStyle || originalLayout == 0)
-        layout = (speakerMask(channels) << 12) | (1u << 8) | static_cast<quint32>(channels);
-    else
-        layout = speakerMask(channels);
+    // And its sample rate: the replacement is encoded at it (Rugby 25's and Tiebreak's sounds are mostly 48000 Hz,
+    // some 44100 Hz or 8000 Hz; the other games' 44100 Hz). 44100 Hz without one.
+    const quint32 originalRate = wemFmt.size >= 8 ? u32(originalWem, wemFmt.body + 4) : 0;
+    const quint32 targetRate = originalRate >= 8000 && originalRate <= 48000 ? originalRate : 44100;
 
     // The original's extra chunks (hash, akd, JUNK, ...), in their order. Left out: the format / audio itself and
     // what points into the old audio (Vorbis setup / seek table, loop and cue points, markers).
     static const QList<QByteArray> dropped = {"fmt ", "data", "vorb", "seek", "smpl", "cue ", "LIST", "fact"};
 
-    // A Vorbis original: Vorbis again, the game's way (Rugby League 26's commentary only plays Vorbis): mono when the
-    // original is, else stereo, 44100 Hz (wwise_vorbis.h).
-    if (wemFmt.size >= 2 && u16(originalWem, wemFmt.body) == kFormatVorbis) {
-        const int target = wemChannels == 1 ? 1 : 2;
-        const quint32 vorbisLayout = (target == wemChannels && originalLayout != 0)
-                                         ? originalLayout
-                                         : (speakerMask(target) << 12) | (1u << 8) | static_cast<quint32>(target);
-        WwiseVorbis::Stream stream;
-        if (!WwiseVorbis::encode(pcm, channels, sampleRate, target, vorbisLayout, &stream, &why))
-            return fail(why);
-        QByteArray body;
-        appendChunk(body, "fmt ", stream.fmt);
-        for (const Chunk& c : std::as_const(wemChunks))
-            if (!dropped.contains(c.tag))
-                appendChunk(body, c.tag, originalWem.mid(c.body, c.size));
-        appendChunk(body, "data", stream.data, false);
-        return riffFile(body);
-    }
-
-    // Wwise's PCM "fmt ": WAVE_FORMAT_EXTENSIBLE, 16 bit, cbSize 6, then 2 bytes + the channel layout.
-    QByteArray newFmt;
-    put16(newFmt, kFormatExtensible);
-    put16(newFmt, static_cast<quint16>(channels));
-    put32(newFmt, sampleRate);
-    put32(newFmt, sampleRate * static_cast<quint32>(channels) * 2);
-    put16(newFmt, static_cast<quint16>(channels * 2));
-    put16(newFmt, 16);
-    put16(newFmt, 6);
-    put16(newFmt, 0);
-    put32(newFmt, layout);
-
+    // Always Wwise Vorbis, the V4 games' way (every WEM of RL26, Rugby 25, AFL 23, Cricket 24 and Tiebreak is Vorbis,
+    // and Rugby League 26's commentary only plays Vorbis): mono when the original is (or, without one, the WAV is),
+    // else stereo, at the original's sample rate (wwise_vorbis.h). A sound bank saved with it gets its sources' codec set
+    // to Vorbis.
+    const int target = wemChannels == 1 || (wemChannels == 0 && channels == 1) ? 1 : 2;
+    const bool configStyle = originalLayout == 0 || (((originalLayout >> 8) & 0xF) <= 3
+                                                     && (originalLayout & 0xFF) == static_cast<quint32>(wemChannels));
+    quint32 vorbisLayout;
+    if (target == wemChannels && originalLayout != 0)
+        vorbisLayout = originalLayout;
+    else if (configStyle)
+        vorbisLayout = (speakerMask(target) << 12) | (1u << 8) | static_cast<quint32>(target);
+    else
+        vorbisLayout = speakerMask(target);
+    WwiseVorbis::Stream stream;
+    if (!WwiseVorbis::encode(pcm, channels, sampleRate, target, vorbisLayout, &stream, &why, targetRate))
+        return fail(why);
     QByteArray body;
-    appendChunk(body, "fmt ", newFmt);
+    appendChunk(body, "fmt ", stream.fmt);
     for (const Chunk& c : std::as_const(wemChunks))
         if (!dropped.contains(c.tag))
             appendChunk(body, c.tag, originalWem.mid(c.body, c.size));
-    appendChunk(body, "data", pcm, false);
+    appendChunk(body, "data", stream.data, false);
     return riffFile(body);
 }
 

@@ -431,6 +431,18 @@ Item {
                     enabled: mappingModel.modified
                     onClicked: mappingModel.saveMapping()
                 }
+
+                HeaderButton {
+                    // Only in a build made from the project: writes its defaults folder, so releases ship the mapping.
+                    visible: mappingModel.defaultTargets.length > 0
+                    text: "Save as Default"
+                    tip: "Save, and write this mapping into the project's defaults\\games folder (and the build's copy), "
+                         + "so the next release installs it. Users' own names are kept when they update.\n"
+                         + mappingModel.defaultTargets.join("\n")
+                    iconSource: editorRoot.iconDir + "save_32.png"
+                    enabled: mappingModel.filePath !== ""
+                    onClicked: mappingModel.saveAsDefault()
+                }
             }
         }
 

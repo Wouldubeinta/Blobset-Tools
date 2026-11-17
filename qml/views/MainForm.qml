@@ -439,17 +439,17 @@ Item {
                             onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/CareerEditor.qml")
                         }
                         NavigationItem {
-                            tip: "Edit the commentary and referee dialogue (sound\\lines.commentary.cmtry, lines.referee.dat and their category info)"
+                            tip: "Edit the commentary, announcer, umpire and referee dialogue (sound\\lines.*: commentary, referee, announcer, TMO referee, chair umpires, career, tutorial, and their category info)"
                             iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/commentary_editor_32.png"
                             text: "Commentary Editor";
-                            visible: appOrchestrator.currentGameName === "Rugby League 26"
+                            visible: ["Rugby League 26", "Rugby 25", "Tiebreak", "AFL 23", "Cricket 24"].indexOf(appOrchestrator.currentGameName) >= 0
                             onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/CommentaryEditor.qml")
                         }
                         NavigationItem {
-                            tip: "Edit the names the commentary can say: surnames, team locations and mascots (sound\\dialogue.mempack.m3mp)"
+                            tip: "Edit the names the commentary can say: surnames and team names (sound\\dialogue.mempack.m3mp / sound\\ui.mempack.m3mp)"
                             iconSource: "qrc:/qt/qml/com/wouldymods/blobset/assets/ext/dialogue_editor_32.png"
                             text: "Dialogue Editor";
-                            visible: ["Rugby League 26", "Rugby 25"].indexOf(appOrchestrator.currentGameName) >= 0
+                            visible: ["Rugby League 26", "Rugby 25", "Tiebreak", "AFL 23", "Cricket 24"].indexOf(appOrchestrator.currentGameName) >= 0
                             onClicked: appOrchestrator.viewChanged("qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/DialogueEditor.qml")
                         }
                         NavigationItem {
@@ -584,7 +584,15 @@ Item {
                                 model: appOrchestrator.treeModel
                                 clip: true
                                 boundsBehavior: Flickable.StopAtBounds
-                                columnWidthProvider: function(column) { return Math.max(packageTreeView.width, 100) }
+                                // The rows stop short of the scroll bar when it shows, so it never covers a folder's name.
+                                columnWidthProvider: function(column) {
+                                    return Math.max(packageTreeView.width - (folderScrollBar.visible ? folderScrollBar.width : 0), 100)
+                                }
+                                ScrollBar.vertical: ScrollBar {
+                                    id: folderScrollBar
+                                    policy: ScrollBar.AsNeeded
+                                    onVisibleChanged: packageTreeView.forceLayout()
+                                }
                                 // Recycled rows could keep the indentation of the row they showed before, so a root folder
                                 // looked like it sat inside the folder above it. Rows are cheap here: always create fresh ones.
                                 reuseItems: false
@@ -738,6 +746,10 @@ Item {
                                 return baseDir + "m3mp_32.png";
                             case ".mesh":
                                 return baseDir + "mesh_32.png";
+                            case ".animset":
+                                return baseDir + "animset_32.png";
+                            case ".anims":
+                                return baseDir + "anims_32.png";
                             case ".col":
                                 return baseDir + "col_32.png";
                             case ".hjo":
@@ -765,6 +777,9 @@ Item {
                                 return baseDir + "fev1_32.png";
                             case ".mat":
                                 return baseDir + "mat_32.png";
+                            case ".d11":
+                            case ".vfmt":
+                                return baseDir + "vfmt_32.png";
                             case ".dat":
                                 return baseDir + "dat_32.png";
                             default:
@@ -1056,6 +1071,10 @@ Item {
                                     anchors.centerIn: parent
                                     text: {
                                         const kind = filesDrop.containsDrag ? appOrchestrator.soundFolderInfo(mainFormView.currentFolderPath()).kind : ""
+                                        // Over a sound: a .wav / .wem replaces it, whatever its name.
+                                        const over = filesDrop.containsDrag && filesDrop.hoverIndex >= 0 ? mainFormView.describeFile(filesDrop.hoverIndex) : null
+                                        if (over && String(over.path || "").toLowerCase().endsWith(".wem"))
+                                            return "Drop a .wav (encoded as Wwise Vorbis) or a .wem to replace " + String(over.path).split(/[\\/]/).pop()
                                         return kind === "commentary" ? "Drop files to replace the matching files; a new .wav makes a new commentary line"
                                              : kind === "standalone" ? "Drop files to replace the matching files; a new .wav makes a new WEM with a new id"
                                              : "Drop files or folders to replace the matching files (copied into the mods folder)"
@@ -1829,7 +1848,9 @@ Item {
         var fileName = appOrchestrator.savedFileName();
         var folderIdx = folderPath !== "" ? appOrchestrator.treeModel.indexFromPath(folderPath) : null;
         if (folderIdx === null || !folderIdx.valid) {
-            // Nothing (valid) remembered, e.g. coming from Game Selection: start on the first folder.
+            // Nothing (valid) remembered, e.g. coming from Game Selection: start on the top folder (the blobset's
+            // name, with the files that aren't in a folder), opened to show the folders.
+            packageTreeView.expand(0);
             selectFolderRow(0);
             packageTreeView.forceActiveFocus();
             return;

@@ -1267,7 +1267,7 @@ QVariantList Rl26CareerEditorManager::objectFields(qsizetype at, int type, const
             const Member* b = member(type, base + u"_b"_s);
             if (r && g && b) {
                 colours.insert(base);
-                out << QVariantMap{{u"key"_s, prefix + base}, {u"label"_s, pretty(base)}, {u"group"_s, group},
+                out << QVariantMap{{u"key"_s, prefix + base}, {u"name"_s, base}, {u"label"_s, pretty(base)}, {u"group"_s, group},
                                    {u"kind"_s, u"colour"_s}, {u"readOnly"_s, false}, {u"offset"_s, QString()},
                                    {u"value"_s, u"#%1%2%3"_s.arg(quint8(m_data.at(at + r->off)), 2, 16, QChar(u'0'))
                                                     .arg(quint8(m_data.at(at + g->off)), 2, 16, QChar(u'0'))
@@ -1279,7 +1279,7 @@ QVariantList Rl26CareerEditorManager::objectFields(qsizetype at, int type, const
         if (size > 8)
             continue;
         const qint64 v = readInt(at + m.off, size, builtinSigned(m.kind));
-        out << QVariantMap{{u"key"_s, prefix + m.name}, {u"label"_s, pretty(m.name)}, {u"group"_s, group},
+        out << QVariantMap{{u"key"_s, prefix + m.name}, {u"name"_s, m.name}, {u"label"_s, pretty(m.name)}, {u"group"_s, group},
                            {u"kind"_s, m.kind == 0xFDE8 ? u"bool"_s : u"number"_s},
                            {u"value"_s, m.kind == 0xFDE8 ? QVariant(v != 0) : QVariant(double(v))}, {u"min"_s, 0},
                            {u"max"_s, size >= 4 ? 2147483647 : int((qint64(1) << (8 * size)) - 1)},

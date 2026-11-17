@@ -64,6 +64,9 @@ public:
     // --- Loading -------------------------------------------------------------------------------------------
     Q_INVOKABLE bool loadFromBlobset(const QString& hexHash, const QString& workspacePath);
     Q_INVOKABLE bool loadFile(const QString& path);   // Path or file:// URL.
+    // The loaded game's string tables (every mapped .str): [{name, path, hash, language}], by path. Empty when no
+    // game is loaded.
+    Q_INVOKABLE QVariantList blobsetTables() const;
 
     // --- Saving --------------------------------------------------------------------------------------------
     // Into the game's mods folder at the table's blobset path (what Modify / Create pick up). Returns the path.

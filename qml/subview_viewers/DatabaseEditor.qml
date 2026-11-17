@@ -403,7 +403,7 @@ Item {
         spacing: 10
         Layout.fillWidth: true
         FieldLabel { text: comboEdit.label; visible: comboEdit.label !== "" }
-        ComboBox {
+        BtComboBox {
             id: combo
             Layout.fillWidth: true
             Layout.preferredHeight: 36
@@ -956,7 +956,7 @@ Item {
                                 }
                                 onTextEdited: searchDelay.restart()
                             }
-                            ComboBox {
+                            BtComboBox {
                                 id: teamGender
                                 Layout.preferredWidth: 120
                                 Layout.preferredHeight: 36
@@ -1054,7 +1054,7 @@ Item {
                                 }
                                 onTextEdited: searchDelay.restart()
                             }
-                            ComboBox {
+                            BtComboBox {
                                 id: playerGender
                                 Layout.preferredWidth: 110
                                 Layout.preferredHeight: 36
@@ -1067,7 +1067,7 @@ Item {
                             Layout.leftMargin: 8
                             Layout.rightMargin: 8
                             spacing: 8
-                            ComboBox {
+                            BtComboBox {
                                 id: playerRole
                                 visible: editorRoot.isLeague
                                 Layout.preferredWidth: 160
@@ -1560,7 +1560,7 @@ Item {
                                 Layout.margins: 10
                                 spacing: 10
                                 PanelLabel { text: "Lineup" }
-                                ComboBox {
+                                BtComboBox {
                                     id: lineupKind
                                     Layout.preferredWidth: 200
                                     Layout.preferredHeight: 36
@@ -2285,7 +2285,7 @@ Item {
                                 }
                                 RowLayout {
                                     spacing: 10
-                                    ComboBox {
+                                    BtComboBox {
                                         id: randomLevel
                                         Layout.preferredWidth: 200
                                         Layout.preferredHeight: 36
@@ -2396,10 +2396,22 @@ Item {
                                 font.pixelSize: 13
                                 Layout.margins: 16
                             }
+                            Connections {
+                                target: appearanceEditor
+                                function onClosed() { lookPage.refresh() }
+                            }
                             Flow {
                                 Layout.fillWidth: true
                                 Layout.margins: 8
                                 spacing: 4
+                                SmallButton {
+                                    visible: (editorRoot.isRl26 || editorRoot.isRll4) && lookPage.fields.length > 0
+                                    text: "3D Appearance Editor"
+                                    accent: true
+                                    tip: "Edit the player's look with a 3D preview (head, hair, beard, face sliders, body shape)"
+                                    onClicked: appearanceEditor.open(db, editorRoot.playerIndex,
+                                                                     (editorRoot.pv("firstname") + " " + editorRoot.pv("surname")).trim())
+                                }
                                 Repeater {
                                     model: lookPage.groups
                                     SmallButton {
@@ -2816,5 +2828,10 @@ Item {
         anchors.fill: parent
         manager: db
         filePrefix: db.gameName
+    }
+    // Rugby League 26 / Live 4: the 3D appearance editor, over the whole editor (the Appearance tab's button).
+    AppearanceEditor {
+        id: appearanceEditor
+        anchors.fill: parent
     }
 }

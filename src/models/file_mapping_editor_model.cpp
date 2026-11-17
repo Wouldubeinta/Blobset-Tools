@@ -1,4 +1,8 @@
 #include "file_mapping_editor_model.h"
+#include "app_paths.h"
+
+#include <QDir>
+#include <QFileInfo>
 
 #include <QUrl>
 #include <QVariantMap>
@@ -181,6 +185,58 @@ void FileMappingEditorModel::saveMapping() {
     setModified(false);
     emit saved();
     emit actionCompleted(u"File Mapping table changes have been successfully saved."_s);
+}
+
+QStringList FileMappingEditorModel::defaultTargets() const {
+    // The mapping's place under the data folder: games\<game>\<platform>\data\<archive>.mapping.
+    if (m_filePath.isEmpty())
+        return {};
+    const QString relative = QDir(AppPaths::dataDir()).relativeFilePath(QFileInfo(m_filePath).absoluteFilePath());
+    if (relative.startsWith(u".."_s) || QDir::isAbsolutePath(relative) || !relative.startsWith(u"games/"_s, Qt::CaseInsensitive))
+        return {};
+    QStringList out;
+#ifdef BT_SOURCE_DEFAULTS
+    // The project's defaults folder: only there on the machine Blobset Tools is built on.
+    const QString source = QString::fromUtf8(BT_SOURCE_DEFAULTS);
+    if (!QFileInfo(source).isDir())
+        return {};
+    out.append(QDir::cleanPath(QDir(source).filePath(relative)));
+    // The build's copy next to the exe (CMake copies the project's over it on the next build anyway).
+    const QString installed = QDir(AppPaths::installDir()).filePath(u"defaults"_s);
+    if (QFileInfo(installed).isDir()) {
+        const QString target = QDir::cleanPath(QDir(installed).filePath(relative));
+        if (target.compare(out.first(), Qt::CaseInsensitive) != 0)
+            out.append(target);
+    }
+#endif
+    return out;
+}
+
+void FileMappingEditorModel::saveAsDefault() {
+    const QStringList targets = defaultTargets();
+    if (targets.isEmpty()) {
+        emit errorOccurred(u"Save as Default only works in a build of Blobset Tools made from the project (it writes "
+                           u"the project's defaults folder)."_s);
+        return;
+    }
+    if (m_modified)
+        saveMapping();
+    if (m_modified)
+        return;   // The save failed (errorOccurred said why).
+    QStringList written;
+    for (const QString& target : targets) {
+        try {
+            QDir().mkpath(QFileInfo(target).absolutePath());
+            FileMappingWorker::writeMappingFile(target, m_entries);
+            written.append(QDir::toNativeSeparators(target));
+        } catch (const std::exception& ex) {
+            emit errorOccurred(u"Could not write the default mapping %1: %2"_s
+                                   .arg(QDir::toNativeSeparators(target), QString::fromUtf8(ex.what())));
+            return;
+        }
+    }
+    // The data folder's copy stays as it is: it's the same mapping, and no newer than the defaults now.
+    emit actionCompleted(u"Saved as the default file mapping: %1"_s.arg(written.join(u", "_s)));
 }
 
 namespace {

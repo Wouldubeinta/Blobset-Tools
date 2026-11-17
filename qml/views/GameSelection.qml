@@ -30,6 +30,29 @@ Item {
         }
     }
 
+    // The big buttons under the lists.
+    component SelectionButton: Button {
+        id: selButton
+        property string tip: ""
+        BtToolTip { text: selButton.tip }
+        Layout.fillWidth: true
+        Layout.preferredHeight: 52
+        background: Rectangle {
+            color: selButton.hovered ? BtDarkStyle.accentColor : BtDarkStyle.bgMedium
+            border.color: BtDarkStyle.accentColor
+            radius: 4
+            opacity: selButton.enabled ? 1 : 0.5
+        }
+        contentItem: Label {
+            text: selButton.text
+            color: selButton.hovered ? BtDarkStyle.bgMedium : BtDarkStyle.textMain
+            font.pixelSize: 14
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+
     Component.onCompleted: {
         appOrchestrator.loadGameProfile()
     }
@@ -220,7 +243,7 @@ Item {
             spacing: 8
 
             Label { text: "Select System Platform:"; font.pixelSize: 12; font.bold: true; color: BtDarkStyle.textDim }
-            ComboBox {
+            BtComboBox {
                 id: platformDropdown
                 Layout.fillWidth: true
                 Layout.preferredHeight: 44
@@ -278,7 +301,7 @@ Item {
             spacing: 8
 
             Label { text: "Select Your Game..."; font.pixelSize: 12; font.bold: true; color: BtDarkStyle.textDim }
-            ComboBox {
+            BtComboBox {
                 id: gameDropdown
                 Layout.fillWidth: true
                 Layout.preferredHeight: 44
@@ -306,33 +329,36 @@ Item {
             }
         }
 
-        Button {
-            BtToolTip { text: "Open the selected game in Blobset Tools" }
-            id: loadWorkspaceButton
-            text: "Load Blobset Tools"
+        RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 52
             Layout.topMargin: 10
+            spacing: 12
 
-            background: Rectangle {
-                color: loadWorkspaceButton.hovered ? BtDarkStyle.accentColor : BtDarkStyle.bgMedium
-                border.color: BtDarkStyle.accentColor
-                radius: 4
+            SelectionButton {
+                id: loadWorkspaceButton
+                enabled: gameDropdown.currentIndex >= 0
+                text: "Load Blobset Tools"
+                tip: "Open the selected game in Blobset Tools"
+                onClicked: {
+                    const game = gameDropdown.model[gameDropdown.currentIndex]
+                    if (!game)
+                        return
+                    appOrchestrator.selectGameAndLoad(gameDropdown.currentIndex, platformDropdown.platformId,
+                                                      game.modFolder, game.folderName)
+                }
             }
-            contentItem: Label {
-                text: loadWorkspaceButton.text
-                color: loadWorkspaceButton.hovered ? BtDarkStyle.bgMedium : BtDarkStyle.textMain
-                font.pixelSize: 14
-                font.bold: true
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-            }
-            onClicked: {
-                const game = gameDropdown.model[gameDropdown.currentIndex]
-                if (!game)
-                    return
-                appOrchestrator.selectGameAndLoad(gameDropdown.currentIndex, platformDropdown.platformId,
-                                                  game.modFolder, game.folderName)
+            SelectionButton {
+                id: modManagerButton
+                enabled: gameDropdown.currentIndex >= 0
+                text: "Open Mod Manager"
+                tip: "Open the Mod Manager for the selected game and platform (install, enable and order mods, then Build). Back goes to Blobset Tools."
+                onClicked: {
+                    const game = gameDropdown.model[gameDropdown.currentIndex]
+                    if (!game)
+                        return
+                    appOrchestrator.selectGameAndOpenModManager(gameDropdown.currentIndex, platformDropdown.platformId,
+                                                                game.modFolder, game.folderName)
+                }
             }
         }
     }

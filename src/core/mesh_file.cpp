@@ -7,6 +7,7 @@
 #include <QtEndian>
 
 #include <algorithm>
+#include <numeric>
 #include <cmath>
 #include <cstring>
 #include <limits>
@@ -20,6 +21,8 @@ constexpr quint32 kStaticMeshMagic = 0xFEDCBA02u;
 constexpr quint32 kStaticMeshV1Magic = 0xFEDCBA01u;
 constexpr quint32 kNoParent = 0xFFFFFFFFu;
 constexpr quint32 kMaterialMagic = 0x23456789u;
+constexpr quint32 kSkinnedModelMagic = 0x12345678u;   // RL26 .modelcomponent.mdl
+constexpr quint32 kBlendshapesMagic = 0x2480137Fu;    // RL26 .blendshapes.mdat
 
 class Reader {
 public:
@@ -284,7 +287,8 @@ bool MeshFile::parse(const QByteArray& input, QString* error, qint64 mainSize) {
 //                             buffer, a submesh uses the index buffer of its vertex buffer, else the only one.
 //
 // Stream 0 starts with a float3 position. A 32 byte stream 0 has a float3 normal at +12 for static meshes (skinned
-// ones pack it, then the normals are computed). The last 4 bytes of the last stream are half2 UVs.
+// ones pack it, then the normals are computed). The last 4 bytes of the last stream are half2 UVs, except in a 24
+// byte last stream (RLL3 lightmapped "daeSF": colour UVs, then lightmap UVs), where they're the 4 bytes before.
 // Checked with a Python copy against every RLL4 PC mesh (2,569 of 2,570; the other one is empty) and 473 RLL3 PC +
 // 400 RLL3 PS3 meshes (all of them).
 // ---------------------------------------------------------------------------------------------------------------
@@ -516,7 +520,9 @@ bool MeshFile::parseLists(const QByteArray& mainPart, const QByteArray& vram, qi
             const bool fits = v4 ? s.stride >= 4 : (s.stride == 4 || s.stride == 8 || s.stride == 16 || s.stride == 24);
             if (fits) {
                 uvStream = v4 ? 1 : int(vb.streams.size()) - 1;
-                vb.uvOffset = v4 ? 0 : int(s.stride) - 4;
+                // A 24 byte last stream (RLL3 "daeSF", lightmapped) ends with two half2 UV sets: the colour
+                // texture's, then the lightmap's (a small area of the stadium's lightmap atlas).
+                vb.uvOffset = v4 ? 0 : int(s.stride) - (s.stride == 24 ? 8 : 4);
                 for (quint32 v = 0; v < vb.count && vb.uvOffset >= 0; ++v) {
                     const qint64 at = s.offset + qint64(v) * s.stride + vb.uvOffset;
                     const float u = vr.f16(at), w = vr.f16(at + 2);
@@ -644,6 +650,556 @@ bool MeshFile::parseLists(const QByteArray& mainPart, const QByteArray& vram, qi
     displayIndices.resize(qsizetype(indexCount) * 4);
     std::memcpy(displayIndices.data(), indices.constData(), displayIndices.size());
     return true;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// RL26 skinned model: "<part>.modelcomponent.mdl" (magic 0x12345678, model\skinned\N.mdl when unnamed) and its
+// "<part>.blendshapes.mdat" (magic 0x2480137F). Little endian (PC).
+//
+// .modelcomponent.mdl
+//   0x04  u32 version (19)
+//   0x08  u32 offset of the mesh records (0x24), 0x0C u32 record count (one per mesh and LOD)
+//   0x1C  pointer -> index data (self relative)
+//   0x20  pointer -> vertex data (self relative), runs to the end of the file
+//   record (0x90 bytes)
+//     +0x08 u32 LOD (0 = most detailed)          +0x0C u32 vertex offset   +0x10 u32 vertex count
+//     +0x18 u32 index offset                       +0x1C u32 index count     +0x20 u32 material index
+//     +0x24 float3 min, float3 max (cm)            +0x3C u32[8] vertices by bone count (1 - 5 bones)
+//     +0x70 char[32] vertex format ("daeSFskinned5", ...)
+//   0x14  pointer -> the materials, 0x18 u32 their count: 88 bytes each, char[32] name ("head_mat", "hairMaterial",
+//         ...), char[32] shader ("skin", "hair", ...), then their parameters.
+//   A record's vertices are stored stream after stream (not interleaved): 48 bytes per vertex left empty (filled
+//   from the .mdat), 10 bytes of bone indices, then the rest (half2 UV first; "_vertCol" / "_decals" add 4 bytes).
+//   The vertex size is where the next record starts (62 or 66 bytes). Indices are 16 bit and relative to the record.
+//
+// .blendshapes.mdat
+//   0x08  pointer -> the base vertices (self relative), 0x0C u32 their size: 48 bytes per vertex of every record,
+//         in record order: float3 position (metres) + 4, float3 normal + 4, float3 tangent + 4.
+//   0x10  pointer -> the blend shapes, 0x14 u32 their count; per shape (16 bytes): pointer -> name, pointer -> runs,
+//         pointer -> offsets, u32 run count. A run is { u32 byte offset into the base vertices, u32 byte length,
+//         u32 48 }: the vertices it moves; the offsets are float4 (x, y, z, 1) per moved vertex, run after run. A
+//         shape is listed once per mesh / LOD it touches. The game sets the weights from the appearance options
+//         (Rl26Character::shapeWeights).
+//
+// Checked with a Python copy against 750 random RL26 models (body, head, hair, beard, decal meshes): all decode.
+// ---------------------------------------------------------------------------------------------------------------
+bool MeshFile::isSkinnedModel(const QByteArray& data) {
+    return data.size() >= 0x24 && qFromLittleEndian<quint32>(data.constData()) == kSkinnedModelMagic;
+}
+
+bool MeshFile::parseSkinned(const QByteArray& model, const QByteArray& blendshapes, QString* error) {
+    *this = MeshFile();
+    if (!isSkinnedModel(model))
+        return failWith(error, u"Not a skinned model."_s);
+    const Reader in(model);
+    const Reader bs(blendshapes);
+
+    constexpr qint64 kRecordSize = 0x90;
+    constexpr quint32 kBaseVertexSize = 48;   // Position, normal, tangent from the .mdat.
+    constexpr quint32 kSkinBytes = 10;        // Bone indices.
+    const qint64 recordStart = in.u32(8);
+    const quint32 recordCount = in.u32(12);
+    if (recordCount == 0 || recordCount > 1024 || !in.fits(recordStart, kRecordSize * recordCount))
+        return failWith(error, u"Unsupported skinned model header (%1 meshes)."_s.arg(recordCount));
+    const qint64 indexData = in.pointer(0x1C);
+    const qint64 vertexData = in.pointer(0x20);
+    if (indexData <= 0 || vertexData < indexData || vertexData > model.size())
+        return failWith(error, u"The skinned model's data pointers lie outside of the file."_s);
+    const qint64 indexBytes = vertexData - indexData;
+    const qint64 vertexBytes = model.size() - vertexData;
+
+    struct Record {
+        quint32 lod = 0;
+        qint64 vertexOffset = 0;
+        quint32 vertexCount = 0;
+        qint64 indexOffset = 0;
+        quint32 indexCount = 0;
+        quint32 stride = 0;
+        quint32 indexSize = 2;
+        quint32 base = 0;   // First vertex in the .mdat.
+        quint32 material = 0;
+        QString format;
+    };
+    QList<Record> records;
+    for (quint32 k = 0; k < recordCount; ++k) {
+        const qint64 r = recordStart + kRecordSize * k;
+        Record rec;
+        rec.lod = in.u32(r + 0x08);
+        rec.vertexOffset = in.u32(r + 0x0C);
+        rec.vertexCount = in.u32(r + 0x10);
+        rec.indexOffset = in.u32(r + 0x18);
+        rec.indexCount = in.u32(r + 0x1C);
+        rec.material = in.u32(r + 0x20);
+        rec.format = in.cString(r + 0x70, 32);
+        records.append(rec);
+    }
+
+    // Vertex sizes and index sizes: up to where the next record's data starts.
+    quint32 totalVertices = 0;
+    for (qsizetype k = 0; k < records.size(); ++k) {
+        Record& rec = records[k];
+        const bool last = k + 1 == records.size();
+        const qint64 nextVertex = last ? vertexBytes : records[k + 1].vertexOffset;
+        const qint64 nextIndex = last ? indexBytes : records[k + 1].indexOffset;
+        const qint64 span = nextVertex - rec.vertexOffset;
+        if (rec.vertexCount == 0 || span <= 0 || span % rec.vertexCount != 0
+            || span / rec.vertexCount < kBaseVertexSize + kSkinBytes + 4 || span / rec.vertexCount > 256)
+            return failWith(error, u"Unsupported skinned vertex layout (%1)."_s.arg(rec.format));
+        rec.stride = quint32(span / rec.vertexCount);
+        rec.indexSize = nextIndex - rec.indexOffset >= qint64(rec.indexCount) * 4 ? 4 : 2;
+        if (rec.indexCount % 3 != 0 || rec.indexOffset + qint64(rec.indexCount) * rec.indexSize > indexBytes)
+            return failWith(error, u"The skinned model's index data doesn't add up."_s);
+        rec.base = totalVertices;
+        totalVertices += rec.vertexCount;
+    }
+
+    // The base vertices (.blendshapes.mdat).
+    if (blendshapes.size() < 16 || bs.u32(0) != kBlendshapesMagic)
+        return failWith(error, u"This skinned model's vertex positions are in its .blendshapes.mdat, which wasn't found "
+                               u"in the loaded blobset."_s);
+    const qint64 baseVertices = bs.pointer(8);
+    if (bs.u32(12) != quint64(totalVertices) * kBaseVertexSize
+        || !bs.fits(baseVertices, qint64(totalVertices) * kBaseVertexSize))
+        return failWith(error, u"The .blendshapes.mdat found doesn't belong to this model (vertex count differs)."_s);
+
+    // Only the most detailed LOD is drawn.
+    QList<quint32> lods;
+    for (const Record& rec : std::as_const(records))
+        if (!lods.contains(rec.lod))
+            lods.append(rec.lod);
+    lodCount = int(lods.size());
+    const quint32 best = *std::min_element(lods.cbegin(), lods.cend());
+
+    // Material names: the submeshes' surfaces.
+    {
+        const qint64 list = in.pointer(0x14);
+        const quint32 count = in.u32(0x18);
+        if (count <= 256 && in.fits(list, 88 * qint64(count)))
+            for (quint32 k = 0; k < count; ++k)
+                surfaces.append(in.cString(list + 88 * qint64(k), 32));
+    }
+
+    QList<QVector3D> pos, nrm;
+    QList<QVector2D> uv;
+    QList<quint32> indices;
+    QStringList formats;
+    int drawn = 0;
+    std::vector<qint64> displayOf(totalVertices, -1);   // .mdat vertex -> display vertex (drawn LOD only).
+    QByteArray colours;
+    bool hasColours = false;
+    for (const Record& rec : std::as_const(records)) {
+        if (rec.lod != best)
+            continue;
+        ++drawn;
+        if (!rec.format.isEmpty() && !formats.contains(rec.format))
+            formats.append(rec.format);
+        const quint32 first = quint32(pos.size());
+        const qint64 uvStream = vertexData + rec.vertexOffset + qint64(kBaseVertexSize + kSkinBytes) * rec.vertexCount;
+        const quint32 uvStride = rec.stride - kBaseVertexSize - kSkinBytes;
+        for (quint32 v = 0; v < rec.vertexCount; ++v) {
+            const qint64 at = baseVertices + qint64(rec.base + v) * kBaseVertexSize;
+            const QVector3D p(bs.f32(at), bs.f32(at + 4), bs.f32(at + 8));
+            if (!std::isfinite(p.x()) || !std::isfinite(p.y()) || !std::isfinite(p.z()) || p.length() > 1e6f)
+                return failWith(error, u"The skinned model's vertex positions aren't plain floats."_s);
+            displayOf[rec.base + v] = pos.size();
+            pos.append(p);
+            nrm.append(QVector3D(bs.f32(at + 16), bs.f32(at + 20), bs.f32(at + 24)));
+            const qint64 uvAt = uvStream + qint64(v) * uvStride;
+            const float u = in.f16(uvAt), w = in.f16(uvAt + 2);
+            uv.append(std::isfinite(u) && std::isfinite(w) ? QVector2D(u, w) : QVector2D());
+            // "_vertCol" / "_decals": a colour after the UV.
+            if (uvStride >= 8 && in.fits(uvAt + 4, 4)) {
+                colours.append(model.constData() + uvAt + 4, 4);
+                hasColours = true;
+            } else {
+                colours.append("\xff\xff\xff\xff", 4);
+            }
+        }
+        const quint32 indexStart = quint32(indices.size());
+        for (quint32 i = 0; i < rec.indexCount; ++i) {
+            const qint64 at = indexData + rec.indexOffset + qint64(i) * rec.indexSize;
+            const quint32 index = rec.indexSize == 2 ? in.u16(at) : in.u32(at);
+            if (index >= rec.vertexCount)
+                return failWith(error, u"A skinned model index is out of range."_s);
+            indices.append(first + index);
+        }
+        submeshes.append({first, rec.vertexCount, indexStart, rec.indexCount,
+                          rec.material < quint32(surfaces.size()) ? int(rec.material) : -1});
+    }
+
+    // Blend shapes (of the drawn vertices).
+    {
+        const qint64 list = bs.pointer(0x10);
+        const quint32 count = bs.u32(0x14);
+        if (count <= 4096 && bs.fits(list, 16 * qint64(count))) {
+            for (quint32 k = 0; k < count; ++k) {
+                const qint64 e = list + 16 * qint64(k);
+                const QString name = bs.cString(bs.pointer(e), 128);
+                const qint64 runs = bs.pointer(e + 4);
+                qint64 offsets = bs.pointer(e + 8);
+                const quint32 runCount = bs.u32(e + 12);
+                if (name.isEmpty() || runCount > 1000000 || !bs.fits(runs, 12 * qint64(runCount)))
+                    continue;
+                Morph& morph = morphs[name];
+                for (quint32 r = 0; r < runCount; ++r) {
+                    const quint32 offset = bs.u32(runs + 12 * qint64(r));
+                    const quint32 length = bs.u32(runs + 12 * qint64(r) + 4);
+                    for (quint32 g = offset / kBaseVertexSize; g < (offset + length) / kBaseVertexSize; ++g) {
+                        if (!bs.fits(offsets, 16))
+                            break;
+                        if (g < totalVertices && displayOf[g] >= 0) {
+                            morph.vertices.append(quint32(displayOf[g]));
+                            morph.deltas.append(QVector3D(bs.f32(offsets), bs.f32(offsets + 4), bs.f32(offsets + 8)));
+                        }
+                        offsets += 16;
+                    }
+                }
+                if (morph.vertices.isEmpty())
+                    morphs.remove(name);
+            }
+        }
+    }
+
+    if (hasColours)
+        vertexColours = colours;
+    skinned = true;
+    storedNormals = true;
+    hasUv = true;
+    indexSize = records.first().indexSize;
+    vertexBufferCount = drawn;
+    vertexCount = quint32(pos.size());
+    indexCount = quint32(indices.size());
+    formatName = (formats.isEmpty() ? u"Skinned"_s : formats.join(u", "_s)) + u" (skinned)"_s;
+    if (lodCount > 1)
+        formatName += u", LOD 0 of %1"_s.arg(lodCount);
+
+    boundsMin = QVector3D(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),
+                          std::numeric_limits<float>::max());
+    boundsMax = -boundsMin;
+    for (const QVector3D& p : std::as_const(pos)) {
+        boundsMin = QVector3D(std::min(boundsMin.x(), p.x()), std::min(boundsMin.y(), p.y()), std::min(boundsMin.z(), p.z()));
+        boundsMax = QVector3D(std::max(boundsMax.x(), p.x()), std::max(boundsMax.y(), p.y()), std::max(boundsMax.z(), p.z()));
+    }
+
+    displayVertices.reserve(qsizetype(vertexCount) * kDisplayStride);
+    for (quint32 v = 0; v < vertexCount; ++v) {
+        const QVector3D n = nrm[v].length() > 0 ? nrm[v].normalized() : QVector3D(0, 1, 0);
+        for (float value : {pos[v].x(), pos[v].y(), pos[v].z(), n.x(), n.y(), n.z(), uv[v].x(), uv[v].y()})
+            appendFloat(displayVertices, value);
+    }
+    displayIndices.resize(qsizetype(indexCount) * 4);
+    std::memcpy(displayIndices.data(), indices.constData(), displayIndices.size());
+    return true;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Rugby League Live 3 / 4 skinned parts (version 16 of the skinned model). Three files per part, little endian:
+//
+// .modelcomponent.mdl (magic 0x12345678, u32 version 16). Pointers are self relative.
+//   0x08  pointer -> vertex declaration: u32, u32 element count, then { char[16] name, u16 type, u16 count } per
+//         element ("Position", "Normal", ..., "TexCoord"; one "TexCoord" per UV set)
+//   0x10  pointer -> mesh records, 0x14 u32 record count; record (0x4C bytes):
+//     +0x00 u32 LOD (0 = most detailed)    +0x04 u32 vertex byte offset (.vbo vram)   +0x08 u32 vertex count
+//     +0x0C u32 index byte offset (.vbo main)                                         +0x10 u32 index count
+//     +0x18 u32 material                    +0x20 float3 min, float3 max (cm)          +0x38 u32[5] vertices by bones
+//   0x1C  pointer -> materials, 0x20 u32 their count: 88 bytes each, char[32] name first ("asics_body", ...).
+//
+// .vbo.idx: main section = 16 bit indices, relative to their record. Vram section = each record's vertices, stream
+//   after stream; the last stream holds the UV sets (half2 each, interleaved: set 0, set 1, ...), starting at
+//   offset + (vertex size - 4 * UV sets) * vertex count. The vertex size is where the next record (in offset order)
+//   starts.
+//
+// .blendshapes.mdat (magic 0x2480137F, u32 version 4)
+//   0x10  pointer -> the base vertices, 0x14 u32 their size: one vertex per vertex of every record, the records in
+//         vertex offset order. 0x20 pointer -> { u32 vertex size, u32 count, ... } per record (0x24 u32 count).
+//         RLL4 (48 bytes): float3 position (m) + 4, float3 normal + 4, float3 tangent + 4.
+//         RLL3 (32 bytes): float3 position (m), then packed normal / tangent / skinning (normals are computed).
+//   0x18  pointer -> the blend shapes, 0x1C u32 their count. A shape moves runs of base vertices { u32 first,
+//         u32 count }:
+//         RLL3: 16 byte entries { pointer name, pointer deltas, pointer runs, u32 run count }, 28 bytes per moved
+//               vertex (float3 position offset first).
+//         RLL4: 24 byte entries { pointer name, pointer runs, pointer deltas, pointer deltas end, u32 moved count,
+//               u32 }, float4 (x, y, z, 1) per moved vertex.
+//
+// RLL3's hair and beards are built 1.5 m lower (fbxprocessing-hair.lua: offsetYValue = -1.5); their records' bounds
+// say where they belong, so a record whose bounds sit 1.5 m above its vertices is lifted.
+// Checked against RLL3 and RLL4 heads, bodies, hair, beards, kits and boots (Python copy, rendered).
+// ---------------------------------------------------------------------------------------------------------------
+bool MeshFile::isLegacySkinnedModel(const QByteArray& data) {
+    return isSkinnedModel(data) && qFromLittleEndian<quint32>(data.constData() + 4) == 16;
+}
+
+bool MeshFile::parseSkinned(const QByteArray& model, const QByteArray& blendshapes, const QByteArray& vbo,
+                            qint64 vboMainSize, QString* error) {
+    if (isLegacySkinnedModel(model))
+        return parseSkinnedV16(model, blendshapes, vbo, vboMainSize, error);
+    return parseSkinned(model, blendshapes, error);
+}
+
+bool MeshFile::parseSkinnedV16(const QByteArray& model, const QByteArray& blendshapes, const QByteArray& vbo,
+                               qint64 vboMainSize, QString* error) {
+    *this = MeshFile();
+    const Reader in(model);
+    const Reader bs(blendshapes);
+    const Reader vb(vbo);
+    if (blendshapes.size() < 0x28 || bs.u32(0) != kBlendshapesMagic)
+        return failWith(error, u"This skinned model's vertex positions are in its .blendshapes.mdat, which wasn't found "
+                               u"in the loaded blobset."_s);
+    if (vbo.isEmpty() || vboMainSize <= 0 || vboMainSize > vbo.size())
+        return failWith(error, u"This skinned model's indices and UVs are in its .vbo.idx, which wasn't found in the "
+                               u"loaded blobset."_s);
+    const qint64 vram = vboMainSize;               // Where the vram section starts in `vbo`.
+    const qint64 vramSize = vbo.size() - vboMainSize;
+
+    // UV sets in the vertex declaration.
+    int uvSets = 0;
+    {
+        const qint64 decl = in.pointer(0x08);
+        const quint32 count = in.u32(decl + 4);
+        if (count == 0 || count > 32 || !in.fits(decl + 8, 20 * qint64(count)))
+            return failWith(error, u"Unsupported skinned model vertex declaration."_s);
+        for (quint32 k = 0; k < count; ++k)
+            if (in.cString(decl + 8 + 20 * qint64(k), 16) == u"TexCoord"_s)
+                ++uvSets;
+    }
+
+    constexpr qint64 kRecordSize = 0x4C;
+    const qint64 recordStart = in.pointer(0x10);
+    const quint32 recordCount = in.u32(0x14);
+    if (recordCount == 0 || recordCount > 1024 || !in.fits(recordStart, kRecordSize * recordCount))
+        return failWith(error, u"Unsupported skinned model header (%1 meshes)."_s.arg(recordCount));
+
+    struct Record {
+        quint32 lod = 0;
+        qint64 vertexOffset = 0;
+        quint32 vertexCount = 0;
+        qint64 indexOffset = 0;
+        quint32 indexCount = 0;
+        quint32 material = 0;
+        float minY = 0;
+        quint32 stride = 0;
+        quint32 indexSize = 2;
+        quint32 base = 0;   // First vertex in the .mdat.
+    };
+    QList<Record> records;
+    for (quint32 k = 0; k < recordCount; ++k) {
+        const qint64 r = recordStart + kRecordSize * k;
+        Record rec;
+        rec.lod = in.u32(r);
+        rec.vertexOffset = in.u32(r + 0x04);
+        rec.vertexCount = in.u32(r + 0x08);
+        rec.indexOffset = in.u32(r + 0x0C);
+        rec.indexCount = in.u32(r + 0x10);
+        rec.material = in.u32(r + 0x18);
+        rec.minY = in.f32(r + 0x24);
+        if (rec.vertexCount == 0 || rec.indexCount % 3 != 0)
+            return failWith(error, u"The skinned model's mesh records don't add up."_s);
+        records.append(rec);
+    }
+
+    // Vertex sizes, index sizes and .mdat positions: the records in vertex (and index) data order.
+    QList<qsizetype> byVertex(records.size()), byIndex(records.size());
+    std::iota(byVertex.begin(), byVertex.end(), 0);
+    std::iota(byIndex.begin(), byIndex.end(), 0);
+    std::sort(byVertex.begin(), byVertex.end(),
+              [&](qsizetype a, qsizetype b) { return records[a].vertexOffset < records[b].vertexOffset; });
+    std::sort(byIndex.begin(), byIndex.end(),
+              [&](qsizetype a, qsizetype b) { return records[a].indexOffset < records[b].indexOffset; });
+    quint32 totalVertices = 0;
+    for (qsizetype k = 0; k < byVertex.size(); ++k) {
+        Record& rec = records[byVertex[k]];
+        const qint64 next = k + 1 < byVertex.size() ? records[byVertex[k + 1]].vertexOffset : vramSize;
+        const qint64 span = next - rec.vertexOffset;
+        if (span <= 0 || span % rec.vertexCount != 0 || span / rec.vertexCount < 4 * qint64(std::max(uvSets, 1)))
+            return failWith(error, u"Unsupported skinned vertex layout."_s);
+        rec.stride = quint32(span / rec.vertexCount);
+        rec.base = totalVertices;
+        totalVertices += rec.vertexCount;
+    }
+    for (qsizetype k = 0; k < byIndex.size(); ++k) {
+        Record& rec = records[byIndex[k]];
+        const qint64 next = k + 1 < byIndex.size() ? records[byIndex[k + 1]].indexOffset : vboMainSize;
+        rec.indexSize = next - rec.indexOffset >= qint64(rec.indexCount) * 4 ? 4 : 2;
+        if (rec.indexOffset + qint64(rec.indexCount) * rec.indexSize > vboMainSize)
+            return failWith(error, u"The skinned model's index data doesn't add up."_s);
+    }
+
+    // The base vertices.
+    const qint64 baseVertices = bs.pointer(0x10);
+    const quint32 baseBytes = bs.u32(0x14);
+    const quint32 baseSize = bs.u32(bs.pointer(0x20));
+    if ((baseSize != 32 && baseSize != 48) || baseBytes != quint64(totalVertices) * baseSize
+        || !bs.fits(baseVertices, baseBytes))
+        return failWith(error, u"The .blendshapes.mdat found doesn't belong to this model (vertex count differs)."_s);
+    const bool packedNormals = baseSize == 32;   // RLL3
+
+    QList<quint32> lods;
+    for (const Record& rec : std::as_const(records))
+        if (!lods.contains(rec.lod))
+            lods.append(rec.lod);
+    lodCount = int(lods.size());
+    const quint32 best = *std::min_element(lods.cbegin(), lods.cend());
+
+    {
+        const qint64 list = in.pointer(0x1C);
+        const quint32 count = in.u32(0x20);
+        if (count <= 256 && in.fits(list, 88 * qint64(count)))
+            for (quint32 k = 0; k < count; ++k)
+                surfaces.append(in.cString(list + 88 * qint64(k), 32));
+    }
+
+    QList<QVector3D> pos, nrm;
+    QList<QVector2D> uv;
+    QList<quint32> indices;
+    int drawn = 0;
+    std::vector<qint64> displayOf(totalVertices, -1);   // .mdat vertex -> display vertex (drawn LOD only).
+    for (const Record& rec : std::as_const(records)) {
+        if (rec.lod != best)
+            continue;
+        ++drawn;
+        const quint32 first = quint32(pos.size());
+        float lowest = std::numeric_limits<float>::max();
+        for (quint32 v = 0; v < rec.vertexCount; ++v) {
+            const qint64 at = baseVertices + qint64(rec.base + v) * baseSize;
+            const QVector3D p(bs.f32(at), bs.f32(at + 4), bs.f32(at + 8));
+            if (!std::isfinite(p.x()) || !std::isfinite(p.y()) || !std::isfinite(p.z()) || p.length() > 1e4f)
+                return failWith(error, u"The skinned model's vertex positions aren't plain floats."_s);
+            lowest = std::min(lowest, p.y());
+            displayOf[rec.base + v] = pos.size();
+            pos.append(p);
+            nrm.append(packedNormals ? QVector3D() : QVector3D(bs.f32(at + 16), bs.f32(at + 20), bs.f32(at + 24)));
+            const qint64 uvAt = vram + rec.vertexOffset
+                                + (qint64(rec.stride) - 4 * qint64(uvSets)) * rec.vertexCount
+                                + 4 * qint64(uvSets) * v;   // The UV sets share one stream (set 0 first).
+            const float u = uvSets > 0 ? vb.f16(uvAt) : 0.0f, w = uvSets > 0 ? vb.f16(uvAt + 2) : 0.0f;
+            uv.append(std::isfinite(u) && std::isfinite(w) ? QVector2D(u, w) : QVector2D());
+        }
+        // RLL3 hair / beards: built 1.5 m lower than where they're drawn.
+        if (std::abs(rec.minY / 100.0f - lowest - 1.5f) < 0.05f)
+            for (qsizetype v = first; v < pos.size(); ++v)
+                pos[v].setY(pos[v].y() + 1.5f);
+
+        const quint32 indexStart = quint32(indices.size());
+        for (quint32 i = 0; i < rec.indexCount; ++i) {
+            const qint64 at = rec.indexOffset + qint64(i) * rec.indexSize;
+            const quint32 index = rec.indexSize == 2 ? vb.u16(at) : vb.u32(at);
+            if (index >= rec.vertexCount)
+                return failWith(error, u"A skinned model index is out of range."_s);
+            indices.append(first + index);
+        }
+        submeshes.append({first, rec.vertexCount, indexStart, rec.indexCount,
+                          rec.material < quint32(surfaces.size()) ? int(rec.material) : -1});
+    }
+
+    // Normals from the faces (RLL3 packs its normals).
+    if (packedNormals) {
+        for (qsizetype t = 0; t + 2 < indices.size(); t += 3) {
+            const quint32 a = indices[t], b = indices[t + 1], c = indices[t + 2];
+            const QVector3D n = QVector3D::crossProduct(pos[b] - pos[a], pos[c] - pos[a]);
+            nrm[a] += n;
+            nrm[b] += n;
+            nrm[c] += n;
+        }
+    }
+
+    // Blend shapes (of the drawn vertices).
+    {
+        const qint64 list = bs.pointer(0x18);
+        const quint32 count = bs.u32(0x1C);
+        const qint64 entrySize = packedNormals ? 16 : 24;
+        const qint64 deltaSize = packedNormals ? 28 : 16;
+        if (count <= 4096 && bs.fits(list, entrySize * qint64(count))) {
+            for (quint32 k = 0; k < count; ++k) {
+                const qint64 e = list + entrySize * qint64(k);
+                const QString name = bs.cString(bs.pointer(e), 128);
+                qint64 runs, deltas;
+                quint32 runCount, moved;
+                if (packedNormals) {
+                    deltas = bs.pointer(e + 4);
+                    runs = bs.pointer(e + 8);
+                    runCount = bs.u32(e + 12);
+                    moved = std::numeric_limits<quint32>::max();
+                } else {
+                    runs = bs.pointer(e + 4);
+                    deltas = bs.pointer(e + 8);
+                    moved = bs.u32(e + 16);
+                    runCount = moved;   // At most one run per moved vertex.
+                }
+                if (name.isEmpty() || runCount > 1000000)
+                    continue;
+                Morph& morph = morphs[name];
+                quint32 done = 0;
+                for (quint32 r = 0; r < runCount && done < moved; ++r) {
+                    if (!bs.fits(runs + 8 * qint64(r), 8))
+                        break;
+                    const quint32 start = bs.u32(runs + 8 * qint64(r));
+                    const quint32 length = bs.u32(runs + 8 * qint64(r) + 4);
+                    for (quint32 g = start; g < start + length && done < moved; ++g, ++done) {
+                        const qint64 d = deltas + deltaSize * qint64(done);
+                        if (!bs.fits(d, 12))
+                            break;
+                        if (g < totalVertices && displayOf[g] >= 0) {
+                            morph.vertices.append(quint32(displayOf[g]));
+                            morph.deltas.append(QVector3D(bs.f32(d), bs.f32(d + 4), bs.f32(d + 8)));
+                        }
+                    }
+                }
+                if (morph.vertices.isEmpty())
+                    morphs.remove(name);
+            }
+        }
+    }
+
+    skinned = true;
+    storedNormals = !packedNormals;
+    hasUv = uvSets > 0;
+    indexSize = records.first().indexSize;
+    vertexBufferCount = drawn;
+    vertexCount = quint32(pos.size());
+    indexCount = quint32(indices.size());
+    formatName = u"Skinned (RLL, %1 bytes per vertex)"_s.arg(baseSize);
+    if (lodCount > 1)
+        formatName += u", LOD 0 of %1"_s.arg(lodCount);
+
+    boundsMin = QVector3D(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),
+                          std::numeric_limits<float>::max());
+    boundsMax = -boundsMin;
+    for (const QVector3D& p : std::as_const(pos)) {
+        boundsMin = QVector3D(std::min(boundsMin.x(), p.x()), std::min(boundsMin.y(), p.y()), std::min(boundsMin.z(), p.z()));
+        boundsMax = QVector3D(std::max(boundsMax.x(), p.x()), std::max(boundsMax.y(), p.y()), std::max(boundsMax.z(), p.z()));
+    }
+
+    displayVertices.reserve(qsizetype(vertexCount) * kDisplayStride);
+    for (quint32 v = 0; v < vertexCount; ++v) {
+        const QVector3D n = nrm[v].length() > 0 ? nrm[v].normalized() : QVector3D(0, 1, 0);
+        for (float value : {pos[v].x(), pos[v].y(), pos[v].z(), n.x(), n.y(), n.z(), uv[v].x(), uv[v].y()})
+            appendFloat(displayVertices, value);
+    }
+    displayIndices.resize(qsizetype(indexCount) * 4);
+    std::memcpy(displayIndices.data(), indices.constData(), displayIndices.size());
+    return true;
+}
+
+QByteArray MeshFile::morphedVertices(const QHash<QString, float>& weights) const {
+    QByteArray out = displayVertices;
+    auto* v = reinterpret_cast<float*>(out.data());
+    const qsizetype count = out.size() / kDisplayStride;
+    for (auto it = weights.cbegin(); it != weights.cend(); ++it) {
+        const auto morph = morphs.constFind(it.key());
+        if (morph == morphs.constEnd() || it.value() == 0)
+            continue;
+        const float w = it.value();
+        for (qsizetype i = 0; i < morph->vertices.size(); ++i) {
+            const qsizetype at = qsizetype(morph->vertices.at(i));
+            if (at >= count)
+                continue;
+            const QVector3D& d = morph->deltas.at(i);
+            v[at * 8] += w * d.x();
+            v[at * 8 + 1] += w * d.y();
+            v[at * 8 + 2] += w * d.z();
+        }
+    }
+    return out;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

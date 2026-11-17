@@ -5,10 +5,11 @@ import QtQuick.Dialogs
 import QtCore
 import com.wouldymods.blobset 1.0
 
-// Dialogue Editor: the names the commentary can say (DialogueEditorManager), in sound\dialogue.mempack.m3mp -
-// surnames, team locations and team mascots. Each name's hash is what the database stores for a player / team; the
-// commentary says it with the lines of its surname_n_ / surname_e_ (or team_) categories. Save to Mods writes the
-// M3MP into the mods folder, ready for Modify.
+// Dialogue Editor: the names the commentary can say (DialogueEditorManager), in sound\dialogue.mempack.m3mp (RL26,
+// Rugby 25, Cricket 24) and sound\ui.mempack.m3mp (AFL 23, Cricket 24, Tiebreak) - surnames, team locations / mascots,
+// team intros / short names. The database stores a player's / team's commentary name; the commentary says it with the
+// lines of its surname_ (or team_) categories. Save to Mods writes each changed M3MP into the mods folder, ready for
+// Modify.
 Item {
     id: editorRoot
     anchors.fill: parent
@@ -218,7 +219,7 @@ Item {
         }
     }
 
-    component DarkCombo: ComboBox {
+    component DarkCombo: BtComboBox {
         id: darkCombo
         implicitHeight: 32
         font.pixelSize: 13
@@ -312,7 +313,7 @@ Item {
                     }
                     Text {
                         Layout.fillWidth: true
-                        text: dm.loaded ? "sound\\dialogue.mempack.m3mp  ·  " + dm.sourceText : "sound\\dialogue.mempack.m3mp"
+                        text: dm.loaded ? dm.packText + "  ·  " + dm.sourceText : dm.packText
                         color: BtDarkStyle.textDim
                         font.pixelSize: 11
                         font.family: "Consolas"
@@ -350,14 +351,14 @@ Item {
                 width: Math.min(parent.width - 60, 560)
                 spacing: 12
                 Text {
-                    text: "sound\\dialogue.mempack isn't loaded"
+                    text: "The commentary's name lists aren't loaded"
                     color: BtDarkStyle.accentColor
                     font.pixelSize: 18
                     font.bold: true
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: dm.statusText !== "" ? dm.statusText : "Load Rugby League 26 (or Rugby 25) in the main workspace, then open the Dialogue Editor."
+                    text: dm.statusText !== "" ? dm.statusText : "Load Rugby League 26, Rugby 25, AFL 23, Cricket 24 or Tiebreak in the main workspace, then open the Dialogue Editor."
                     color: BtDarkStyle.textDim
                     font.pixelSize: 12
                     wrapMode: Text.WordWrap
@@ -501,7 +502,7 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "A player's / team's commentary name is stored in the database as its hash, so renaming or removing "
+                        text: "A player's / team's commentary name is stored in the database (as its hash, or its place in the list), so renaming or removing "
                               + "a name here unlinks the players and teams that use it (pick it again in the Database Editor)."
                         color: BtDarkStyle.textDim
                         font.pixelSize: 11
@@ -580,7 +581,7 @@ Item {
                                 anchors.fill: parent
                                 visible: addCheck.problem === ""
                                 text: "Names are lower case letters (\"A Hall\" becomes \"ahall\"). The commentary says a name with the lines "
-                                      + "of its categories in the Commentary Editor (e.g. surname_n_ahall)."
+                                      + "of its categories in the Commentary Editor (e.g. surname_n_ahall, surname_mid_ahall)."
                                 color: BtDarkStyle.textDim
                                 font.pixelSize: 11
                                 font.italic: true

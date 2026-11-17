@@ -13,6 +13,7 @@
 
 #include "mesh_file.h"
 
+#include <QHash>
 #include <QImage>
 #include <QList>
 #include <QString>
@@ -62,12 +63,25 @@ public:
         QList<int> submeshMaterial;
         QStringList files;
         QList<bool> transparent;   // The colour texture has see-through pixels (drawn alpha tested).
+        // Per material: its decal texture as a PNG ("" = none). PSSG uniforms / bodies: logos and numbers the game
+        // draws over the colour texture with the mesh's second UV set (MeshFile::displayUv2).
+        QStringList decalFiles;
         QStringList missing;
         int found = 0;
     };
     static Look resolveLook(const MeshFile& mesh, const QString& meshPath, const Context& context,
                             const QString& pngDir, int maxSize,
                             const Progress& progress = nullptr, const Cancelled& cancelled = nullptr);
+
+    // Loose textures by path ("characters/hair/textures/short_col"): only those that are in the blobset are read,
+    // decoded (scaled down to `maxSize`, 0 = as stored). Keys are the lower case paths. Any thread.
+    static bool hasTexture(const Context& context, const QString& path);
+    static QHash<QString, QImage> fetchImages(const QStringList& paths, const Context& context, int maxSize = 0);
+    /// fetchImages, and textures in texture packs too (the older games keep most of theirs in them): the first call
+    /// indexes every TXPK of the blobset.
+    static QHash<QString, QImage> fetchPackImages(const QStringList& paths, const Context& context, int maxSize = 0);
+    // Any asset's data (main + vram), empty when it isn't in the blobset.
+    static QByteArray readAssetData(const Context& context, const QString& path, const QString& type);
 
     // `meshPath`: the mesh's workspace path ("props/balls/models/ball.model.mesh"); it names the material file
     // of the older games and the model's texpack. Writes into `outDir`.

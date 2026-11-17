@@ -25,6 +25,17 @@ Item {
     property string statusText: ""
     property bool statusOk: true
 
+    // The loaded game's string tables ([{name, path, hash, language}]), to pick one without the workspace.
+    property var tablesModel: []
+    Component.onCompleted: tablesModel = strings.blobsetTables()
+
+    function openTable(table) {
+        guarded(() => strings.loadFromBlobset(table.hash, table.path))
+    }
+    function isOpenTable(table) {
+        return strings.workspacePath !== "" && strings.workspacePath.toLowerCase() === String(table.path || "").replace(/\\/g, "/").toLowerCase()
+    }
+
     readonly property int keyColumnWidth: 300
 
     Rectangle {
@@ -397,6 +408,15 @@ Item {
                 Rectangle { width: 1; Layout.preferredHeight: 28; color: BtDarkStyle.borderDark }
 
                 HeaderButton {
+                    id: tablesButton
+                    text: "Tables ▾"
+                    tip: "Open one of the game's string tables (one per language)"
+                    iconSource: editorRoot.iconDir + "str_32.png"
+                    enabled: editorRoot.tablesModel.length > 0
+                    onClicked: tablesMenu.popup(tablesButton, 0, tablesButton.height)
+                }
+
+                HeaderButton {
                     id: fileButton
                     text: "File ▾"
                     tip: "Open, save, import or export a string table"
@@ -576,13 +596,71 @@ Item {
                         }
                     }
 
-                    Text {
+                    // Nothing open: the game's string tables to pick from.
+                    ColumnLayout {
                         anchors.centerIn: parent
                         visible: strings.count === 0
-                        text: "Double click a .str file in the workspace,\nor use File > Open String Table..."
-                        horizontalAlignment: Text.AlignHCenter
-                        color: BtDarkStyle.textDim
-                        font.pixelSize: 14
+                        spacing: 8
+                        width: Math.min(parent.width - 40, 520)
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: editorRoot.tablesModel.length > 0 ? "Pick a string table to edit"
+                                                                   : "Double click a .str file in the workspace,\nor use File > Open String Table..."
+                            horizontalAlignment: Text.AlignHCenter
+                            color: editorRoot.tablesModel.length > 0 ? BtDarkStyle.accentColor : BtDarkStyle.textDim
+                            font.pixelSize: editorRoot.tablesModel.length > 0 ? 16 : 14
+                            font.bold: editorRoot.tablesModel.length > 0
+                        }
+                        Repeater {
+                            model: editorRoot.tablesModel
+                            Rectangle {
+                                id: tableCard
+                                required property var modelData
+                                Layout.fillWidth: true
+                                implicitHeight: 52
+                                radius: 6
+                                color: tableArea.containsMouse ? BtDarkStyle.bgHover : BtDarkStyle.bgDark
+                                border.color: tableArea.containsMouse ? BtDarkStyle.accentColor : BtDarkStyle.borderDark
+                                MouseArea {
+                                    id: tableArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: editorRoot.openTable(tableCard.modelData)
+                                }
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 14
+                                    anchors.rightMargin: 14
+                                    spacing: 12
+                                    Image {
+                                        source: editorRoot.iconDir + "str_32.png"
+                                        Layout.preferredWidth: 24
+                                        Layout.preferredHeight: 24
+                                    }
+                                    ColumnLayout {
+                                        spacing: 1
+                                        Layout.fillWidth: true
+                                        Text {
+                                            text: tableCard.modelData.language !== "" ? tableCard.modelData.language
+                                                                                     : tableCard.modelData.name
+                                            color: BtDarkStyle.white
+                                            font.pixelSize: 14
+                                            font.bold: true
+                                        }
+                                        Text {
+                                            text: tableCard.modelData.path + "   ·   0x" + String(tableCard.modelData.hash).toUpperCase()
+                                            color: BtDarkStyle.textDim
+                                            font.pixelSize: 11
+                                            font.family: "Consolas"
+                                            elide: Text.ElideMiddle
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -820,6 +898,141 @@ Item {
     // ------------------------------------------------------------------------------------------------
     // Menus / dialogs
     // ------------------------------------------------------------------------------------------------
+    // The game's string tables (the unused items hide).
+    Menu {
+        id: tablesMenu
+        width: 320
+        onAboutToShow: editorRoot.tablesModel = strings.blobsetTables()
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[0] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[1] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[2] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[3] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[4] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[5] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[6] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[7] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[8] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[9] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[10] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[11] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[12] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[13] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[14] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+        MenuItem {
+            readonly property var table: editorRoot.tablesModel[15] || ({})
+            text: table.name === undefined ? "" : (table.language !== "" ? table.language + "   (" + table.name + ")" : table.name)
+            visible: table.name !== undefined
+            height: visible ? implicitHeight : 0
+            font.bold: editorRoot.isOpenTable(table)   // The open one.
+            onTriggered: editorRoot.openTable(table)
+        }
+    }
+
     Menu {
         id: fileMenu
         width: 240

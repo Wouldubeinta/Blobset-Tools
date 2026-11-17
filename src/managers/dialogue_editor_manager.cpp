@@ -15,6 +15,8 @@
 #include <QUrl>
 #include <QtEndian>
 
+#include <algorithm>
+
 using namespace Qt::StringLiterals;
 
 namespace {
@@ -25,16 +27,45 @@ struct ListKind {
     const char* hint;
     const char* prefixes;     // The commentary categories a name plays, comma separated.
 };
+// The categories' prefixes are every game's (RL26: surname_n_, AFL 23: surname_mid_ / surname_excited_mid_, Cricket
+// 24: surname_mid_, Tiebreak: surname_mid_ / surname_end_, ...): a game only has its own.
 constexpr ListKind kKinds[] = {
-    {"surnames", "Surnames", "Players' surnames the commentators can say.", "surname_n_,surname_e_"},
+    {"surnames", "Surnames", "Players' surnames the commentators can say.",
+     "surname_n_,surname_e_,surname_mid_,surname_excited_mid_,surname_end_"},
     {"teamslocation", "Team Locations", "Teams' places (\"Brisbane\", \"Cronulla\") the commentators can say.",
-     "team_mid_,team_and_,team_excited_"},
+     "team_mid_,team_and_,team_excited_,pm_team_and_,pm_team_between_,pm_team_tip_"},
     {"teamsmascot", "Team Mascots", "Teams' mascots (\"Broncos\", \"Sharks\") the commentators can say.",
-     "team_mid_,team_and_,team_excited_"},
+     "team_mid_,team_and_,team_excited_,pm_team_and_,pm_team_between_,pm_team_tip_"},
     {"teams", "Teams", "Team names.", "team_mid_,team_and_,team_excited_"},
+    {"teamsintro", "Team Intros", "Teams' full names (\"Australia\", \"Yorkshire\") the commentators introduce them with.",
+     "team_mid_,team_and_,team_between_,team_need_,team_for_,team_have_,team_end_,team_for_end_"},
+    {"teamsshort", "Team Short Names", "Teams' short names the commentators say during play.",
+     "team_mid_,team_and_,team_between_,team_need_,team_for_,team_have_,team_end_,team_for_end_"},
 };
-constexpr const char* kListPrefix = "sound/dialogue_wildcardhash_";
-constexpr const char* kCommentaryHash = "99b3b6554a5750d3";   // sound\lines.commentary.cmtry
+// The two mem packs (see the header).
+struct Pack {
+    const char* hash;
+    const char* listPrefix;
+    const char* path;
+    const char* title;
+    bool hashed;
+};
+constexpr Pack kPacks[] = {
+    {DialogueEditorManager::kHash, "sound/dialogue_wildcardhash_", "sound\\dialogue.mempack.m3mp", "Dialogue", true},
+    {DialogueEditorManager::kUiHash, "sound/ui_", "sound\\ui.mempack.m3mp", "UI", false},
+};
+// The lines files whose speakers can say the names: commentary (every game), announcer (Rugby 25, Cricket 24),
+// announcers / chair umpires (Tiebreak).
+struct LinesFile {
+    const char* hash;
+    const char* name;
+};
+constexpr LinesFile kLinesFiles[] = {
+    {"99b3b6554a5750d3", "lines.commentary"},
+    {"1237e800334320f9", "lines.announcer"},
+    {"381fc2571b104a7e", "lines.announcers"},
+    {"fee8162874714384", "lines.chairumpires"},
+};
 constexpr int kMaxName = 255;
 
 QString toLocalPath(const QString& path) {
@@ -45,12 +76,13 @@ QString hex32(quint32 v) {
     return u"0x"_s + u"%1"_s.arg(v, 8, 16, QChar(u'0')).toUpper();
 }
 
-// What a typed name becomes: lower case, spaces / punctuation dropped (the game's are a-z only: "A Hall" -> "ahall").
+// What a typed name becomes: lower case, spaces / punctuation dropped ("A Hall" -> "ahall"), bar apostrophes, which
+// Cricket 24's and AFL 23's lists have ("o'donnell").
 QByteArray cleanName(const QString& text) {
     QByteArray out;
     for (const auto& chList = text.trimmed().toLower(); const QChar ch : chList) {
         const char c = ch.toLatin1();
-        if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+        if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '\'')
             out.append(c);
     }
     return out;
@@ -63,7 +95,8 @@ DialogueEditorManager::DialogueEditorManager(QObject* parent) : QObject(parent) 
 bool DialogueEditorManager::isDialogueHash(const QString& hexHash) {
     bool ok = false;
     const quint64 v = hexHash.trimmed().toULongLong(&ok, 16);
-    return ok && v == QString::fromLatin1(kHash).toULongLong(nullptr, 16);
+    return ok && (v == QString::fromLatin1(kHash).toULongLong(nullptr, 16)
+                  || v == QString::fromLatin1(kUiHash).toULongLong(nullptr, 16));
 }
 
 quint32 DialogueEditorManager::nameHash(const QByteArray& name) {
@@ -83,7 +116,22 @@ bool DialogueEditorManager::modified() const {
 }
 
 QString DialogueEditorManager::modsTarget() const {
-    return m_m3mp ? m_m3mp->modsTarget() : QString();
+    QStringList targets;
+    for (int p = 0; p < 2; ++p)
+        if (m_packs[p] && m_packs[p]->entryCount() > 0 && !m_packs[p]->modsTarget().isEmpty())
+            targets << m_packs[p]->modsTarget();
+    return targets.join(u", "_s);
+}
+
+QString DialogueEditorManager::packText() const {
+    QStringList packs;
+    for (int p = 0; p < 2; ++p)
+        for (const List& l : m_lists)
+            if (l.pack == p) {
+                packs << QString::fromLatin1(kPacks[p].path);
+                break;
+            }
+    return packs.isEmpty() ? u"sound\\dialogue.mempack.m3mp / sound\\ui.mempack.m3mp"_s : packs.join(u" + "_s);
 }
 
 void DialogueEditorManager::setStatus(bool ok, const QString& text) {
@@ -107,7 +155,7 @@ void DialogueEditorManager::edited() {
 
 // --- Loading / saving ------------------------------------------------------------------------------------------
 
-QList<DialogueEditorManager::Name> DialogueEditorManager::parseList(const QByteArray& data, bool* ok) {
+QList<DialogueEditorManager::Name> DialogueEditorManager::parseList(const QByteArray& data, bool hashed, bool* ok) {
     QList<Name> out;
     *ok = false;
     if (data.size() < 4)
@@ -119,15 +167,16 @@ QList<DialogueEditorManager::Name> DialogueEditorManager::parseList(const QByteA
     if (count > 1000000)
         return out;
     qsizetype p = 4;
+    const qsizetype head = hashed ? 8 : 4;   // (hash +) length.
     for (quint32 i = 0; i < count; ++i) {
-        if (p + 8 > data.size())
+        if (p + head > data.size())
             return {};
-        const quint32 length = u32(p + 4);
-        if (length > quint32(kMaxName) || p + 8 + qsizetype(length) > data.size())
+        const quint32 length = u32(p + head - 4);
+        if (length > quint32(kMaxName) || p + head + qsizetype(length) > data.size())
             return {};
-        const QByteArray name = data.mid(p + 8, length);
+        const QByteArray name = data.mid(p + head, length);
         out << Name{name, name};
-        p += 8 + length;
+        p += head + length;
     }
     *ok = p == data.size();
     return out;
@@ -145,7 +194,8 @@ QByteArray DialogueEditorManager::listData(int list) const {
     const List& l = m_lists.at(list);
     put(quint32(l.names.size()));
     for (const Name& n : std::as_const(l.names)) {
-        put(nameHash(n.name));
+        if (kPacks[l.pack].hashed)
+            put(nameHash(n.name));
         put(quint32(n.name.size()));
         out += n.name;
     }
@@ -153,29 +203,38 @@ QByteArray DialogueEditorManager::listData(int list) const {
 }
 
 bool DialogueEditorManager::loadFromEntries(const QList<QPair<QString, QByteArray>>& entries, const QByteArray& commentary) {
+    m_speakers.clear();
+    for (const auto& spList = CommentaryEditorManager::speakerCategories(commentary); const auto& sp : spList)
+        m_speakers << Speaker{sp.name, sp.categories};
+    return loadLists(entries);
+}
+
+bool DialogueEditorManager::loadLists(const QList<QPair<QString, QByteArray>>& entries) {
     QList<List> parsed;
     for (const auto& [path, data] : std::as_const(entries)) {
+        int pack = -1;
+        for (int p = 0; p < 2; ++p)
+            if (path.startsWith(QString::fromLatin1(kPacks[p].listPrefix)))
+                pack = p;
         bool ok = false;
-        const QList<Name> names = parseList(data, &ok);
+        const QList<Name> names = pack < 0 ? QList<Name>() : parseList(data, kPacks[pack].hashed, &ok);
         if (!ok) {
             setStatus(false, u"%1 isn't a name list this editor knows."_s.arg(path));
             return false;
         }
         List l;
         l.path = path;
-        l.key = path.mid(QString::fromLatin1(kListPrefix).size());
+        l.pack = pack;
+        l.key = path.mid(QString::fromLatin1(kPacks[pack].listPrefix).size());
         l.names = names;
         l.originalData = data;
         parsed << l;
     }
     if (parsed.isEmpty()) {
-        setStatus(false, u"The M3MP has no dialogue_wildcardhash lists."_s);
+        setStatus(false, u"The M3MP has no name lists (sound/dialogue_wildcardhash_* or sound/ui_*)."_s);
         return false;
     }
     m_lists = parsed;
-    m_speakers.clear();
-    for (const auto& spList = CommentaryEditorManager::speakerCategories(commentary); const auto& sp : spList)
-        m_speakers << Speaker{sp.name, sp.categories};
     ++m_revision;
     emit loadedChanged();
     emit modifiedChanged();
@@ -184,87 +243,106 @@ bool DialogueEditorManager::loadFromEntries(const QList<QPair<QString, QByteArra
     for (int i = 0; i < m_lists.size(); ++i)
         counts << u"%1 %2"_s.arg(m_lists.at(i).names.size()).arg(lists().at(i).toMap().value(u"title"_s).toString().toLower());
     setStatus(true, u"Loaded %1%2."_s.arg(counts.join(u", "_s),
-                                          m_speakers.isEmpty() ? u" (lines.commentary couldn't be read, so who says each name isn't shown)"_s : QString()));
+                                          m_speakers.isEmpty() ? u" (no commentary lines could be read, so who says each name isn't shown)"_s : QString()));
     return true;
 }
 
 bool DialogueEditorManager::load() {
     if (m_busy)
         return false;
-    BlobsetEntry entry;
-    if (!BlobsetEntryRegistry::findEntry(QString::fromLatin1(kHash), entry)) {
-        setStatus(false, u"sound\\dialogue.mempack.m3mp (0x83AF3201ED1AE751) isn't in the loaded blobset: load Rugby League 26 "
-                         "(or Rugby 25) first."_s);
-        return false;
-    }
-    if (!m_m3mp) {
-        m_m3mp = new M3mpToolManager(this);
-        connect(m_m3mp, &M3mpToolManager::processComplete, this, [this](bool ok, const QString& message) {
-            if (!m_saving)
-                return;
-            m_saving = false;
-            setBusy(false);
-            if (ok) {
+    QList<QPair<QString, QByteArray>> entries;
+    QStringList sources;
+    for (int p = 0; p < 2; ++p) {
+        BlobsetEntry entry;
+        if (!BlobsetEntryRegistry::findEntry(QString::fromLatin1(kPacks[p].hash), entry))
+            continue;
+        if (!m_packs[p]) {
+            m_packs[p] = new M3mpToolManager(this);
+            connect(m_packs[p], &M3mpToolManager::processComplete, this, [this, p](bool ok, const QString& message) {
+                if (!m_saving || m_saveQueue.isEmpty() || m_saveQueue.first() != p)
+                    return;
+                m_saveQueue.removeFirst();
+                if (!ok) {
+                    m_saveQueue.clear();
+                    m_saving = false;
+                    setBusy(false);
+                    setStatus(false, message);
+                    emit saved(false, m_statusText);
+                    return;
+                }
                 // What's saved is the new "original".
                 for (int i = 0; i < m_lists.size(); ++i) {
+                    if (m_lists.at(i).pack != p)
+                        continue;
                     m_lists[i].originalData = listData(i);
                     for (Name& n : m_lists[i].names)
                         n.original = n.name;
                 }
-                m_sourceText = u"Your edited copy in the mods folder"_s;
-                emit loadedChanged();
-                edited();
-                setStatus(true, u"Saved to %1. Run Modify to put it in the game."_s.arg(m_m3mp->modsTarget()));
-            } else {
-                setStatus(false, message);
-            }
-            emit saved(ok, m_statusText);
-        });
+                saveNext();
+            });
+        }
+        m_packs[p]->loadM3mpFromBlobset(QString::fromLatin1(kPacks[p].hash));
+        if (m_packs[p]->entryCount() == 0) {
+            setStatus(false, m_packs[p]->statusText().isEmpty() ? u"%1 couldn't be opened."_s.arg(QString::fromLatin1(kPacks[p].path))
+                                                               : m_packs[p]->statusText());
+            return false;
+        }
+        for (const ListKind& k : std::as_const(kKinds)) {
+            const QString path = QString::fromLatin1(kPacks[p].listPrefix) + QString::fromLatin1(k.key);
+            const QByteArray data = m_packs[p]->entryDataByPath(path);
+            if (!data.isEmpty())
+                entries << qMakePair(path, data);
+        }
+        sources << (m_packs[p]->loadedFromMods() ? u"your edited %1 (mods folder)"_s : u"the game's %1"_s)
+                       .arg(QString::fromLatin1(kPacks[p].path).section(u'\\', -1).section(u'.', 0, 1));
     }
-    m_m3mp->loadM3mpFromBlobset(QString::fromLatin1(kHash));
-    if (m_m3mp->entryCount() == 0) {
-        setStatus(false, m_m3mp->statusText().isEmpty() ? u"sound\\dialogue.mempack.m3mp couldn't be opened."_s : m_m3mp->statusText());
+    if (sources.isEmpty()) {
+        setStatus(false, u"Neither sound\\dialogue.mempack.m3mp nor sound\\ui.mempack.m3mp is in the loaded blobset: load Rugby "
+                         "League 26, Rugby 25, AFL 23, Cricket 24 or Tiebreak first."_s);
         return false;
     }
-    QList<QPair<QString, QByteArray>> entries;
-    for (const ListKind& k : std::as_const(kKinds)) {
-        const QString path = QString::fromLatin1(kListPrefix) + QString::fromLatin1(k.key);
-        const QByteArray data = m_m3mp->entryDataByPath(path);
-        if (!data.isEmpty())
-            entries << qMakePair(path, data);
-    }
 
-    // lines.commentary (your edited copy in the mods folder first) for who says each name.
-    QByteArray commentary;
+    // The lines files (your edited copies in the mods folder first) for who says each name.
+    m_speakers.clear();
     if (const AppOrchestrator* orchestrator = AppOrchestrator::instance()) {
-        const QString workspace = orchestrator->pathFromHash(QString::fromLatin1(kCommentaryHash));
-        const QString mods = workspace.isEmpty() ? QString() : orchestrator->modFilePath(workspace);
-        QFile file(mods);
-        if (!mods.isEmpty() && QFileInfo(mods).isFile() && file.open(QIODevice::ReadOnly))
-            commentary = file.readAll();
-        BlobsetEntry lines;
-        if (commentary.isEmpty() && BlobsetEntryRegistry::findEntry(QString::fromLatin1(kCommentaryHash), lines)) {
-            try {
-                commentary = BlobsetAssetReader::read(lines, orchestrator->assetLocation(), orchestrator->blobsetVersion(),
-                                                      orchestrator->platform());
-            } catch (const std::exception&) {
-                commentary.clear();
+        QSet<QString> names;
+        for (const LinesFile& f : std::as_const(kLinesFiles)) {
+            QByteArray data;
+            const QString workspace = orchestrator->pathFromHash(QString::fromLatin1(f.hash));
+            const QString mods = workspace.isEmpty() ? QString() : orchestrator->modFilePath(workspace);
+            QFile file(mods);
+            if (!mods.isEmpty() && QFileInfo(mods).isFile() && file.open(QIODevice::ReadOnly))
+                data = file.readAll();
+            BlobsetEntry lines;
+            if (data.isEmpty() && BlobsetEntryRegistry::findEntry(QString::fromLatin1(f.hash), lines)) {
+                try {
+                    data = BlobsetAssetReader::read(lines, orchestrator->assetLocation(), orchestrator->blobsetVersion(),
+                                                    orchestrator->platform());
+                } catch (const std::exception&) {
+                    data.clear();
+                }
+            }
+            if (data.isEmpty())
+                continue;
+            for (const auto& spList = CommentaryEditorManager::speakerCategories(data, QString::fromLatin1(f.name));
+                 const auto& sp : spList) {
+                // The same speaker name in two files ("Generic") stays two speakers.
+                QString name = sp.name;
+                if (names.contains(name))
+                    name += u" (%1)"_s.arg(QString::fromLatin1(f.name).mid(6));
+                names.insert(name);
+                m_speakers << Speaker{name, sp.categories};
             }
         }
     }
-    m_sourceText = m_m3mp->loadedFromMods() ? u"Your edited copy in the mods folder"_s : u"The game's sound\\dialogue.mempack"_s;
-    return loadFromEntries(entries, commentary);
+    m_sourceText = sources.join(u" + "_s);
+    m_sourceText[0] = m_sourceText.at(0).toUpper();
+    return loadLists(entries);
 }
 
 void DialogueEditorManager::save() {
-    if (!loaded() || m_busy || !m_m3mp)
+    if (!loaded() || m_busy)
         return;
-    if (m_m3mp->modsTarget().isEmpty()) {
-        setStatus(false, u"The M3MP's file name isn't in the file mapping, so it can't be saved to the mods folder "
-                         "(Update File Mapping Data / Resolve File Names)."_s);
-        emit saved(false, m_statusText);
-        return;
-    }
     if (!modified()) {
         setStatus(true, u"Nothing has changed since the last save."_s);
         emit saved(true, m_statusText);
@@ -273,32 +351,60 @@ void DialogueEditorManager::save() {
     if (m_saveTemp.isEmpty())
         m_saveTemp = QDir(QDir::tempPath()).filePath(u"BlobsetTools-Dialogue-%1"_s.arg(QDateTime::currentMSecsSinceEpoch()));
     QDir().mkpath(m_saveTemp);
+    QList<int> queue;
     for (int i = 0; i < m_lists.size(); ++i) {
         const QByteArray data = listData(i);
         if (data == m_lists.at(i).originalData)
             continue;
-        QSaveFile file(QDir(m_saveTemp).filePath(u"dialogue_wildcardhash_"_s + m_lists.at(i).key));
+        M3mpToolManager* pack = m_packs[m_lists.at(i).pack];
+        if (!pack || pack->modsTarget().isEmpty()) {
+            setStatus(false, u"%1's file name isn't in the file mapping, so it can't be saved to the mods folder "
+                             "(Update File Mapping Data / Resolve File Names)."_s.arg(QString::fromLatin1(kPacks[m_lists.at(i).pack].path)));
+            emit saved(false, m_statusText);
+            return;
+        }
+        QSaveFile file(QDir(m_saveTemp).filePath(m_lists.at(i).path.section(u'/', -1)));
         if (!file.open(QIODevice::WriteOnly) || file.write(data) != data.size() || !file.commit()) {
             setStatus(false, u"Could not write %1: %2"_s.arg(QDir::toNativeSeparators(file.fileName()), file.errorString()));
             emit saved(false, m_statusText);
             return;
         }
-        if (!m_m3mp->replaceEntryByPath(m_lists.at(i).path, file.fileName())) {
-            setStatus(false, m_m3mp->statusText());
+        if (!pack->replaceEntryByPath(m_lists.at(i).path, file.fileName())) {
+            setStatus(false, pack->statusText());
             emit saved(false, m_statusText);
             return;
         }
+        if (!queue.contains(m_lists.at(i).pack))
+            queue << m_lists.at(i).pack;
     }
+    std::sort(queue.begin(), queue.end());
+    m_saveQueue = queue;
     m_saving = true;
     setBusy(true);
-    setStatus(true, u"Saving sound\\dialogue.mempack to the mods folder..."_s);
-    m_m3mp->saveChanges();
+    saveNext();
+}
+
+// Saves the packs one after the other (each M3MP save reports back through processComplete).
+void DialogueEditorManager::saveNext() {
+    if (m_saveQueue.isEmpty()) {
+        m_saving = false;
+        setBusy(false);
+        m_sourceText = u"Your edited copy in the mods folder"_s;
+        emit loadedChanged();
+        edited();
+        setStatus(true, u"Saved to %1. Run Modify to put it in the game."_s.arg(modsTarget()));
+        emit saved(true, m_statusText);
+        return;
+    }
+    const int p = m_saveQueue.first();
+    setStatus(true, u"Saving %1 to the mods folder..."_s.arg(QString::fromLatin1(kPacks[p].path)));
+    m_packs[p]->saveChanges();
 }
 
 void DialogueEditorManager::revertAll() {
     for (List& l : m_lists) {
         bool ok = false;
-        l.names = parseList(l.originalData, &ok);
+        l.names = parseList(l.originalData, kPacks[l.pack].hashed, &ok);
     }
     edited();
     setStatus(true, u"Reverted every change since the last save."_s);
@@ -355,6 +461,10 @@ int DialogueEditorManager::voiceCount(int list) const {
 
 QVariantList DialogueEditorManager::lists() const {
     QVariantList out;
+    // Cricket 24 has both packs (the same lists in each): the titles say which.
+    bool bothPacks = false;
+    for (const List& l : m_lists)
+        bothPacks = bothPacks || l.pack != m_lists.first().pack;
     for (int i = 0; i < m_lists.size(); ++i) {
         const List& l = m_lists.at(i);
         QString title = l.key, hint;
@@ -363,6 +473,10 @@ QVariantList DialogueEditorManager::lists() const {
                 title = QString::fromLatin1(k.title);
                 hint = QString::fromLatin1(k.hint);
             }
+        if (bothPacks) {
+            title = QString::fromLatin1(kPacks[l.pack].title) + u": "_s + title;
+            hint += u" (%1)"_s.arg(QString::fromLatin1(kPacks[l.pack].path));
+        }
         out << QVariantMap{{u"index"_s, i}, {u"key"_s, l.key}, {u"title"_s, title}, {u"path"_s, l.path},
                            {u"count"_s, int(l.names.size())}, {u"modified"_s, listData(i) != l.originalData}, {u"hint"_s, hint}};
     }
@@ -439,7 +553,7 @@ QString DialogueEditorManager::checkName(int list, const QString& text, int exce
         return u"Pick a list."_s;
     const QByteArray name = cleanName(text);
     if (name.isEmpty())
-        return u"Type a name (letters a-z; spaces and punctuation are dropped)."_s;
+        return u"Type a name (letters a-z and '; spaces and other punctuation are dropped)."_s;
     if (name.size() > kMaxName)
         return u"That's too long."_s;
     const quint32 h = nameHash(name);
@@ -449,7 +563,7 @@ QString DialogueEditorManager::checkName(int list, const QString& text, int exce
             continue;
         if (names.at(i).name == name)
             return u"\"%1\" is already in the list."_s.arg(QString::fromLatin1(name));
-        if (nameHash(names.at(i).name) == h)
+        if (kPacks[m_lists.at(list).pack].hashed && nameHash(names.at(i).name) == h)
             return u"\"%1\" has the same hash as \"%2\" (%3): the game couldn't tell them apart."_s
                 .arg(QString::fromLatin1(name), QString::fromLatin1(names.at(i).name), hex32(h));
     }
@@ -457,12 +571,15 @@ QString DialogueEditorManager::checkName(int list, const QString& text, int exce
 }
 
 // Where a name goes to keep the list in alphabetical order: "none" stays first, and the name goes before the
-// first name after it (the game's lists are in order, bar a few, which stay where they are).
+// first name after it (the game's lists are in order, bar a few, which stay where they are). Apostrophes don't count
+// ("o'donnell" goes with "odonnell", as in the game's lists).
 int DialogueEditorManager::sortedPosition(int list, const QByteArray& name) const {
     const QList<Name>& names = m_lists.at(list).names;
     const int first = !names.isEmpty() && names.first().name == "none" ? 1 : 0;
+    const auto key = [](QByteArray n) { return n.replace("'", ""); };
+    const QByteArray mine = key(name);
     for (int i = first; i < names.size(); ++i)
-        if (names.at(i).name > name)
+        if (key(names.at(i).name) > mine)
             return i;
     return int(names.size());
 }

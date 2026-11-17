@@ -1,3 +1,59 @@
+v2.1.10.80
+
+  New
+  •  3D Appearance Editor (Rugby League 26, Rugby League Live 4): the player built in 3D from their appearance and
+     edited live, with the appearance fields beside it (sliders and the game's lists of heads, hair styles, beards,
+     boots, ...). The skin, eyes, hair, beard and cap textures are built the way the game's character creator builds
+     them, and RLL4 players wear their team's kit. Whole Body / Face views, Textures and Wireframe. Opens from the
+     Appearance tab of the Database, Save and Career Editors (3D Appearance Editor); edits are saved with that editor
+  •  Commentary Editor: AFL 23 (lines.commentary.dat), Cricket 24 (commentary, announcer, career and ftue lines),
+     Rugby 25 (commentary, announcer, TMO referee) and Tiebreak (announcers, chair umpires, career). Each game has it
+     in its Tools menu
+  •  Commentary Editor: Sub-categories (conditions) shows the game's dialogue conditions a line needs and what each
+     one tests; pick from the game's conditions to add one
+  •  Dialogue Editor: AFL 23, Cricket 24 and Tiebreak too, and sound\ui.mempack.m3mp as well as
+     sound\dialogue.mempack.m3mp, in every game that has them, including the team intro lists (teamsintro,
+     teamsshort). Every edited pack is saved. Each game has it in its Tools menu
+  •  Replace any sound with a WAV (all V4 games): drop a .wav onto any .wem in the Files panel or inside a sound bank
+     (BNK viewer). It's encoded as Wwise Vorbis at the original's sample rate (8,000 - 48,000 Hz) and channels, like
+     the game's own sounds, with the built-in encoder (no Wwise needed). A streamed sound's start (prefetch) inside
+     the sound banks is replaced too, so the game plays the new sound from the first moment
+  •  Mesh Viewer: Rugby League 26 skinned models (.modelcomponent.mdl with their .blendshapes.mdat) and Rugby League
+     Live 3 / 4 skinned parts
+  •  Mesh Viewer: Rugby League Live 2 and AFL Live models (PSSG scenes in .model.m3mp: stadiums, props, generated
+     heads), with their decal layers (logos, numbers)
+  •  String Editor: every string table of the game (Tables ▾), one per language
+  •  File Mapping Editor: Save as Default
+
+  Improved
+  •  Resolve File Names names thousands more files:
+       Cricket 24 - videos, props, per-player hats, the player voice banks (male / female, bat / bowl / field / keep /
+       indoor) and the commentary speakers' lines (ftue too)
+       Rugby 25 / Tiebreak - character models, commentary and announcer sounds, sound banks, music, videos, stroke
+       sets and animation sets
+       Rugby League 26 - animation sets and MIDI
+       Rugby League Live 2 / AFL Live - the FMOD projects (sound\rl4.fev, sound\afl.fev) and their wave banks,
+       animation sets, morph packs, stadium parts, shader packs and crowd animation clips (crowdset.gz)
+       Rugby League Live 3 / 4 - hair and beard parts, FMOD banks, collision, rigs, wrinkle maps, crowds and more
+     Names one game has are tried in the other games of the same hash scheme (Big Ant reused files between games)
+  •  Updated file mappings: when Blobset Tools is updated, the newer mappings it ships are merged in and the names you
+     gave (File Mapping Editor, Resolve File Names) are kept
+  •  Updated default file mappings and resolved names for many games
+  •  Game Selection: big Load Blobset Tools and Open Mod Manager buttons
+  •  The Folders panel has a scroll bar, and files that aren't in a folder are listed in a top folder named after the
+     blobset
+  •  The window title shows the loaded game
+  •  Drop down lists scroll when they're long
+  •  BNK viewer: a streamed sound's entry (prefetch) plays the whole sound
+  •  Dragging a WAV / WEM over a .wem shows that it will replace it
+
+  Fixed
+  •  Masquerade - The Baubles of Doom: the PS3 and Xbox 360 versions couldn't be picked in Game Selection
+  •  Mesh Viewer: Rugby League Live 3 meshes with lightmaps had the wrong texture coordinates, and some showed too
+     dark
+  •  Commentary Editor: Cricket 24's lines weren't saved back in the game's order
+  •  Commentary / Dialogue Editors: names with apostrophes and hyphens (o'donnell, south-east)
+
 v2.1.10.73
 
   New

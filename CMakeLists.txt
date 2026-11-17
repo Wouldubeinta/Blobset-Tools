@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(Blobset-Tools VERSION 2.1.10.73 LANGUAGES CXX)
+project(Blobset-Tools VERSION 2.1.10.80 LANGUAGES CXX)
 
 if(WIN32)
     enable_language(RC)
@@ -13,6 +13,12 @@ endif()
 # Enforce C++20 standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# MinGW: big objects (the compiled QML of the larger views has more sections than the default COFF limit of 32767,
+# so debug builds fail in the assembler with "too many sections").
+if(MINGW)
+    add_compile_options(-Wa,-mbig-obj)
+endif()
 
 # Auto-wire Qt Meta-Object Compiler, Resource Compiler, and UI Compiler
 set(CMAKE_AUTOMOC ON)
@@ -76,10 +82,15 @@ qt_add_executable(Blobset-Tools
     src/core/rl26_save.cpp
     src/core/rl26_appearance.h
     src/core/rl26_appearance.cpp
+    src/core/rl26_character.h
+    src/core/rl26_character.cpp
+    src/core/rll4_character.h
+    src/core/rll4_character.cpp
     src/core/rl26_kit.h
     src/core/rl26_kit.cpp
     src/core/mesh_file.h
     src/core/mesh_file.cpp
+    src/core/pssg_mesh.cpp
     src/core/txpk_file.h
     src/core/txpk_file.cpp
     src/core/x360_texture.h
@@ -188,6 +199,10 @@ qt_add_executable(Blobset-Tools
     src/managers/m3mp_tool_manager.cpp
     src/managers/mesh_tool_manager.h
     src/managers/mesh_tool_manager.cpp
+    src/managers/rl26_appearance_manager.h
+    src/managers/rl26_appearance_manager.cpp
+    src/managers/rl26_skin_compositor.h
+    src/managers/rl26_skin_compositor.cpp
     src/managers/mesh_texture_export.h
     src/managers/mesh_texture_export.cpp
     src/managers/mod_manager.h
@@ -302,6 +317,8 @@ qt_add_qml_module(Blobset-Tools
         assets/editors/teams_32.png
         assets/ext/alpha_32.png
         assets/ext/alpha_checked_32.png
+        assets/ext/animset_32.png
+        assets/ext/anims_32.png
         assets/ext/bank_32.png
         assets/ext/bmf_32.png
         assets/ext/bnk_32.png
@@ -351,6 +368,7 @@ qt_add_qml_module(Blobset-Tools
         assets/ext/txpl_32.png
         assets/ext/str_32.png
         assets/ext/txt_32.png
+        assets/ext/vfmt_32.png
         assets/ext/wav_32.png
         assets/ext/wem_32.png
         assets/ext/wireframe_32.png
@@ -360,6 +378,7 @@ qt_add_qml_module(Blobset-Tools
         qml/main.qml
         qml/BtDarkStyle.qml
         qml/BtToolTip.qml
+        qml/BtComboBox.qml
         qml/views/GameSelection.qml
         qml/views/MainForm.qml
         qml/subview_viewers/BNKViewer.qml
@@ -381,6 +400,7 @@ qt_add_qml_module(Blobset-Tools
         qml/subview_viewers/LuaEditor.qml
         qml/subview_viewers/M3MPCreator.qml
         qml/subview_viewers/MeshViewer.qml
+        qml/subview_viewers/AppearanceEditor.qml
         qml/subview_viewers/TXPKCreator.qml
         qml/subview_viewers/TXPKViewer.qml
         qml/subview_viewers/About.qml
@@ -419,7 +439,25 @@ target_compile_definitions(Blobset-Tools PRIVATE
     HAVE_DIRECTXMATH
     # The version shown in the app and compared by the updater: change it in project() above only.
     BT_VERSION="${PROJECT_VERSION}"
+    # The File Mapping Editor's Save as Default writes the project's defaults folder (on this machine only).
+    BT_SOURCE_DEFAULTS="${CMAKE_CURRENT_SOURCE_DIR}/defaults"
 )
+
+# Debug builds: the number-crunching files (texture decoding and compositing, meshes, blobset reading and
+# decompression) are still optimised, so the 3D view and texture previews run at about Release speed. The rest
+# stays unoptimised for stepping through. (Breakpoints in these files may skip lines or show "optimised out".)
+set(BT_HOT_SOURCES
+    src/managers/rl26_skin_compositor.cpp
+    src/managers/mesh_texture_export.cpp
+    src/core/mesh_file.cpp
+    src/core/blobset_asset_reader.cpp
+    src/core/gcm_texture.cpp
+    src/core/x360_texture.cpp
+    src/graphics/dds_processor.cpp
+    src/graphics/dds_image_provider.cpp
+    src/compression/compression_io.cpp
+)
+set_source_files_properties(${BT_HOT_SOURCES} PROPERTIES COMPILE_OPTIONS "$<$<CONFIG:Debug>:-O2>")
 
 target_link_libraries(Blobset-Tools PRIVATE
     Qt6::Core

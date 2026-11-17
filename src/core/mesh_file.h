@@ -2,6 +2,7 @@
 #define MESH_FILE_H
 
 #include <QByteArray>
+#include <QHash>
 #include <QList>
 #include <QPair>
 #include <QString>
@@ -67,6 +68,41 @@ public:
     /// layout keeps its buffers there). Returns false (and the reason in `error`) when it can't be decoded.
     bool parse(const QByteArray& data, QString* error = nullptr, qint64 mainSize = -1);
 
+    /// RL26 skinned model ("<part>.modelcomponent.mdl", magic 0x12345678). Its vertex positions and normals are in
+    /// the part's "<part>.blendshapes.mdat"; the model holds the indices, UVs and bone indices. See parseSkinned()
+    /// in mesh_file.cpp.
+    static bool isSkinnedModel(const QByteArray& data);
+    bool parseSkinned(const QByteArray& model, const QByteArray& blendshapes, QString* error = nullptr);
+    /// The older games' skinned parts (Rugby League Live 3 / 4: version 16, same magic): the model holds the mesh
+    /// records and materials, the base vertices are in the ".blendshapes.mdat" and the indices (main section) and
+    /// UVs (vram section) in the part's "<part>.vbo.idx". `vbo` is its main section followed by its vram section,
+    /// `vboMainSize` the main section's size. See parseSkinnedV16() in mesh_file.cpp.
+    static bool isLegacySkinnedModel(const QByteArray& data);
+    bool parseSkinned(const QByteArray& model, const QByteArray& blendshapes, const QByteArray& vbo,
+                      qint64 vboMainSize, QString* error = nullptr);
+    bool skinned = false;
+
+    /// PSSG scene files (Rugby League Live 2, AFL Live: stadiums, props, heads; magic "PSSG", big endian): every
+    /// render node's mesh, placed by the node transforms, one submesh per render instance. Sun flare / glow sprites
+    /// are left out. The surfaces are the shader instances, with their materials (colour texture) in pssgMaterials.
+    /// See pssg_mesh.cpp.
+    static bool isPssg(const QByteArray& data);
+    bool parsePssg(const QByteArray& data, QString* error = nullptr);
+    QList<Material> pssgMaterials;
+    /// Skinned "_vertCol" meshes: RGBA8 per display vertex (hair: R occlusion, G grey mask, A tip mask), white for
+    /// the drawn records without; empty when none has them.
+    QByteArray vertexColours;
+
+    /// Skinned models: the blend shapes (face sliders, body shapes) of the drawn vertices, by name: display vertex
+    /// indices and their position offsets at weight 1.
+    struct Morph {
+        QList<quint32> vertices;
+        QList<QVector3D> deltas;
+    };
+    QHash<QString, Morph> morphs;
+    /// displayVertices with the blend shapes added (weight per shape name; positions only).
+    QByteArray morphedVertices(const QHash<QString, float>& weights) const;
+
     QString formatName;
     QList<Stream> streams;
     QList<Submesh> submeshes;
@@ -81,6 +117,9 @@ public:
     static constexpr int kDisplayStride = 8 * int(sizeof(float));
     QByteArray displayVertices;
     QByteArray displayIndices;
+    /// PSSG: the second UV set (2 floats per display vertex; empty when there is none). The decals (a material's
+    /// "decal_map": uniform logos and numbers) are drawn with it over the colour texture.
+    QByteArray displayUv2;
     QVector3D boundsMin;
     QVector3D boundsMax;
 
@@ -104,6 +143,8 @@ private:
     // main: the mesh description; data: where its buffer offsets point (V1/V2: the vram section, V4: the main
     // section from the vertex data on); listStart: where the format / shader list starts (V1/V2 0x30, V4 0x38).
     bool parseLists(const QByteArray& mainPart, const QByteArray& data, qint64 listStart, bool v4, QString* error);
+    bool parseSkinnedV16(const QByteArray& model, const QByteArray& blendshapes, const QByteArray& vbo,
+                         qint64 vboMainSize, QString* error);
 };
 
 #endif // MESH_FILE_H

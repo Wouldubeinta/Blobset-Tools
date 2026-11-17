@@ -77,8 +77,8 @@
         <FolderName>Masquerade - The Baubles of Doom</FolderName>
         <ModFolder>Masquerade - The Baubles of Doom</ModFolder>
 		<PC>true</PC>
-		<PS3>false</PS3>
-		<Xbox360>false</Xbox360>
+		<PS3>true</PS3>
+		<Xbox360>true</Xbox360>
 		<Image>mtbod.png</Image>
     </Game>
     <Game>

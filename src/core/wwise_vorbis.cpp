@@ -31,7 +31,7 @@ constexpr unsigned char kLibrary[] = {
 #include "wwise_vorbis_codebooks.inc"
 };
 
-constexpr quint32 kRate = 44100;
+constexpr quint32 kDefaultRate = 44100;
 constexpr float kQuality = 0.4f;
 constexpr double kLowpassKHz = 18.0;
 constexpr int kSeekSpacing = 16384;
@@ -43,7 +43,11 @@ struct KnownSetup {
     quint32 alloc;
     quint32 alloc64;
 };
-constexpr KnownSetup kKnownSetups[] = {{0xB3DEA448u, 18180, 18636}, {0xD54BA8E8u, 16080, 16560}};
+// 44100 Hz mono / stereo (RL26, Rugby 25, AFL 23, Cricket 24, Tiebreak), 48000 Hz mono / stereo and 8000 Hz mono
+// (Rugby 25, Tiebreak). This encoder's setups at those rates are exactly the games' (the same hashes).
+constexpr KnownSetup kKnownSetups[] = {{0xB3DEA448u, 18180, 18636}, {0xD54BA8E8u, 16080, 16560},
+                                       {0x081E7C2Fu, 18180, 18636}, {0xEC69CB18u, 16080, 16560},
+                                       {0x78EA42E2u, 13788, 14032}};
 
 // ---- Bits (Vorbis packs them from the lowest bit of each byte) -----------------------------------------------------
 
@@ -421,7 +425,7 @@ std::vector<float> resample(const std::vector<float>& in, quint32 from, quint32 
 } // namespace
 
 bool encode(const QByteArray& pcm, int channels, quint32 sampleRate, int targetChannels, quint32 layout, Stream* result,
-            QString* error) {
+            QString* error, quint32 targetRate) {
     const auto fail = [error](const QString& why) {
         if (error)
             *error = why;
@@ -429,11 +433,13 @@ bool encode(const QByteArray& pcm, int channels, quint32 sampleRate, int targetC
     };
     if (channels < 1 || targetChannels < 1 || targetChannels > 2 || sampleRate < 1000)
         return fail(u"Vorbis: unsupported audio (%1 channels, %2 Hz)."_s.arg(channels).arg(sampleRate));
+    // The rate of the sound it replaces (Rugby 25's and Tiebreak's are 48000 Hz, RL26's 44100 Hz).
+    const quint32 rate = targetRate >= 8000 && targetRate <= 48000 ? targetRate : kDefaultRate;
     const qsizetype frames = pcm.size() / (2 * channels);
     if (frames <= 0)
         return fail(u"Vorbis: the WAV has no audio."_s);
 
-    // The channels (mixed down to mono, a mono one doubled for stereo, the first two of more), at 44100 Hz.
+    // The channels (mixed down to mono, a mono one doubled for stereo, the first two of more), at rate.
     const auto sample = [&](qsizetype frame, int ch) {
         return float(qFromLittleEndian<qint16>(pcm.constData() + 2 * (frame * channels + ch))) / 32768.0f;
     };
@@ -450,7 +456,7 @@ bool encode(const QByteArray& pcm, int channels, quint32 sampleRate, int targetC
         }
     }
     for (std::vector<float>& ch : audio)
-        ch = resample(ch, sampleRate, kRate);
+        ch = resample(ch, sampleRate, rate);
     const qsizetype samples = qsizetype(audio[0].size());
     if (samples <= 0)
         return fail(u"Vorbis: the WAV is too short."_s);
@@ -459,7 +465,7 @@ bool encode(const QByteArray& pcm, int channels, quint32 sampleRate, int targetC
     vorbis_info vi;
     vorbis_info_init(&vi);
     double lowpass = kLowpassKHz;
-    if (vorbis_encode_setup_vbr(&vi, targetChannels, long(kRate), kQuality) != 0
+    if (vorbis_encode_setup_vbr(&vi, targetChannels, long(rate), kQuality) != 0
         || vorbis_encode_ctl(&vi, OV_ECTL_LOWPASS_SET, &lowpass) != 0 || vorbis_encode_setup_init(&vi) != 0) {
         vorbis_info_clear(&vi);
         return fail(u"Vorbis: the encoder couldn't be set up."_s);
@@ -583,8 +589,8 @@ bool encode(const QByteArray& pcm, int channels, quint32 sampleRate, int targetC
     };
     put16(0xFFFF);
     put16(quint32(targetChannels));
-    put32(kRate);
-    put32(quint32(quint64(afterSeek) * kRate / quint64(samples)));
+    put32(rate);
+    put32(quint32(quint64(afterSeek) * rate / quint64(samples)));
     put16(0);
     put16(0);
     put16(0x30);

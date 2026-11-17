@@ -12,9 +12,11 @@
 #include <QFileInfo>
 #include <QLocale>
 #include <QUrl>
+#include <QtEndian>
 #include <QtConcurrent/QtConcurrentRun>
 
 #include <algorithm>
+#include <cstring>
 
 using namespace Qt::StringLiterals;
 
@@ -73,6 +75,17 @@ QVariantMap infoRow(const QString& label, const QString& value) {
 }
 
 // Returns an error text, empty on success.
+QString writeBytes(const QByteArray& bytes, const BnkFile::Media& media, const QString& outDir) {
+    if (!QDir().mkpath(outDir))
+        return u"Could not create the output folder: "_s + outDir;
+
+    const QString path = QDir(outDir).filePath(wemFileName(media.id));
+    QFile out(path);
+    if (!out.open(QIODevice::WriteOnly) || out.write(bytes) != bytes.size())
+        return u"%1: %2"_s.arg(path, out.errorString());
+    return {};
+}
+
 QString writeWem(const QByteArray& data, const BnkFile::Media& media, const QString& outDir) {
     if (!QDir().mkpath(outDir))
         return u"Could not create the output folder: "_s + outDir;
@@ -239,7 +252,10 @@ bool BnkToolManager::replaceEntry(int entry, const QString& file) {
         setStatus(false, u"Could not read %1."_s.arg(QDir::toNativeSeparators(file)));
         return false;
     }
-    const QByteArray original = m_data.mid(media.offset, media.size);
+    // A streamed sound: the bank only has its first part; the whole one is sound\<id>.wem. Both are replaced: the
+    // whole new WEM goes to the mods folder, the bank gets its first part (the same number of bytes as before).
+    const QByteArray streamed = isPrefetch(entry) ? streamedWem(media.id) : QByteArray();
+    const QByteArray original = !streamed.isEmpty() ? streamed : m_data.mid(media.offset, media.size);
     QString error;
     const QByteArray wem = suffix == u"wav"_s ? WemFile::fromWav(input.readAll(), original, &error)
                                               : WemFile::withOriginalHash(input.readAll(), original, &error);
@@ -248,7 +264,13 @@ bool BnkToolManager::replaceEntry(int entry, const QString& file) {
         return false;
     }
 
-    m_replacements.insert(entry, wem);
+    if (!streamed.isEmpty()) {
+        m_streamReplacements.insert(entry, wem);
+        m_replacements.insert(entry, wem.size() > qsizetype(media.size) ? wem.left(media.size) : wem);
+    } else {
+        m_streamReplacements.remove(entry);
+        m_replacements.insert(entry, wem);
+    }
     m_unsavedChanges = true;
     m_infoCache.remove(entry);
     emit changesChanged();
@@ -256,8 +278,10 @@ bool BnkToolManager::replaceEntry(int entry, const QString& file) {
         m_entryInfo = buildEntryInfo(entry);
         emit currentChanged();
     }
-    setStatus(true, u"Replaced %1 with %2 (%3) - Save Changes to write the bank into the mods folder."_s
-                        .arg(name, QFileInfo(file).fileName(), WemFile::describe(wem)));
+    setStatus(true, u"Replaced %1 with %2 (%3%4) - Save Changes to write the bank into the mods folder%5."_s
+                        .arg(name, QFileInfo(file).fileName(), suffix == u"wav"_s ? u"encoded as "_s : QString(),
+                             WemFile::describe(wem),
+                             streamed.isEmpty() ? QString() : u" (and the streamed sound\\%1 with it)"_s.arg(name)));
     return true;
 }
 
@@ -292,6 +316,7 @@ void BnkToolManager::revertRow(int row) {
     const int entry = m_model->entryAt(row);
     if (m_busy || !m_replacements.remove(entry))
         return;
+    m_streamReplacements.remove(entry);
     m_unsavedChanges = true;
     m_infoCache.remove(entry);
     emit changesChanged();
@@ -306,6 +331,7 @@ void BnkToolManager::discardChanges() {
     if (m_busy || m_replacements.isEmpty())
         return;
     m_replacements.clear();
+    m_streamReplacements.clear();
     m_unsavedChanges = false;
     m_infoCache.clear();
     emit changesChanged();
@@ -335,6 +361,17 @@ void BnkToolManager::saveChanges() {
         setStatus(false, u"Save Changes: "_s + error);
         return;
     }
+    // The replaced streamed sounds' whole WEMs, at their mapped paths (sound\<id>.wem, or sound\wem\N.wem before
+    // Resolve File Names names them).
+    for (auto it = m_streamReplacements.cbegin(); it != m_streamReplacements.cend(); ++it) {
+        const QString soundPath = u"sound/%1.wem"_s.arg(m_bank.media[it.key()].id);
+        const QString mapped = orchestrator->pathFromHash(orchestrator->newAssetPathHash(soundPath).mid(2));
+        const QVariantMap stream = orchestrator->writeModFile(mapped.isEmpty() ? soundPath : mapped, it.value());
+        if (!stream.value(u"ok"_s).toBool()) {
+            setStatus(false, u"Save Changes: "_s + stream.value(u"message"_s).toString());
+            return;
+        }
+    }
     const QVariantMap written = orchestrator->writeModFile(m_workspacePath, rebuilt);
     if (!written.value(u"ok"_s).toBool()) {
         setStatus(false, u"Save Changes: "_s + written.value(u"message"_s).toString());
@@ -343,8 +380,11 @@ void BnkToolManager::saveChanges() {
     m_unsavedChanges = false;
     emit changesChanged();
     const QString target = modsTarget();
-    const QString message = u"Saved the bank to %1 (%2 WEM(s) replaced, %3 sound source(s) updated). Click Modify to put "
-                            u"it into the game."_s.arg(target).arg(m_replacements.size()).arg(patched);
+    const QString message = u"Saved the bank to %1 (%2 WEM(s) replaced, %3 sound source(s) updated%4). Click Modify to "
+                            u"put it into the game."_s.arg(target).arg(m_replacements.size()).arg(patched)
+                                .arg(m_streamReplacements.isEmpty() ? QString()
+                                                                    : u", %1 streamed WEM(s) written next to it"_s
+                                                                          .arg(m_streamReplacements.size()));
     emit orchestrator->uiConsoleUpdate(message);
     setStatus(true, message);
     emit changesSaved(target);
@@ -396,6 +436,7 @@ void BnkToolManager::failLoad(const QString& message) {
 void BnkToolManager::clearBank() {
     const bool hadChanges = !m_replacements.isEmpty() || m_unsavedChanges || !m_workspacePath.isEmpty();
     m_replacements.clear();
+    m_streamReplacements.clear();
     m_unsavedChanges = false;
     m_workspacePath.clear();
     if (hadChanges)
@@ -405,6 +446,7 @@ void BnkToolManager::clearBank() {
     m_sourceName.clear();
     m_bankInfo.clear();
     m_infoCache.clear();
+    m_streamCache.clear();
     setProgress(0);
 }
 
@@ -499,6 +541,13 @@ QVariantList BnkToolManager::buildEntryInfo(int entry) {
                                    ? sizeWithBytes(m_replacements.value(entry).size()) + u"  (replaced, was "_s
                                          + humanSize(media.size) + u")"_s
                                    : sizeWithBytes(media.size));
+    if (quint32 fullSize = 0; !m_replacements.contains(entry) && isPrefetch(entry, &fullSize)) {
+        const bool found = !streamedWem(media.id).isEmpty();
+        info << infoRow(u"Streamed"_s, u"The bank only holds the first %1 of this %2 sound: %3"_s
+                                           .arg(humanSize(media.size), humanSize(fullSize),
+                                                found ? u"playing the whole sound\\%1"_s.arg(wemFileName(media.id))
+                                                      : u"sound\\%1 isn't in the loaded blobset"_s.arg(wemFileName(media.id))));
+    }
 
     Metadata meta;
     if (AudioProcessor::probeAudioBuffer(wemBytes(entry), wemFileName(media.id), meta)) {
@@ -510,7 +559,7 @@ QVariantList BnkToolManager::buildEntryInfo(int entry) {
             const double seconds = static_cast<double>(meta.totalSamples) / meta.sampleRate;
             info << infoRow(u"Duration"_s, u"%1  (%2 samples)"_s.arg(formatDuration(seconds), QLocale().toString(meta.totalSamples)));
             info << infoRow(u"Average bitrate"_s,
-                            u"%1 kbps"_s.arg(qRound(media.size * 8.0 / seconds / 1000.0)));
+                            u"%1 kbps"_s.arg(qRound(wemBytes(entry).size() * 8.0 / seconds / 1000.0)));
         }
 
         info << infoRow(u"Loop"_s, meta.hasLoopPoints
@@ -527,11 +576,57 @@ QVariantList BnkToolManager::buildEntryInfo(int entry) {
 QByteArray BnkToolManager::wemBytes(int entry) const {
     if (entry < 0 || entry >= m_bank.media.size())
         return {};
+    if (m_streamReplacements.contains(entry))
+        return m_streamReplacements.value(entry);   // A replaced streamed sound: the whole new one.
     if (m_replacements.contains(entry))
         return m_replacements.value(entry);   // Play / probe the replacement.
 
     const BnkFile::Media& media = m_bank.media[entry];
+    // Only the start of a streamed sound: the whole one is sound\<id>.wem (the cut off copy doesn't play).
+    if (isPrefetch(entry)) {
+        if (const QByteArray full = streamedWem(media.id); !full.isEmpty())
+            return full;
+    }
     return m_data.mid(media.offset, media.size);
+}
+
+bool BnkToolManager::isPrefetch(int entry, quint32* fullSize) const {
+    if (entry < 0 || entry >= m_bank.media.size())
+        return false;
+    const BnkFile::Media& media = m_bank.media[entry];
+    if (media.size < 8 || qint64(media.offset) + 8 > m_data.size())
+        return false;
+    const char* p = m_data.constData() + media.offset;
+    quint32 riff = 0;
+    if (memcmp(p, "RIFF", 4) == 0)
+        riff = qFromLittleEndian<quint32>(p + 4);
+    else if (memcmp(p, "RIFX", 4) == 0)
+        riff = qFromBigEndian<quint32>(p + 4);
+    else
+        return false;
+    if (fullSize)
+        *fullSize = riff + 8;
+    return quint64(riff) + 8 > media.size;
+}
+
+QByteArray BnkToolManager::streamedWem(quint32 id) const {
+    if (const auto cached = m_streamCache.constFind(id); cached != m_streamCache.constEnd())
+        return cached.value();
+    QByteArray bytes;
+    const AppOrchestrator* orchestrator = AppOrchestrator::instance();
+    BlobsetEntry entry;
+    // The game loads streamed media by "sound/<id>.wem" (V4: RL26, Rugby 25, Tiebreak, ...).
+    if (orchestrator
+        && BlobsetEntryRegistry::findEntry(orchestrator->newAssetPathHash(u"sound/%1.wem"_s.arg(id)).mid(2), entry)) {
+        try {
+            bytes = BlobsetAssetReader::read(entry, orchestrator->assetLocation(), orchestrator->blobsetVersion(),
+                                             orchestrator->platform());
+        } catch (const std::exception&) {
+            bytes.clear();
+        }
+    }
+    m_streamCache.insert(id, bytes);
+    return bytes;
 }
 
 // ---------------------------------------------------------------------------
@@ -549,7 +644,9 @@ void BnkToolManager::extractSelected(const QString& outDirPath) {
 
     const QString outDir = toLocalPath(outDirPath);
     const BnkFile::Media& media = m_bank.media[m_currentEntry];
-    const QString error = writeWem(m_data, media, outDir);
+    // A prefetched sound: the whole streamed WEM when the blobset has it.
+    const QByteArray full = isPrefetch(m_currentEntry) ? streamedWem(media.id) : QByteArray();
+    const QString error = full.isEmpty() ? writeWem(m_data, media, outDir) : writeBytes(full, media, outDir);
 
     if (error.isEmpty())
         setStatus(true, u"Extracted: "_s + QDir(outDir).filePath(wemFileName(media.id)));
@@ -569,20 +666,28 @@ void BnkToolManager::extractAll(const QString& outDirPath) {
 
     const QString outDir = toLocalPath(outDirPath);
     const QByteArray data = m_data; // Shared copy: a reload can't pull the bytes out from under the worker.
+    // The prefetched sounds' whole streamed WEMs, read here (the blobset reader isn't for the worker thread).
+    QHash<quint32, QByteArray> streamed;
+    for (int i = 0; i < media.size(); ++i)
+        if (isPrefetch(i))
+            if (const QByteArray full = streamedWem(media[i].id); !full.isEmpty())
+                streamed.insert(media[i].id, full);
 
     m_cancel = false;
     setProgress(0);
     setBusy(true);
     setStatus(true, u"Extracting %1 WEM file(s)..."_s.arg(media.size()));
 
-    m_extractFuture = QtConcurrent::run([this, data, media, outDir]() {
+    m_extractFuture = QtConcurrent::run([this, data, media, outDir, streamed]() {
         const int total = static_cast<int>(media.size());
         int failed = 0;
         QString firstError;
         int lastPercent = -1;
 
         for (int i = 0; i < total && !m_cancel; ++i) {
-            const QString error = writeWem(data, media[i], outDir);
+            const auto full = streamed.constFind(media[i].id);
+            const QString error = full != streamed.constEnd() ? writeBytes(full.value(), media[i], outDir)
+                                                              : writeWem(data, media[i], outDir);
             if (!error.isEmpty()) {
                 ++failed;
                 if (firstError.isEmpty())

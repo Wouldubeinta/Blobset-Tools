@@ -1518,6 +1518,43 @@ QVariantList DatabaseManager::appearanceFields(int player) const {
     return blob.fields(blob.root(), 0);
 }
 
+QVariantList DatabaseManager::playerKits(int player) const {
+    QVariantList out;
+    if (!m_loaded || m_game != u"rll4"_s || player < 0 || player >= m_players.count())
+        return out;
+    const int id = m_players.num(player, u"id"_s);
+    for (int t = 0; t < m_teams.count(); ++t) {
+        if (!slotValues(t, m_rosterKeys).contains(id))
+            continue;
+        const QVariantMap kits = jerseys(t);
+        if (!kits.value(u"ok"_s).toBool())
+            continue;
+        const QString team = teamFullName(t);
+        for (const QVariant& u : kits.value(u"uniforms"_s).toList()) {
+            const QVariantMap uniform = u.toMap();
+            if (uniform.value(u"hidden"_s).toBool())
+                continue;
+            const int index = uniform.value(u"index"_s).toInt();
+            int maker = -1, licensed = -1;
+            for (const QVariant& f : jerseyFields(t, index)) {
+                const QVariantMap m = f.toMap();
+                if (m.value(u"label"_s).toString() == u"Manufacturer"_s)
+                    maker = m.value(u"value"_s).toInt();
+                else if (m.value(u"label"_s).toString() == u"Licensed Jersey"_s)
+                    licensed = m.value(u"value"_s).toInt();
+            }
+            if (maker < 0 || licensed < 0)
+                continue;
+            out << QVariantMap{{u"team"_s, t},
+                               {u"uniform"_s, index},
+                               {u"name"_s, u"%1 - %2"_s.arg(team, uniform.value(u"name"_s).toString())},
+                               {u"maker"_s, maker},
+                               {u"licensed"_s, licensed}};
+        }
+    }
+    return out;
+}
+
 bool DatabaseManager::setAppearanceField(int player, const QString& key, const QVariant& value) {
     if (!m_loaded || m_busy || player < 0 || player >= m_players.count())
         return false;

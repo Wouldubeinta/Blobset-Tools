@@ -9,7 +9,10 @@ ApplicationWindow {
     visible: true
     width: 1400
     height: 800
-    title: "Blobset Tools"
+    // "Blobset Tools - Rugby League Live 3" once a game is loaded; just "Blobset Tools" on the game selection screen.
+    readonly property bool onGameSelection: String(viewLoader.source).endsWith("/GameSelection.qml")
+    title: !onGameSelection && appOrchestrator.currentGameName !== "" ? "Blobset Tools - " + appOrchestrator.currentGameName
+                                                                       : "Blobset Tools"
 
     Material.theme: Material.Dark
     Material.accent: "#f5c518"

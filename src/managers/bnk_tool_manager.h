@@ -114,7 +114,8 @@ public:
     // Selects row `row` of the (filtered) list; -1 clears.
     Q_INVOKABLE void selectRow(int row);
 
-    // The raw bytes of embedded WEM `entry` (for playback).
+    // The raw bytes of embedded WEM `entry` (for playback). For a prefetched sound (the bank only holds the start of a
+    // streamed WEM) the whole sound\<id>.wem from the loaded blobset, when it has it.
     Q_INVOKABLE QByteArray wemBytes(int entry) const;
 
     Q_INVOKABLE void extractSelected(const QString& outDirPath);
@@ -142,6 +143,11 @@ private:
     void rebuildBankInfo();
     void rebuildRows();
     QVariantList buildEntryInfo(int entry);
+    // Wwise prefetch: the embedded WEM is only the start of a streamed one (its RIFF size is larger than the data).
+    // fullSize gets the whole WEM's size.
+    bool isPrefetch(int entry, quint32* fullSize = nullptr) const;
+    // The whole sound\<id>.wem from the loaded blobset (cached), empty when it isn't there.
+    QByteArray streamedWem(quint32 id) const;
 
     void setBusy(bool busy);
     void setStatus(bool ok, const QString& message);
@@ -159,9 +165,13 @@ private:
     int m_currentEntry = -1;
     QVariantList m_entryInfo;
     QHash<int, QVariantList> m_infoCache; // Entry -> probed info, so re-selecting is instant.
+    mutable QHash<quint32, QByteArray> m_streamCache;   // Media id -> its whole streamed WEM (prefetched sounds).
 
     // Edit session: entry -> the replacement WEM's bytes.
     QHash<int, QByteArray> m_replacements;
+    // Replaced streamed sounds (the bank only has their first part, a "prefetch"): entry -> the whole new WEM, written
+    // to the mods folder as sound\<id>.wem on Save Changes (the bank gets its first part, m_replacements).
+    QHash<int, QByteArray> m_streamReplacements;
     bool m_unsavedChanges = false;
     QString m_workspacePath;   // The bank's path in the blobset (opened from the game), else empty.
     bool replaceEntry(int entry, const QString& file);

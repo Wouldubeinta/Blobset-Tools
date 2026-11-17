@@ -193,7 +193,7 @@ Rectangle {
                     font.bold: true
                     font.pixelSize: 16
                 }
-                ComboBox {
+                BtComboBox {
                     id: tableBox
                     Layout.preferredWidth: 300
                     model: rawRoot.tables

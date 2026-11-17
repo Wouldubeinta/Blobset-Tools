@@ -305,6 +305,7 @@ void Blob::collect(int type, qint64 base, const QString& prefix, QVariantList& o
                 const int gv = static_cast<int>(readUInt(base + g->offset, 1));
                 const int bv = static_cast<int>(readUInt(base + b->offset, 1));
                 out << QVariantMap{{u"key"_s, u"c:%1:%2:%3"_s.arg(at).arg(base + g->offset).arg(base + b->offset)},
+                                   {u"name"_s, stem},
                                    {u"label"_s, prettyName(stem)},
                                    {u"group"_s, group},
                                    {u"kind"_s, u"colour"_s},
@@ -330,6 +331,7 @@ void Blob::collect(int type, qint64 base, const QString& prefix, QVariantList& o
                 printable = printable && (static_cast<uchar>(c) >= 0x20);
             if (printable) {
                 out << QVariantMap{{u"key"_s, u"t:%1:%2"_s.arg(at).arg(m.count)},
+                                   {u"name"_s, m.name},
                                    {u"label"_s, label},
                                    {u"group"_s, group},
                                    {u"kind"_s, u"text"_s},
@@ -352,6 +354,7 @@ void Blob::collect(int type, qint64 base, const QString& prefix, QVariantList& o
             const quint64 v = readUInt(o, size);
             const QString key = isBool ? u"b:%1"_s.arg(o) : u"n:%1:%2"_s.arg(o).arg(size);
             QVariantMap item{{u"key"_s, key},
+                             {u"name"_s, count > 1 ? QString() : m.name},
                              {u"label"_s, count > 1 ? u"%1 [%2]"_s.arg(label).arg(e + 1) : label},
                              {u"group"_s, group},
                              {u"kind"_s, isBool ? u"bool"_s : u"number"_s},

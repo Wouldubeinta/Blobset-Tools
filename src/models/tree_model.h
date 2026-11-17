@@ -37,8 +37,11 @@ public:
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    // Replaces the tree with the folders / files of `filePaths` ('/' or '\\' separated).
-    void buildTree(const QList<QString>& filePaths);
+    // Replaces the tree with the folders / files of `filePaths` ('/' or '\\' separated). With a `rootName` (the
+    // blobset's file name, "data-0.blobset.pc") everything goes in one top folder of that name, so the files that
+    // aren't in a folder have one to be listed in. It's only shown: paths (getPathFromIndex(), indexFromPath(),
+    // addFile()) never include it, and its own path is "".
+    void buildTree(const QList<QString>& filePaths, const QString& rootName = QString());
 
     // Adds one file (and any folders it needs) without resetting the tree. False when it's already there.
     bool addFile(const QString& filePath);
@@ -46,10 +49,14 @@ public:
     Q_INVOKABLE void clear();
     Q_INVOKABLE QString getPathFromIndex(const QModelIndex &index) const;
     Q_INVOKABLE QModelIndex indexFromPath(const QString& path) const;
-    TreeNode* rootNode() const { return m_rootNode.get(); }
+    // The folder whose path is "": the named top folder when there is one, otherwise the hidden root.
+    TreeNode* rootNode() const { return m_topNode ? m_topNode : m_rootNode.get(); }
 
 private:
+    QModelIndex topIndex() const;
+
     std::unique_ptr<TreeNode> m_rootNode;
+    TreeNode* m_topNode = nullptr;   // buildTree()'s rootName folder (a child of m_rootNode), or none.
 };
 
 #endif // TREE_MODEL_H

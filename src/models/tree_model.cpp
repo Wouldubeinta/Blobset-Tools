@@ -41,16 +41,32 @@ QHash<int, QByteArray> TreeModel::roleNames() const {
     return { {NameRole, "fileName"}, {IsFolderRole, "isFolder"} };
 }
 
-void TreeModel::buildTree(const QList<QString>& filePaths) {
+QModelIndex TreeModel::topIndex() const {
+    return m_topNode ? createIndex(m_topNode->folderRow, 0, m_topNode) : QModelIndex();
+}
+
+void TreeModel::buildTree(const QList<QString>& filePaths, const QString& rootName) {
     beginResetModel();
 
     m_rootNode->children.clear();
     m_rootNode->folders.clear();
+    m_topNode = nullptr;
+    if (!rootName.isEmpty()) {
+        auto top = std::make_unique<TreeNode>();
+        top->name = rootName;
+        top->isFolder = true;
+        top->parent = m_rootNode.get();
+        top->folderRow = 0;
+        m_topNode = top.get();
+        m_rootNode->folders.push_back(m_topNode);
+        m_rootNode->children.push_back(std::move(top));
+    }
+    TreeNode* const top = rootNode();
 
     // Folder path -> node, so every path only walks the folders it doesn't share with the paths before it.
     QHash<QString, TreeNode*> folderCache;
     folderCache.reserve(filePaths.size() / 8 + 16);
-    folderCache.insert(QString(), m_rootNode.get());
+    folderCache.insert(QString(), top);
 
     QString cleanPath;
     for (const QString& path : std::as_const(filePaths)) {
@@ -62,7 +78,7 @@ void TreeModel::buildTree(const QList<QString>& filePaths) {
         const QString folderPath = slash > 0 ? cleanPath.left(slash) : QString();
         TreeNode* folder = folderCache.value(folderPath, nullptr);
         if (!folder) {
-            folder = m_rootNode.get();
+            folder = top;
             QString accumulated;
             for (const auto& partList = folderPath.split(u'/', Qt::SkipEmptyParts); const QString& part : partList) {
                 if (!accumulated.isEmpty()) accumulated += u'/';
@@ -100,8 +116,8 @@ bool TreeModel::addFile(const QString& filePath) {
     const QStringList parts = QString(filePath).replace(u'\\', u'/').split(u'/', Qt::SkipEmptyParts);
     if (parts.isEmpty())
         return false;
-    TreeNode* folder = m_rootNode.get();
-    QModelIndex folderIndex;
+    TreeNode* folder = rootNode();
+    QModelIndex folderIndex = topIndex();
     for (qsizetype i = 0; i + 1 < parts.size(); ++i) {
         const QString& part = parts.at(i);
         const auto it = std::find_if(folder->folders.cbegin(), folder->folders.cend(),
@@ -138,19 +154,19 @@ bool TreeModel::addFile(const QString& filePath) {
 QString TreeModel::getPathFromIndex(const QModelIndex &index) const {
     if (!index.isValid()) return QString();
 
-    // Folder names from this node up to (not including) the root.
+    // Folder names from this node up to (not including) the root and the named top folder.
     QStringList pathParts;
     for (const TreeNode *node = static_cast<TreeNode*>(index.internalPointer());
-         node && node != m_rootNode.get(); node = node->parent)
+         node && node != m_rootNode.get() && node != m_topNode; node = node->parent)
         pathParts.prepend(node->name);
     return pathParts.join(u'/');
 }
 
 QModelIndex TreeModel::indexFromPath(const QString& path) const {
     const QStringList parts = QString(path).replace(u'\\', u'/').split(u'/', Qt::SkipEmptyParts);
-    if (parts.isEmpty()) return QModelIndex();
+    if (parts.isEmpty()) return topIndex();   // "" is the named top folder (invalid when there's none).
 
-    const TreeNode* node = m_rootNode.get();
+    const TreeNode* node = rootNode();
     QModelIndex result;
     for (const QString& part : std::as_const(parts)) {
         const auto it = std::find_if(node->folders.cbegin(), node->folders.cend(),
@@ -166,5 +182,6 @@ void TreeModel::clear() {
     beginResetModel();
     m_rootNode->children.clear();
     m_rootNode->folders.clear();
+    m_topNode = nullptr;
     endResetModel();
 }

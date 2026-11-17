@@ -63,6 +63,8 @@ private:
     int m_platform;
 
     QSet<QString> m_strings;   // Raw candidate strings (lower case, '/' separated).
+    QSet<QString> m_luaWords;         // The compiled scripts' string constants (lower case), see addLuaConstants.
+    QSet<QString> m_characterItems;   // Rugby 25: the asset map's character item names (assetmapitems.lua).
     int m_lastPercent = -1;
 
     // Moves the progress bar (only when the percentage changes, so tight loops can call it freely) and,
@@ -72,6 +74,10 @@ private:
     void reportRange(int from, int to, qint64 done, qint64 total, const QString& status = QString());
 
     void run();
+    // The item names in Rugby 25's compiled assetmapitems.lua (into m_characterItems).
+    void addCharacterItems(const QByteArray& script);
+    // Every string constant of the compiled scripts (into m_luaWords).
+    void addLuaConstants(const QByteArray& scripts);
     void harvestExecutables();
     void harvestUserNames();
     void harvestAssets(const QHash<quint64, QString>& unnamedPaths, const QStringList& allPaths);
@@ -83,6 +89,8 @@ private:
     // (from the "hj_offsets_<player>.lua" names inside the .hjo files), the crowd node files (from their
     // "<stadium>_crowdnodes" names), the trophies' and the generic beards' parts.
     void deriveCharacterNames(const QStringList& allPaths);
+    // The animation sets' names (RL26).
+    void deriveAnimationSetNames();
     void addStrings(const QByteArray& data);
     void addString(QString s);
 };

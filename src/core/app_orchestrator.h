@@ -179,6 +179,9 @@ public:
     // (does not change the loaded game).
     Q_INVOKABLE QVariantMap gameInfoPreview(const QString& modGameFolderName, int platformId) const;
     Q_INVOKABLE void selectGameAndLoad(int gameId, int platformId, const QString& modGameFolderName, const QString& gameFolderName);
+    // As selectGameAndLoad (the workspace loads in the background), but opens the Mod Manager instead of MainForm.
+    Q_INVOKABLE void selectGameAndOpenModManager(int gameId, int platformId, const QString& modGameFolderName,
+                                                 const QString& gameFolderName);
     Q_INVOKABLE void loadGameProfile();
     Q_INVOKABLE void gameSelectionInfo();
     Q_INVOKABLE void readGameIni(const QString& iniPath);
@@ -301,6 +304,7 @@ private:
     int m_platformId;
     QString m_modGameFolderName;
     QString m_gameFolderName;
+    QString m_openView;   // The view selectGameAndLoad opens: MainForm, unless set (selectGameAndOpenModManager).
     QString m_relativeBlobsetPath;  // "data-0.blobset.pc" or "data/data-0.blobset.pc", fixed per selected game.
 
     bool m_isBigEndian;
@@ -308,7 +312,19 @@ private:
     bool m_fileMappingMissing = false;
     int m_modFilesRevision = 0;
     bool m_quietReplace = false;
+    // The sound banks' first parts of streamed sounds ("prefetch": the start of sound\<id>.wem, so it plays at once),
+    // by media id, found once per loaded blobset: a replaced streamed WEM gets its banks' first parts replaced too.
+    struct PrefetchRef {
+        QString bankPath;        // The bank's workspace path.
+        quint32 riffSize = 0;    // The whole WEM's RIFF size (+ 8).
+        QByteArray head;         // Its first bytes (to find an unnamed sound\wem\N.wem's banks).
+    };
+    QHash<quint32, QList<PrefetchRef>> m_prefetchIndex;
+    quint64 m_prefetchGeneration = ~quint64(0);
+    void buildPrefetchIndex();
+    QStringList updatePrefetchBanks(const QString& wemPath, const QByteArray& original, const QByteArray& wem);
     QVariantMap m_pendingCommentaryWavs;
+    bool m_folderSelected = false;         // selectFolderIndex() got a folder (the top folder's path is "").
     QString m_currentFolderPath;           // selectFolderIndex(): the folder the file list shows ('/' separated).   // newCommentaryLinesFromWavs() -> the Commentary Editor.   // replaceDropped(): one summary instead of a line per replaced file.
     bool m_updateMappingAfterLocation = false;
     bool m_recordSteamBuildAfterTask = false;   // The running task is Update File Mapping Data.
@@ -355,6 +371,12 @@ private:
     void recordSteamBuild();
     // Steam games (PC): the first line of <game>\version.txt becomes GameInfo.ini Version (Update File Mapping).
     void readGameVersionFile();
+    // The game's version.bin.txt in the loaded blobset ("1.0.5933 master retail"): its version, or empty.
+    QString blobsetGameVersion();
+    // GameInfo.ini Version from the blobset's version.bin.txt (after a workspace load).
+    void readBlobsetVersionFile();
+    // PC: the game's Blobset Mod Loader (dinput8.dll) replaced by Blobset Tools' modloader\dinput8.dll when that's newer.
+    void updateModLoaderDll();
 
     void startWorkspaceLoad(const QString& mappingPath);
 

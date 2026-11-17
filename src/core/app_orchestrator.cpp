@@ -7,6 +7,7 @@
 #include "app_paths.h"
 #include "audio_decoder.h"
 #include "blobset_asset_reader.h"
+#include "bnk_file.h"
 #include "blobset_entry_registry.h"
 #include "blobset_file.h"
 #include "core_defs.h"
@@ -51,6 +52,7 @@
 #include <QtEndian>
 
 #include <algorithm>
+#include <cstring>
 #include <exception>
 #include <stdexcept>
 #include <vector>
@@ -903,8 +905,9 @@ QVariantMap AppOrchestrator::replaceAsset(const QString& workspacePath, const QS
     const QString wanted = QFileInfo(name).suffix().toLower();
     const QString given = QFileInfo(source).suffix().toLower();
 
-    // Wwise audio: a .wav becomes a PCM .wem, a .wem gets the original's hash chunk. Both keep the original's id
-    // (the file name) and its extra header chunks, so the game finds them like the original.
+    // Wwise audio: a .wav is encoded as a Wwise Vorbis .wem, a .wem gets the original's hash chunk. Both keep the
+    // original's id (the file name) and its extra header chunks, so the game finds them like the original. A streamed
+    // sound's first part in its sound banks is replaced too (updatePrefetchBanks()).
     if (wanted == u"wem"_s && (given == u"wav"_s || given == u"wem"_s)) {
         QByteArray original;
         try {
@@ -935,9 +938,13 @@ QVariantMap AppOrchestrator::replaceAsset(const QString& workspacePath, const QS
         const QVariantMap written = writeModFile(workspacePath, wem);
         if (!written.value(u"ok"_s).toBool())
             return result(false, u"Replace File: "_s + written.value(u"message"_s).toString());
-        return result(true, u"Replaced %1 with %2 (%3%4). Click Modify to put it into the game."_s
+        const QStringList banks = blobsetVersion() == static_cast<int>(CoreDefs::BlobsetVersion::V4)
+                                      ? updatePrefetchBanks(workspacePath, original, wem) : QStringList();
+        return result(true, u"Replaced %1 with %2 (%3%4)%5. Click Modify to put it into the game."_s
                                 .arg(name, QFileInfo(source).fileName(),
-                                     given == u"wav"_s ? u"converted to a PCM WEM: "_s : QString(), WemFile::describe(wem)),
+                                     given == u"wav"_s ? u"encoded as "_s : QString(), WemFile::describe(wem),
+                                     banks.isEmpty() ? QString()
+                                                     : u"; its first part in %1 was replaced too"_s.arg(banks.join(u", "_s))),
                       written.value(u"target"_s).toString());
     }
 
@@ -1098,8 +1105,11 @@ QVariantMap AppOrchestrator::replaceDropped(const QStringList& urls, const QStri
                     path.clear();
             }
         }
-        // A WAV whose name matches no sound of a sound folder is a new sound, wherever it was dropped (to replace a
-        // sound with a WAV of another name, use the file's right click Replace File).
+        // One WAV / WEM dropped onto a .wem replaces that sound, whatever its name.
+        if (sources.size() == 1 && fallbackPath.endsWith(u".wem"_s, Qt::CaseInsensitive)
+            && (source.file.endsWith(u".wav"_s, Qt::CaseInsensitive) || source.file.endsWith(u".wem"_s, Qt::CaseInsensitive)))
+            path = QString(fallbackPath).replace(u'\\', u'/');
+        // A WAV whose name matches no sound of a sound folder (and wasn't dropped onto a sound) is a new sound.
         if (path.isEmpty() && !ambiguous && soundFolder
             && (source.file.endsWith(u".wav"_s, Qt::CaseInsensitive) || source.file.endsWith(u".wem"_s, Qt::CaseInsensitive))) {
             newWavs.append(source.file);
@@ -1172,8 +1182,106 @@ void AppOrchestrator::registerNewAsset(const QString& workspacePathIn, quint64 p
     // The tree and the open folder's list.
     m_treeModel->addFile(path);
     const QString folder = path.section(u'/', 0, -2);
-    if (!m_currentFolderPath.isEmpty() && folder.compare(m_currentFolderPath, Qt::CaseInsensitive) == 0)
+    if (m_folderSelected && folder.compare(m_currentFolderPath, Qt::CaseInsensitive) == 0)
         selectFolderIndex(m_treeModel->indexFromPath(m_currentFolderPath));
+}
+
+// ---- Streamed sounds' first parts in the sound banks ----------------------------------------------------------------
+
+void AppOrchestrator::buildPrefetchIndex() {
+    if (m_prefetchGeneration == BlobsetEntryRegistry::generation())
+        return;
+    m_prefetchIndex.clear();
+    m_prefetchGeneration = BlobsetEntryRegistry::generation();
+    QStringList banks;
+    {
+        QMutexLocker locker(&m_mutex);
+        for (auto it = m_pathHashLookup.cbegin(); it != m_pathHashLookup.cend(); ++it)
+            if (it.key().endsWith(u".bnk"_s, Qt::CaseInsensitive))
+                banks << it.key();
+    }
+    emit uiConsoleUpdate(u"Finding the streamed sounds' first parts in %1 sound bank(s) (once per game)..."_s.arg(banks.size()));
+    constexpr qsizetype kHead = 64;
+    for (const QString& bankPath : std::as_const(banks)) {
+        BlobsetEntry entry;
+        if (!BlobsetEntryRegistry::findEntry(getHashFromPath(bankPath), entry))
+            continue;
+        QByteArray data;
+        try {
+            data = BlobsetAssetReader::read(entry, assetLocation(), blobsetVersion(), platform());
+        } catch (const std::exception&) {
+            continue;
+        }
+        BnkFile bank;
+        if (!bank.parse(data) || bank.isBigEndian)
+            continue;
+        for (const BnkFile::Media& m : std::as_const(bank.media)) {
+            if (m.size < 8 || qint64(m.offset) + m.size > data.size() || memcmp(data.constData() + m.offset, "RIFF", 4) != 0)
+                continue;
+            const quint32 riff = qFromLittleEndian<quint32>(data.constData() + m.offset + 4) + 8;
+            if (riff <= m.size)
+                continue;   // The whole sound: not a streamed one's first part.
+            m_prefetchIndex[m.id].append({bankPath, riff, data.mid(m.offset, std::min<qsizetype>(kHead, m.size))});
+        }
+    }
+}
+
+// After a streamed WEM was replaced (wemPath: sound/<id>.wem, or sound/wem/N.wem not named yet): every bank holding
+// its first part gets the new WEM's first part instead (the same number of bytes, so the bank's sources still match),
+// saved into the mods folder (your edited copy of the bank when there is one). Returns the banks' names.
+QStringList AppOrchestrator::updatePrefetchBanks(const QString& wemPath, const QByteArray& original, const QByteArray& wem) {
+    if (original.size() < 8 || !original.startsWith("RIFF"))
+        return {};
+    buildPrefetchIndex();
+    const quint32 riff = qFromLittleEndian<quint32>(original.constData() + 4) + 8;
+    // The banks, by the media id (the file's name), else by the original's first bytes.
+    bool isId = false;
+    const quint32 id = QFileInfo(QString(wemPath).replace(u'\\', u'/')).completeBaseName().toUInt(&isId);
+    QList<QPair<quint32, PrefetchRef>> refs;
+    const bool numbered = isId && !QString(wemPath).replace(u'\\', u'/').contains(u"/wem/"_s, Qt::CaseInsensitive);
+    for (auto it = m_prefetchIndex.cbegin(); it != m_prefetchIndex.cend(); ++it) {
+        if (numbered && it.key() != id)
+            continue;
+        for (const PrefetchRef& ref : it.value())
+            if (ref.riffSize == riff && original.startsWith(ref.head))
+                refs.append({it.key(), ref});
+    }
+    QStringList updated;
+    for (const auto& [mediaId, ref] : std::as_const(refs)) {
+        QByteArray data;
+        if (hasModFile(ref.bankPath)) {
+            QFile mod(modFilePath(ref.bankPath));
+            if (mod.open(QIODevice::ReadOnly))
+                data = mod.readAll();
+        }
+        if (data.isEmpty()) {
+            BlobsetEntry entry;
+            if (!BlobsetEntryRegistry::findEntry(getHashFromPath(ref.bankPath), entry))
+                continue;
+            try {
+                data = BlobsetAssetReader::read(entry, assetLocation(), blobsetVersion(), platform());
+            } catch (const std::exception&) {
+                continue;
+            }
+        }
+        BnkFile bank;
+        if (!bank.parse(data))
+            continue;
+        QHash<int, QByteArray> replacements;
+        for (int i = 0; i < bank.media.size(); ++i)
+            if (bank.media[i].id == mediaId)
+                replacements.insert(i, wem.size() > qsizetype(bank.media[i].size) ? wem.left(bank.media[i].size) : wem);
+        QString error;
+        const QByteArray rebuilt = replacements.isEmpty() ? QByteArray() : BnkFile::rebuild(data, bank, replacements, nullptr, &error);
+        if (rebuilt.isEmpty()) {
+            emit uiConsoleUpdate(u"Replace File: %1's first part in %2 couldn't be replaced: %3"_s
+                                     .arg(QFileInfo(wemPath).fileName(), ref.bankPath, error));
+            continue;
+        }
+        if (writeModFile(ref.bankPath, rebuilt).value(u"ok"_s).toBool())
+            updated << QFileInfo(QString(ref.bankPath).replace(u'\\', u'/')).fileName();
+    }
+    return updated;
 }
 
 QVariantMap AppOrchestrator::soundFolderInfo(const QString& folderIn) const {
@@ -1184,11 +1292,22 @@ QVariantMap AppOrchestrator::soundFolderInfo(const QString& folderIn) const {
         || (folder != u"sound"_s && !folder.startsWith(u"sound/"_s)))
         return {{u"kind"_s, QString()}};
     const QStringList parts = folder.split(u'/');
-    if (parts.size() >= 3 && (parts.at(1) == u"commentary"_s || parts.at(1) == u"referee"_s)) {
-        const bool referee = parts.at(1) == u"referee"_s;
+    // The lines file of each speaker folder: RL26's commentary / referee, Rugby 25's commentary / announcer / TMO,
+    // Tiebreak's announcers / chair umpires / career.
+    static const QHash<QString, std::pair<QString, QString>> linesFiles = {
+        {u"commentary"_s, {u"99b3b6554a5750d3"_s, u"sound\\lines.commentary.cmtry"_s}},
+        {u"referee"_s, {u"01d4046906cce436"_s, u"sound\\lines.referee.dat"_s}},
+        {u"announcer"_s, {u"1237e800334320f9"_s, u"sound\\lines.announcer.dat"_s}},
+        {u"tmoreferee"_s, {u"6a3af89b4d8e750a"_s, u"sound\\lines.tmoreferee.dat"_s}},
+        // Tiebreak.
+        {u"announcers"_s, {u"381fc2571b104a7e"_s, u"sound\\lines.announcers.dat"_s}},
+        {u"chairumpires"_s, {u"fee8162874714384"_s, u"sound\\lines.chairumpires.dat"_s}},
+        {u"career"_s, {u"0c4e4b61775252a8"_s, u"sound\\lines.career.dat"_s}},
+    };
+    if (const auto lines = parts.size() >= 3 ? linesFiles.constFind(parts.at(1)) : linesFiles.constEnd();
+        lines != linesFiles.constEnd()) {
         return {{u"kind"_s, u"commentary"_s}, {u"speakerFolder"_s, parts.mid(1, 2).join(u'/') + u'/'},
-                {u"linesHash"_s, referee ? u"01d4046906cce436"_s : u"99b3b6554a5750d3"_s},
-                {u"linesPath"_s, referee ? u"sound\\lines.referee.dat"_s : u"sound\\lines.commentary.cmtry"_s}};
+                {u"linesHash"_s, lines->first}, {u"linesPath"_s, lines->second}};
     }
     return {{u"kind"_s, u"standalone"_s}};
 }
@@ -1695,9 +1814,82 @@ void AppOrchestrator::checkSteamUpdate() {
     emit steamUpdateDetected(false, name, details);
 }
 
+QString AppOrchestrator::blobsetGameVersion() {
+    // version.bin.txt: 0x3D7E0A2BA425F168 in the 64-bit hashed blobsets, 0xA76CE91F in the 32-bit ones.
+    BlobsetEntry entry;
+    if (!BlobsetEntryRegistry::findEntry(BlobsetEntryRegistry::makeKey(0x3D7E0A2BA425F168ull), entry)
+        && !BlobsetEntryRegistry::findEntry(BlobsetEntryRegistry::makeKey(0xA76CE91Full), entry))
+        return {};
+    QByteArray data;
+    try {
+        data = BlobsetAssetReader::read(entry, assetLocation(), blobsetVersion(), platform());
+    } catch (const std::exception&) {
+        return {};
+    }
+    // "1.0.5933 master retail": the version is the first word.
+    QString text = QString::fromUtf8(data.left(4096));
+    text.remove(QChar(0xFEFF));
+    text.replace(QChar(0), u' ');
+    const QString first = text.trimmed().section(QRegularExpression(u"\\s+"_s), 0, 0).left(100);
+    return first.contains(QRegularExpression(u"\\d"_s)) ? first : QString();
+}
+
+void AppOrchestrator::updateModLoaderDll() {
+    if (m_platformId != 0)
+        return;
+    const QString root = gameRootPath();
+    if (root.isEmpty())
+        return;
+    const QString source = QDir(QCoreApplication::applicationDirPath()).filePath(u"modloader/dinput8.dll"_s);
+    const QString target = QDir(root).filePath(u"dinput8.dll"_s);
+    const QFileInfo s(source), t(target);
+    // Only a loader Blobset Tools put there (other tools use dinput8.dll too), and only a newer one.
+    if (!s.isFile() || !t.isFile() || s.lastModified() <= t.lastModified().addSecs(2))
+        return;
+    QFile file(target);
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+    const QByteArray old = file.readAll();
+    file.close();
+    if (!old.contains("BlobsetMods\\blobset.base"))
+        return;
+    QFile src(source);
+    if (!src.open(QIODevice::ReadOnly) || src.readAll() == old)
+        return;
+    src.close();
+    const QString backup = target + u".old"_s;
+    QFile::remove(backup);
+    if (QFile::rename(target, backup) && QFile::copy(source, target)) {
+        QFile::remove(backup);
+        emit uiConsoleUpdate(u"Updated the Blobset Mod Loader (dinput8.dll) in %1 to the newer one installed with Blobset Tools."_s
+                                 .arg(QDir::toNativeSeparators(root)));
+    } else {
+        if (!QFileInfo::exists(target))
+            QFile::rename(backup, target);
+        emit uiConsoleUpdate(u"Warning: couldn't update the Blobset Mod Loader (dinput8.dll) in %1 - is the game running? "
+                             u"It's updated the next time Blobset Tools loads the game or builds the mods."_s
+                                 .arg(QDir::toNativeSeparators(root)));
+    }
+}
+
+void AppOrchestrator::readBlobsetVersionFile() {
+    const QString version = blobsetGameVersion();
+    if (version.isEmpty() || !QFileInfo::exists(gameInfoIniPath()))
+        return;
+    QSettings ini(gameInfoIniPath(), QSettings::IniFormat);
+    if (ini.value(u"GameInfo/Version"_s).toString() == version)
+        return;
+    ini.setValue(u"GameInfo/Version"_s, version);
+    ini.sync();
+    emit uiConsoleUpdate(u"Game version from the blobset's version.bin.txt: %1"_s.arg(version));
+    emit gameInfoChanged();
+}
+
 void AppOrchestrator::readGameVersionFile() {
     if (m_platformId != 0 || steamGameId() == 0)
         return;
+    if (!blobsetGameVersion().isEmpty())
+        return;   // The blobset's version.bin.txt is the game's own version (readBlobsetVersionFile).
     const QString root = gameRootPath();
     if (root.isEmpty())
         return;
@@ -1839,6 +2031,8 @@ void AppOrchestrator::selectGameAndLoad(int gameId, int platformId, const QStrin
 
     m_updateMappingAfterLocation = false;
     const QString mappingPath = findMappingFile();
+    const QString openView = m_openView.isEmpty() ? kMainFormView : m_openView;
+    m_openView.clear();
 
     // Reset before MainForm is created, so it never acts on the previous game's state.
     setGameLocationRequired(false);
@@ -1851,7 +2045,7 @@ void AppOrchestrator::selectGameAndLoad(int gameId, int platformId, const QStrin
         resolveGameLocation();
         BlobsetEntryRegistry::clear();
         m_treeModel->clear();
-        emit viewChanged(kMainFormView);
+        emit viewChanged(openView);
         emit uiConsoleUpdate(u"Game Profile Set. Game: %1, Platform: %2"_s.arg(modGameFolderName, platformFolder().toUpper()));
         emit uiConsoleUpdate(u"There's no file mapping for %1 yet: run Options > Update File Mapping Data."_s
                                  .arg(currentGameName()));
@@ -1859,9 +2053,19 @@ void AppOrchestrator::selectGameAndLoad(int gameId, int platformId, const QStrin
     }
 
     emit uiConsoleUpdate(u"Game Profile Set. Game: %1, Platform: %2"_s.arg(modGameFolderName, platformFolder().toUpper()));
-    emit viewChanged(kMainFormView);   // Loaded synchronously, so MainForm hears everything below.
+    emit viewChanged(openView);   // Loaded synchronously, so MainForm hears everything below.
 
     startWorkspaceLoad(mappingPath);
+}
+
+void AppOrchestrator::selectGameAndOpenModManager(int gameId, int platformId, const QString& modGameFolderName,
+                                                  const QString& gameFolderName) {
+    if (gameId < 0)
+        return;
+    // The workspace still loads (the Mod Manager's Back goes to it, and Build needs the game); the Mod Manager
+    // shows first. MainForm asks for the game location / file mapping when it's opened, if they're missing.
+    m_openView = u"qrc:/qt/qml/com/wouldymods/blobset/qml/subview_viewers/ModManager.qml"_s;
+    selectGameAndLoad(gameId, platformId, modGameFolderName, gameFolderName);
 }
 
 void AppOrchestrator::startWorkspaceLoad(const QString& mappingPath) {
@@ -1874,6 +2078,9 @@ void AppOrchestrator::startWorkspaceLoad(const QString& mappingPath) {
                                  .arg(currentGameName(), archiveName()));
         emit gameLocationRequested();
     }
+
+    if (located)
+        updateModLoaderDll();   // A newer Blobset Mod Loader installed with Blobset Tools goes into the game.
 
     // Mod Loader on (V4, PC): the folder and file list and the viewers read the Mod Loader's build in
     // <game>\BlobsetMods\data (the modded files from there, the others from the game), like the game sees them.
@@ -1946,7 +2153,11 @@ void AppOrchestrator::startWorkspaceLoad(const QString& mappingPath) {
             // Registered before the tree is built: MainForm previews the restored selection as soon as rows appear.
             BlobsetEntryRegistry::replaceAll(result.entries);
 
-            safeThis->m_treeModel->buildTree(result.filePaths);
+            // The files that aren't in a folder (version.bin.txt, shaders.blob.d11.dat, ...) are listed in a top
+            // folder named after the blobset ("data-0.blobset.pc"); it isn't part of their paths.
+            safeThis->m_treeModel->buildTree(result.filePaths, QFileInfo(mappingPath).completeBaseName());
+            if (!result.entries.isEmpty())
+                safeThis->readBlobsetVersionFile();   // GameInfo.ini Version: the loaded game's own version.
 
             if (!result.blobsetError.isEmpty())
                 emit safeThis->uiConsoleUpdate(u"Warning: %1"_s.arg(result.blobsetError));
@@ -1964,6 +2175,7 @@ void AppOrchestrator::selectFolderIndex(const QModelIndex& index) {
     m_currentFolderFiles.clear();
     qsizetype longestCharCount = 0;
     m_currentFolderPath = index.isValid() ? m_treeModel->getPathFromIndex(index).replace(u'\\', u'/') : QString();
+    m_folderSelected = index.isValid();
 
     const TreeNode* node = index.isValid() ? static_cast<TreeNode*>(index.internalPointer()) : m_treeModel->rootNode();
     if (node && node->isFolder) {
@@ -2016,6 +2228,8 @@ void AppOrchestrator::openWorkspaceFileByHash(const QString& hexHash, const QStr
                                                     { u"txpk"_s, Viewer::Txpk },
                                                     { u"m3mp"_s, Viewer::M3mp },
                                                     { u"mesh"_s, Viewer::Mesh },
+                                                    { u"mdl"_s,  Viewer::Mesh },   // RL26 skinned models
+                                                    { u"pssg"_s, Viewer::Mesh },   // RLL2 / AFL Live scenes
                                                     { u"bnk"_s,  Viewer::Bnk  },
                                                     { u"bank"_s, Viewer::Fmod },
                                                     { u"fsb"_s,  Viewer::Fmod },
@@ -2031,12 +2245,15 @@ void AppOrchestrator::openWorkspaceFileByHash(const QString& hexHash, const QStr
 
     const auto found = viewers.constFind(ext);
     Viewer viewer = found != viewers.constEnd() ? found.value() : Viewer::Hex;
-    // RL26's commentary files (sound\lines.referee.dat is one too, despite its extension).
+    // RL26's and Rugby 25's commentary files (the .dat lines files are ones too, despite their extension).
     if (CommentaryEditorManager::isCommentaryHash(hash))
         viewer = Viewer::Commentary;
     // RL26 / Rugby 25's sound\dialogue.mempack.m3mp: the commentary's name lists.
     else if (DialogueEditorManager::isDialogueHash(hash))
         viewer = Viewer::Dialogue;
+    // Rugby League Live 2 / AFL Live models: a mem pack holding the model's PSSG (stadiums, props, heads).
+    else if (viewer == Viewer::M3mp && displayName.endsWith(u".model.m3mp"_s, Qt::CaseInsensitive))
+        viewer = Viewer::Mesh;
     const QString name = displayName.isEmpty() ? u"0x"_s + hash.toUpper() : displayName;
 
     // The view is loaded synchronously by main.qml, so its Connections exist before the open signal is raised.

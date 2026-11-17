@@ -141,7 +141,9 @@ inline const QStringList& knownTypes() {
         QStringLiteral("material"), QStringLiteral("anim"), QStringLiteral("animset"), QStringLiteral("bank"),
         QStringLiteral("soundbank"), QStringLiteral("sound"), QStringLiteral("font"), QStringLiteral("script"),
         QStringLiteral("bin"), QStringLiteral("entity"), QStringLiteral("prefab"), QStringLiteral("data"),
-        QStringLiteral("json"), QStringLiteral("shader"), QStringLiteral("wem"), QStringLiteral("bnk")};
+        QStringLiteral("json"), QStringLiteral("shader"), QStringLiteral("wem"), QStringLiteral("bnk"),
+        // AFL Live's animation clip sets: "animations/crowdset.gz" (mapped "animations\crowdset.gz.clips").
+        QStringLiteral("gz")};
     return types;
 }
 

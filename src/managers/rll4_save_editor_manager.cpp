@@ -1416,6 +1416,36 @@ qsizetype Rll4SaveEditorManager::jerseyAt(int team, int uniform) const {
     return at + kJerseyBase[m_variant] + qsizetype(uniform) * kJerseyStride;
 }
 
+QVariantList Rll4SaveEditorManager::playerKits(int player) const {
+    QVariantList out;
+    const qsizetype p = recordAt(u"player"_s, player);
+    if (p < 0)
+        return out;
+    // Rosters list a player by their id, or an edited game player by the original id they replace.
+    const int id = static_cast<int>(readNum(p + 0, 4, true, true));
+    const int original = static_cast<int>(readNum(p + kPlayerOriginalId, 4, true, true));
+    for (int t = 0, teams = teamCount(); t < teams; ++t) {
+        const QList<int> ids = rosterIds(t);
+        if (!((id > 0 && ids.contains(id)) || (original > 0 && ids.contains(original))))
+            continue;
+        const qsizetype at = recordAt(u"team"_s, t);
+        const QString team = readText(at + 216, 44).trimmed();   // fullName
+        const QString colour = hexColour(static_cast<quint8>(m_data.at(at + 43)), static_cast<quint8>(m_data.at(at + 44)),
+                                         static_cast<quint8>(m_data.at(at + 45)));   // primaryColour
+        const int count = qBound(0, static_cast<int>(static_cast<quint8>(m_data.at(at + kJerseyAmount[m_variant]))), kMaxJerseys);
+        for (int u = 0; u < count; ++u) {
+            const qsizetype j = jerseyAt(t, u);
+            out << QVariantMap{{u"team"_s, t},
+                               {u"uniform"_s, u},
+                               {u"name"_s, u"%1 - %2"_s.arg(team, readText(j, 25).trimmed())},
+                               {u"maker"_s, static_cast<int>(static_cast<quint8>(m_data.at(j + 313)))},
+                               {u"licensed"_s, static_cast<int>(readNum(j + 333, 2, false, false))},
+                               {u"colour"_s, colour}};
+        }
+    }
+    return out;
+}
+
 QVariantMap Rll4SaveEditorManager::jerseys(int team) const {
     QVariantMap out{{u"ok"_s, false}};
     const qsizetype at = recordAt(u"team"_s, team);

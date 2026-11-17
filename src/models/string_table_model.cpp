@@ -5,12 +5,14 @@
 #include "blobset_entry_registry.h"
 
 #include <QDir>
+#include <QHash>
 #include <QFile>
 #include <QFileInfo>
 #include <QSaveFile>
 #include <QUrl>
 #include <QtEndian>
 
+#include <algorithm>
 #include <exception>
 
 using namespace Qt::StringLiterals;
@@ -253,6 +255,39 @@ bool StringTableModel::loadFromBlobset(const QString& hexHash, const QString& wo
     path.replace(u'\\', u'/');
     const QString name = path.isEmpty() ? u"0x"_s + hexHash.toUpper() : path;
     return parse(data, name, path, QString());
+}
+
+QVariantList StringTableModel::blobsetTables() const {
+    const AppOrchestrator* orchestrator = AppOrchestrator::instance();
+    if (!orchestrator)
+        return {};
+    // "strings_en" -> English, ... (the languages the games ship).
+    static const QHash<QString, QString> languages = {
+        {u"en"_s, u"English"_s}, {u"fr"_s, u"French"_s}, {u"de"_s, u"German"_s}, {u"it"_s, u"Italian"_s},
+        {u"es"_s, u"Spanish"_s}, {u"pt"_s, u"Portuguese"_s}, {u"pt-br"_s, u"Portuguese (Brazil)"_s},
+        {u"ru"_s, u"Russian"_s}, {u"pl"_s, u"Polish"_s}, {u"ja"_s, u"Japanese"_s}, {u"ko"_s, u"Korean"_s},
+        {u"zh-hant"_s, u"Chinese (Traditional)"_s}, {u"zh-hans"_s, u"Chinese (Simplified)"_s}, {u"nl"_s, u"Dutch"_s},
+    };
+    QList<QVariantMap> tables;
+    for (const QString& key : orchestrator->mappedKeysWithSuffix(u".str"_s)) {
+        BlobsetEntry entry;
+        if (!BlobsetEntryRegistry::findEntry(key, entry))
+            continue;   // Mapped, but not in this blobset.
+        const QString path = orchestrator->pathFromHash(key);
+        const QString name = path.mid(path.lastIndexOf(u'\\') + 1);
+        const QString stem = name.left(name.lastIndexOf(u'.')).toLower();
+        const qsizetype underscore = stem.indexOf(u'_');
+        const QString code = underscore >= 0 ? stem.mid(underscore + 1) : QString();
+        tables << QVariantMap{{u"name"_s, name}, {u"path"_s, path}, {u"hash"_s, key},
+                              {u"language"_s, languages.value(code, code.toUpper())}};
+    }
+    std::sort(tables.begin(), tables.end(), [](const QVariantMap& a, const QVariantMap& b) {
+        return a.value(u"path"_s).toString().compare(b.value(u"path"_s).toString(), Qt::CaseInsensitive) < 0;
+    });
+    QVariantList out;
+    for (const QVariantMap& table : std::as_const(tables))
+        out << table;
+    return out;
 }
 
 bool StringTableModel::loadFile(const QString& pathIn) {
